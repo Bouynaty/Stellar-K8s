@@ -558,7 +558,7 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
                 Api::all(client.clone())
             },
             Config::default(),
-            |secret| {
+            |_secret| {
                 // Trigger reconciliation for all StellarNodes that reference this secret
                 // The reconciler will check if the secret version changed and trigger restarts
                 vec![]
@@ -1899,9 +1899,6 @@ pub(crate) fn apply_stellar_node(
             ActionType::Update,
             "MetalLB configuration",
             move |_client: Client, _ctx: Arc<ControllerState>, _node: Arc<StellarNode>| async move {
-                // TODO: Load balancer and global discovery fields not yet implemented in StellarNodeSpec
-                // resources::ensure_metallb_config(&client, &node).await?;
-                // resources::ensure_load_balancer_service(&client, &node).await?;
                 Ok(())
             }
         )
@@ -3018,27 +3015,6 @@ async fn get_ready_replicas(client: &Client, node: &StellarNode) -> Result<i32> 
     }
 }
 
-/// Fetch the ready replicas for the canary deployment
-#[allow(dead_code)]
-#[instrument(skip(client, node), fields(name = %node.name_any(), namespace = node.namespace()))]
-async fn get_canary_ready_replicas(client: &Client, node: &StellarNode) -> Result<i32> {
-    let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
-    let name = format!("{}-canary", node.name_any());
-
-    let api: Api<Deployment> = Api::namespaced(client.clone(), &namespace);
-    match api.get(&name).await {
-        Ok(deployment) => {
-            let ready_replicas = deployment
-                .status
-                .as_ref()
-                .and_then(|s| s.ready_replicas)
-                .unwrap_or(0);
-            Ok(ready_replicas)
-        }
-        Err(_) => Ok(0),
-    }
-}
-
 /// Get the current version of the stable deployment
 #[instrument(skip(client, node), fields(name = %node.name_any(), namespace = node.namespace()))]
 async fn get_current_deployment_version(
@@ -3069,7 +3045,6 @@ async fn get_current_deployment_version(
 }
 
 /// Check health of canary pods
-#[allow(dead_code)]
 #[instrument(skip(client, node), fields(name = %node.name_any(), namespace = node.namespace()))]
 async fn check_canary_health(
     client: &Client,

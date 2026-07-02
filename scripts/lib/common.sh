@@ -5,6 +5,11 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 # shellcheck source=scripts/lib/errors.sh
 source "${SCRIPT_DIR}/errors.sh"
+# ── Dry-Run Normalization ───────────────────────────────────────────────────
+# Accept common truthy values used across batch scripts (1, true, yes).
+case "${DRY_RUN:-}" in
+  1 | true | TRUE | yes | YES) export DRY_RUN=true ;;
+esac
 
 # ── Repository Resolution ───────────────────────────────────────────────────
 _DEFAULT_REPO="OtowoOrg/Stellar-K8s"
