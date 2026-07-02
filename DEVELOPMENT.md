@@ -152,6 +152,7 @@ Run all unit tests across the workspace:
 make test
 ```
 
+This runs **1000+ tests** including:
 This is the canonical command. It wraps `cargo test` with the project's
 feature set (`rest-api`, `metrics`, `admission-webhook`, `k8s-v1-30`,
 `reconciler-fuzz`) and `K8S_OPENAPI_ENABLED_VERSION=1.30`, matching CI
@@ -662,6 +663,7 @@ kubectl stellar --help
 
 ### Documentation
 
+- [docs/errors.md](docs/errors.md) - Error code reference (SK8S-001 through SK8S-022)
 - [docs/kubectl-plugin.md](docs/kubectl-plugin.md) - kubectl-stellar plugin guide
 - [docs/health-checks.md](docs/health-checks.md) - Health check implementation
 - [docs/peer-discovery.md](docs/peer-discovery.md) - Peer discovery guide
