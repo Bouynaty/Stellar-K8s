@@ -16,6 +16,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=scripts/lib/errors.sh
+source "${SCRIPT_DIR}/lib/errors.sh"
 cd "${REPO_ROOT}"
 
 # shellcheck source=scripts/lib/errors.sh
@@ -93,6 +95,44 @@ print_header() {
   echo "  Stellar-K8s repository health check (${MODE})"
   echo "  repo: ${REPO_ROOT}"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+K8S_OPENAPI_ENABLED_VERSION="${K8S_OPENAPI_ENABLED_VERSION:-1.30}"
+export K8S_OPENAPI_ENABLED_VERSION
+
+readonly TOTAL_STEPS=5
+STEP=0
+
+print_header() {
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  Stellar-K8s repository health check"
+  echo "  repo: ${REPO_ROOT}"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+begin_step() {
+  STEP=$((STEP + 1))
+  sk8s_step "Step ${STEP}/${TOTAL_STEPS}" "$1"
+}
+
+pass_step() {
+  sk8s_pass "${1} passed"
+}
+
+fail_step() {
+  local name="$1"
+  local hint="$2"
+  sk8s_fail "failed at step ${STEP}/${TOTAL_STEPS}: ${name}" "${hint} — re-run: make health"
+}
+
+run_or_fail() {
+  local name="$1"
+  local hint="$2"
+  shift 2
+  if "$@"; then
+    pass_step "${name}"
+  else
+    fail_step "${name}" "${hint}"
+  fi
 }
 
 print_header
