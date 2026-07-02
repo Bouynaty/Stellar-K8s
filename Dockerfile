@@ -63,6 +63,17 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     /app/bin/stellar-health-sidecar
 
 # ==============================================================================
+# Stage 4: Local Binaries - Fast local packaging from host build artifacts
+# DEV-ONLY: Used by `make docker-build` for rapid local iteration.
+# Requires host-side `cargo build --release` to have run first.
+# NOT used in CI (CI uses Stage 3 builder + Stage 7 runtime instead).
+# ==============================================================================
+FROM scratch AS local-binaries
+COPY target/release/stellar-operator /stellar-operator
+COPY target/release/kubectl-stellar /kubectl-stellar
+
+# ==============================================================================
+# Stage 5: Runtime Base - Shared runtime dependencies for all runtime images
 # Stage 4: Runtime Base - Shared runtime dependencies for all runtime images
 #
 # Consolidates the apt-get install, user creation, labels, exposed ports, and
@@ -101,6 +112,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["/stellar-operator", "version"]
 
 # ==============================================================================
+# Stage 6: Runtime Local - Minimal image for local dev (no container recompile)
+# DEV-ONLY: Final target for `make docker-build`. Copies pre-built binaries
+# from Stage 4 (local-binaries). NOT used in CI.
 # Stage 5: Runtime Local - Minimal image for local dev (no container recompile)
 # ==============================================================================
 FROM runtime-base AS runtime-local
