@@ -20,6 +20,7 @@
 .PHONY: help \
 	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all \
 	build test ci-local quick watch \
+	docker-build docker-build-ci \
 	docker-build docker-build-ci docker-multiarch \
 	dev-setup pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
@@ -31,6 +32,9 @@
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
 	compose-up compose-dev compose-down compose-logs \
+	bundle bundle-build \
+	quickstart health health-fast validate preflight all \
+	quickstart validate preflight test-preflight all \
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
 	quickstart quickstart-setup quickstart-build quickstart-deploy quickstart-cleanup \
 	validate preflight health test-preflight test-shell all \
@@ -166,8 +170,14 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 	@echo "→ Building Docker image (CI mode)..."
 	DOCKER_BUILDKIT=1 $(DOCKER) build --target runtime -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
-docker-multiarch: ## Build multi-arch Docker image
-	$(DOCKER) buildx build --platform linux/amd64 -t $(IMAGE_NAME):$(IMAGE_TAG) .
+health: ## Run common repository health checks (format, lint, test, docs)
+	@bash scripts/repo-health.sh
+
+health-fast: ## Fast health gate (format, lint, compile only)
+	@bash scripts/repo-health.sh --fast
+
+validate: ## Fast validation (alias for health-fast)
+	@bash scripts/repo-health.sh --fast
 
 # ── Quality & Health ───────────────────────────────────────────────────────────
 
@@ -418,6 +428,14 @@ quickstart-deploy: ## Deploy operator and sample resources
 	@echo "  View resources: kubectl get deploy,sts,svc,pvc -n stellar-system"
 	@echo "  Cleanup:        kind delete cluster --name stellar-dev"
 
+preflight: ## Validate required local tools are installed (docker, kind, kubectl, helm, cargo)
+	@echo "→ Running local development preflight checks..."
+	@command -v docker  >/dev/null 2>&1 && echo "  ✓ docker"  || echo "  ✗ docker  — Install: https://docs.docker.com/engine/install/"
+	@command -v kind    >/dev/null 2>&1 && echo "  ✓ kind"    || echo "  ✗ kind    — Install: https://kind.sigs.k8s.io/docs/user/quick-start/#installation"
+	@command -v kubectl >/dev/null 2>&1 && echo "  ✓ kubectl" || echo "  ✗ kubectl — Install: https://kubernetes.io/docs/tasks/tools/"
+	@command -v helm    >/dev/null 2>&1 && echo "  ✓ helm"    || echo "  ✗ helm    — Install: https://helm.sh/docs/intro/install/"
+	@command -v cargo   >/dev/null 2>&1 && echo "  ✓ cargo"   || echo "  ✗ cargo   — Install: https://rustup.rs/"
+	@echo "→ Preflight complete. Fix any ✗ items above before continuing."
 validate: ## Run local validation script (format + lint + compile)
 	@bash scripts/validate.sh
 

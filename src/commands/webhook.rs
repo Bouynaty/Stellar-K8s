@@ -1,18 +1,23 @@
 use crate::cli::{LogFormat, WebhookArgs};
-use stellar_k8s::log_scrub::ScrubLayer;
+use stellar_k8s::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 use stellar_k8s::Error;
 use tracing::{info, info_span, warn, Level};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[cfg(feature = "admission-webhook")]
 pub async fn run_webhook(args: WebhookArgs) -> Result<(), Error> {
     use stellar_k8s::webhook::{runtime::WasmRuntime, server::WebhookServer};
 
-    // Initialize tracing
-    let env_filter = EnvFilter::builder()
-        .with_default_directive(args.log_level.parse().unwrap_or(Level::INFO.into()))
-        .from_env_lossy();
+    let log_format = match args.log_format {
+        LogFormat::Json => LogOutputFormat::Json,
+        LogFormat::Pretty => LogOutputFormat::Pretty,
+    };
+    let log_level = args.log_level.parse().unwrap_or(Level::INFO);
 
+    init_subscriber(SubscriberConfig {
+        level: log_level,
+        format: log_format,
+        ..Default::default()
+    });
     let scrub_layer = ScrubLayer::new();
 
     match args.log_format {
@@ -51,20 +56,16 @@ pub async fn run_webhook(args: WebhookArgs) -> Result<(), Error> {
         args.bind
     );
 
-    // Parse bind address
     let addr: std::net::SocketAddr = args
         .bind
         .parse()
         .map_err(|e| Error::ConfigError(format!("Invalid bind address: {e}")))?;
 
-    // Initialize Wasm runtime
     let runtime = WasmRuntime::new()
         .map_err(|e| Error::ConfigError(format!("Failed to initialize Wasm runtime: {e}")))?;
 
-    // Create webhook server
     let mut server = WebhookServer::new(runtime);
 
-    // Configure TLS if provided
     if let (Some(cert_path), Some(key_path)) = (args.cert_path, args.key_path) {
         info!("Configuring TLS with cert: {cert_path}, key: {key_path}");
         server = server.with_tls(cert_path, key_path);
@@ -72,7 +73,6 @@ pub async fn run_webhook(args: WebhookArgs) -> Result<(), Error> {
         warn!("Running webhook server without TLS (not recommended for production)");
     }
 
-    // Start the server
     info!("Webhook server listening on {addr}");
     server
         .start(addr)
