@@ -399,7 +399,11 @@ fn check_entry(
 // ── Baseline update ───────────────────────────────────────────────────────────
 
 /// Write a fresh baseline that marks every entry as current at HEAD.
-fn update_baseline(entries: &[Entry], repo_root: &Path, baseline_path: &Path) -> anyhow::Result<()> {
+fn update_baseline(
+    entries: &[Entry],
+    repo_root: &Path,
+    baseline_path: &Path,
+) -> anyhow::Result<()> {
     let head = git_head_sha().unwrap_or_else(|| "unknown".into());
     let mut baseline = Baseline::default();
 
@@ -408,8 +412,7 @@ fn update_baseline(entries: &[Entry], repo_root: &Path, baseline_path: &Path) ->
             continue;
         }
         let doc_abs = repo_root.join(&entry.doc);
-        let doc_sha = git_last_commit_sha(&doc_abs)
-            .unwrap_or_else(|| head.clone());
+        let doc_sha = git_last_commit_sha(&doc_abs).unwrap_or_else(|| head.clone());
 
         baseline.entries.insert(
             entry.doc.to_string_lossy().to_string(),
@@ -529,10 +532,7 @@ fn main() -> ExitCode {
     let coverage: Coverage = match toml::from_str(&config_content) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!(
-                "error: failed to parse '{}': {e}",
-                config_path.display()
-            );
+            eprintln!("error: failed to parse '{}': {e}", config_path.display());
             return ExitCode::FAILURE;
         }
     };
