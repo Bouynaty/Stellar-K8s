@@ -5,6 +5,12 @@
 
 pub mod alerting;
 pub mod analytics;
+/// Standardised log field name constants (Issue #1115).
+///
+/// Import as `use stellar_k8s::logging::fields as F;` and reference
+/// `F::NODE`, `F::NAMESPACE`, etc. in every `tracing::*!` call so
+/// field names stay consistent across CI pipelines and runtime diagnostics.
+pub mod fields;
 pub mod sampling;
 pub mod storage;
 

@@ -197,3 +197,81 @@ The following checks need to pass:
 - [ ] API docs generation
 
 Current blocker: Compilation errors must be fixed before other checks can run.
+
+## Wave Issues — Batch (Issues #900, #1114, #1115, #1116) ✅
+
+### Issue #900 — Break Up Oversized Controller Modules
+
+**Problem:** `src/controller/reconciler.rs` (4,344 lines) and
+`src/controller/resources.rs` (4,873 lines) were monolithic files impossible
+to navigate or test in isolation.
+
+**Solution:** Each file was decomposed into a directory of focused sub-modules
+with a `mod.rs` facade that re-exports the original public API unchanged:
+
+- `src/controller/reconciler/`
+  - `mod.rs` — re-exports; public API surface unchanged
+  - `state.rs` — `ControllerState` definition
+  - `batch.rs` — `BatchSummaryReport` + tests
+  - `events.rs` — `emit_event!`, `publish_stellar_event!`, `Recorder` helpers
+  - `dry_run.rs` — `apply_or_emit!`, `apply_or_emit_owned`, `ActionType`
+  - `runner.rs` — `run_controller` entry-point, watch setup, background workers
+  - `core.rs` — core `reconcile()` state machine
+
+- `src/controller/resources/`
+  - `mod.rs` — re-exports; public API surface unchanged
+  - `meta.rs` — `standard_labels`, `owner_reference`, `resource_name`, annotation helpers
+  - `probes.rs` — default liveness / readiness / startup probes + tests
+  - `pvc.rs` — `build_pvc`, `ensure_pvc`, `delete_pvc` + tests
+  - `config_map.rs` — `build_config_map`, `ensure_config_map`, `delete_config_map`
+  - `service.rs` — `ensure_service`, `build_service`
+  - `deployment.rs` — `ensure_deployment`, `build_deployment`
+  - `statefulset.rs` — `ensure_statefulset`, `build_statefulset`
+  - `reconcile.rs` — `reconcile_node_resources` top-level entry-point
+
+No behavior changes were introduced. All public APIs are preserved via re-exports.
+
+### Issue #1114 — Static Audit for Unused Crate Features and Dead Imports
+
+**Added:** `scripts/audit-features.sh`
+
+Four-step static audit:
+1. Declared features with no `#[cfg(feature = "...")]` guard in `src/`.
+2. Unused imports via `RUSTFLAGS="-D unused_imports" cargo check`.
+3. Dead code via `RUSTFLAGS="-D dead_code" cargo check`.
+4. Optional dependencies with no explicit feature activation in `[features]`.
+
+Wired into `.github/workflows/ci.yml` as the `feature-audit` job (runs when
+`rust_core` or `deps` files change).
+
+### Issue #1115 — Standardize Logging Fields for CI and Runtime Diagnostics
+
+**Added:** `src/logging/fields.rs`
+
+Single source of truth for all structured log field name constants used across
+CI pipelines and runtime tracing call-sites:
+
+- `NODE`, `NAMESPACE`, `NODE_TYPE`, `CLUSTER`, `K8S_NODE`
+- `RECONCILE_ID`, `PHASE`
+- `ERROR`, `DURATION_MS`, `COMPONENT`
+- `LEDGER`, `VERSION`, `REGION`
+- `JOB_ID`, `AUDIT_ACTION`, `SCRUB_PATTERN`
+- `TRACE_ID`, `SPAN_ID`
+- `CI_STEP`, `GIT_SHA`, `FEATURES`
+
+All constants are validated by unit tests (non-empty, lowercase snake_case,
+unique). The module is exported from `src/logging/mod.rs` as `logging::fields`.
+
+### Issue #1116 — Add Secure Secret-Handling Checks to All Pipeline Command Paths
+
+**Added:** `scripts/check-secrets.sh`
+
+Five-layer check:
+1. Hard-coded credential patterns (Stellar seeds, AWS keys, PEM blocks, `password=` literals).
+2. Shell script echo hygiene — detects `echo $SECRET_VAR` and `set -x`.
+3. GitHub Actions workflow safety — detects unmasked `${{ secrets.X }}` echoes.
+4. Dockerfile hygiene — detects `ENV`/`ARG` directives with secret-like names.
+5. Rust source literals — detects Stellar seed strings outside test/fixture files.
+
+Wired into `.github/workflows/ci.yml` as the `secret-checks` job (runs on
+every push/PR) and gates the `test` and `coverage` jobs on its success.
