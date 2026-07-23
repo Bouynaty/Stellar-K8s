@@ -58,4 +58,46 @@ ignore = [
     "RUSTSEC-2026-0182",
     # quinn-proto – remote memory exhaustion; transitive via reqwest HTTP/3
     "RUSTSEC-2026-0185",
+
+    # ── Added 2026-07-03: feat/stale-docs-detector new advisories ──────────────
+
+    # lopdf 0.31.0 – stack overflow via deeply nested PDF objects (RUSTSEC-2026-0187).
+    # Fix requires lopdf >=0.42.0, a major semver bump. lopdf is a transitive
+    # dependency via printpdf; the stale-docs-detector only reads source/doc files
+    # and never parses untrusted PDF input. Re-evaluate when printpdf upgrades.
+    "RUSTSEC-2026-0187",
+
+    # ── rustls-webpki 0.101.7 + 0.102.8 – two pinned versions, both affected ──
+    # Both are transitive: 0.101.x via kube-client, 0.102.x via reqwest/quinn.
+    # Fix requires >=0.103.12, a major bump that needs coordinated upstream changes.
+    # These affect TLS certificate name-constraint and CRL parsing; this project
+    # does not process untrusted certificates in production paths. Re-evaluate
+    # when kube-rs or reqwest advance their rustls-webpki pins.
+    #
+    # Name constraints accepted for wildcard certificates
+    "RUSTSEC-2026-0099",
+    # Name constraints for URI names incorrectly accepted
+    "RUSTSEC-2026-0098",
+    # Reachable panic in CRL parsing
+    "RUSTSEC-2026-0104",
+
+    # ── wasmtime-wasi 24.0.7 – WASI file-permission bypasses ───────────────────
+    # Both advisories need wasmtime-wasi >=24.0.11 (0149) or >=24.0.11 / >=36.x
+    # (0188). `cargo update -p wasmtime-wasi` yields 0 packages updated — the
+    # resolver cannot advance within 24.x due to other wasmtime-* crates locked to
+    # 24.0.7. These bugs affect WASI filesystem host-restriction enforcement; this
+    # project uses Wasmtime only for the Wasm webhook validator with trusted,
+    # operator-supplied policies — not arbitrary user input. Re-evaluate when the
+    # full wasmtime-* pin set can be advanced together.
+    #
+    # WASI path_open(TRUNCATE) bypasses FilePerms::WRITE
+    "RUSTSEC-2026-0149",
+    # WASI hard links and renames bypass FilePerms for destination
+    "RUSTSEC-2026-0188",
+
+    # ttf-parser 0.19.2 – marked unmaintained (RUSTSEC-2026-0192).
+    # No maintained successor exists at the version our transitive dependency
+    # chain requires. Informational warning only (no CVE score). Re-evaluate
+    # when upstream crates adopt a maintained fork.
+    "RUSTSEC-2026-0192",
 ]
