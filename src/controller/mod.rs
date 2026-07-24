@@ -50,6 +50,7 @@
 
 pub mod benchmark;
 pub mod blue_green;
+pub mod cache_aware_queue;
 pub mod canary;
 pub mod event_taxonomy;
 pub mod cross_cloud_failover;
@@ -164,6 +165,10 @@ pub use benchmark::run_benchmark_controller;
 pub use blue_green::{
     cleanup_blue_deployment, create_green_deployment, rollback_to_blue, run_smoke_tests,
     switch_traffic_to_green, wait_for_green_ready, BlueGreenConfig, BlueGreenStatus,
+};
+pub use cache_aware_queue::{
+    calculate_cache_aware_backoff, priority_from_signals, CacheAwareBackoffInput,
+    CacheAwarePriorityQueue, ReconcilePriority,
 };
 pub use cross_cloud_failover::reconcile_cross_cloud_failover;
 pub use cross_cluster::{check_peer_latency, ensure_cross_cluster_services, PeerLatencyStatus};

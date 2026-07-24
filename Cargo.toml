@@ -220,6 +220,12 @@ path = "src/kubectl_plugin.rs"
 name = "stellar-completions"
 path = "src/bin/completions.rs"
 
+# Cross-platform developer bootstrap verifier — pure Rust so it also runs on
+# plain Windows (no WSL/Git Bash needed), unlike scripts/preflight.sh.
+[[bin]]
+name = "stellar-bootstrap-verify"
+path = "src/bin/stellar-bootstrap-verify.rs"
+
 # Byzantine Monitoring Watcher — deployed as a sidecar in multiple cloud regions
 # to detect local vs. global consensus issues (Byzantine partition detection).
 [[bin]]
