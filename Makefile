@@ -52,6 +52,21 @@ audit: ## Security audit
 	@command -v cargo-audit >/dev/null 2>&1 || cargo install --locked cargo-audit
 	@$(CARGO) audit --deny unsound || echo "⚠️  Security issues found - review before production"
 
+dep-check: ## Check for stale/outdated dependencies and license drift (requires cargo-deny, cargo-outdated)
+	@echo "→ Checking dependency licenses and bans..."
+	@command -v cargo-deny >/dev/null 2>&1 || cargo install --locked cargo-deny
+	@$(CARGO) deny check licenses bans sources
+	@echo "→ Checking for outdated dependencies (informational)..."
+	@command -v cargo-outdated >/dev/null 2>&1 || cargo install --locked cargo-outdated
+	@$(CARGO) outdated --workspace --depth 1 || true
+	@echo "✓ Dependency check complete"
+
+license-report: ## Generate a full license inventory for all dependencies
+	@echo "→ Generating license inventory..."
+	@command -v cargo-license >/dev/null 2>&1 || cargo install --locked cargo-license
+	@$(CARGO) license --all-features
+	@echo "✓ License report complete"
+
 test: ## Run tests
 	@echo "→ Running tests..."
 	@$(CARGO) test --workspace --features "rest-api,metrics,admission-webhook,k8s-v1-30,reconciler-fuzz" --tests --lib --bins --verbose
@@ -136,6 +151,17 @@ completions: ## Generate shell completion scripts
 helm-lint: ## Helm lint check
 	@echo "→ Linting Helm charts..."
 	helm lint charts/stellar-operator
+
+helm-test: ## Run Helm unit tests (requires helm-unittest plugin)
+	@echo "→ Running Helm unit tests..."
+	@helm plugin list 2>/dev/null | grep -q unittest || \
+		helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v0.5.1
+	helm unittest charts/stellar-operator --strict --color
+	@echo "✓ Helm unit tests passed"
+
+release-gate: ## Run all release validation gates locally (set VERSION=x.y.z)
+	@echo "→ Running release gate checks..."
+	@bash scripts/release-gate.sh
 
 dev-setup: ## Setup dev environment
 	rustup update stable
@@ -226,6 +252,11 @@ quickstart: ## End-to-end local quickstart: kind cluster + CRD + operator + samp
 	@echo "  Watch nodes:    kubectl get stellarnode -n stellar-system -w"
 	@echo "  View resources: kubectl get deploy,sts,svc,pvc -n stellar-system"
 	@echo "  Cleanup:        kind delete cluster --name stellar-dev"
+
+quickstart-verify: ## Run the full automated quickstart verification (mirrors README commands)
+	@echo "→ Running end-to-end quickstart verification..."
+	@chmod +x scripts/quickstart-verify.sh
+	@bash scripts/quickstart-verify.sh
 
 all: ci-local docker-build ## Full build pipeline
 
