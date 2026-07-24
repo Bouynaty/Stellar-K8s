@@ -136,6 +136,13 @@ impl ForecastEngine {
     }
 
     fn holt_winters_forecast(&self, values: &[f64], horizon: u32) -> Vec<f64> {
+        if values.is_empty() {
+            return vec![0.0; horizon as usize];
+        }
+        if values.len() == 1 {
+            return vec![values[0]; horizon as usize];
+        }
+
         let mut level = values[0];
         let mut trend = values[1] - values[0];
 
@@ -179,8 +186,8 @@ impl ForecastEngine {
             .collect()
     }
 
-    fn compute_mape(&self, actual: &[f64], predicted: &[f64]) -> f64 {
-        let holdout = actual.len().min(5).max(1);
+    fn compute_mape(&self, actual: &[f64], _predicted: &[f64]) -> f64 {
+        let holdout = actual.len().clamp(1, 5);
         if actual.len() <= holdout {
             return 10.0;
         }

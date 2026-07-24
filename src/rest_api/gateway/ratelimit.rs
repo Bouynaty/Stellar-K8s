@@ -153,7 +153,8 @@ impl RateLimiter {
             requests_per_hour: requests_per_minute * 60,
             requests_per_day: requests_per_minute * 60 * 24,
             burst_size,
-            ..Default::default()
+            per_ip_limit: Some(requests_per_minute),
+            per_client_limit: Some(requests_per_minute),
         };
         Self::from_config(&config)
     }
@@ -327,7 +328,7 @@ impl QuotaManager {
     }
 
     /// Check if client has quota remaining
-    pub fn check_quota(&self, client_id: &str) -> Result<QuotaConfig, String> {
+    pub fn check_quota(&self, _client_id: &str) -> Result<QuotaConfig, String> {
         // This is sync for quick checks; use async version for full logic
         Ok(QuotaConfig::default())
     }
@@ -338,7 +339,7 @@ impl QuotaManager {
 
         let config = quotas
             .entry(client_id.to_string())
-            .or_insert_with(|| QuotaConfig::default());
+            .or_insert_with(QuotaConfig::default);
 
         // Check if we need to reset (new month)
         if Utc::now() > config.reset_at {

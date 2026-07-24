@@ -1,7 +1,19 @@
-# Default values for stellar-operator
-# This is a YAML-formatted file.
+# =============================================================================
+# Stellar Operator — default Helm values
+# =============================================================================
+#
+# Override precedence (highest wins):
+#   1. Per-release `helm install -f` / `--set` overrides
+#   2. Nested keys in this file (e.g. operator.logLevel)
+#   3. Chart defaults (image.tag falls back to Chart.appVersion when empty)
+#
+# Component images inherit from `image.*` when their repository/tag are empty:
+#   sidecar, forkDetector, byzantineWatcher, scpAnalytics, otel.collector
+#
+# Preset profiles: examples/values-production.yaml, values-ha.yaml
+# =============================================================================
 
-# Number of replicas for the operator deployment.
+# --- Core operator deployment ------------------------------------------------
 # For high availability, set to 3 or more.
 # Requires enabling leader election (configured automatically if replicaCount > 1).
 # With leader election enabled, only one replica processes reconciliation at a time,
@@ -9,6 +21,7 @@
 replicaCount: 1
 
 image:
+  # Primary operator image; sub-components inherit these when repository/tag are empty.
   repository: ghcr.io/stellar/stellar-k8s
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion
@@ -234,6 +247,56 @@ service:
   type: ClusterIP
   restApiPort: 9090
   metricsPort: 9090
+
+# Monitoring configuration for Prometheus Operator integration
+# Requires: Prometheus Operator (CRDs: PrometheusRule) to be installed
+monitoring:
+  # PrometheusRule manifests for alerting on Stellar node and operator health
+  prometheusRules:
+    # Master switch to enable/disable PrometheusRule generation
+    enabled: false
+    # Rule evaluation interval (default: 30s, aligned with Prometheus scrape interval)
+    interval: 30s
+    # Alert severity levels and thresholds
+    alerts:
+      # Node is lagging behind network consensus (ledger sync lag)
+      syncLag:
+        enabled: true
+        # Trigger alert if node is behind by this many ledgers
+        lagThreshold: 100
+        # Duration threshold before alerting (allows for temporary lag)
+        forDuration: 5m
+      # Memory pressure on Stellar node pods
+      memoryPressure:
+        enabled: true
+        # Trigger alert when RSS exceeds this percentage of limit
+        percentageThreshold: 90
+        # Duration threshold before alerting
+        forDuration: 2m
+      # Operator reconciliation is failing
+      reconcileErrors:
+        enabled: true
+        # Alert if errors exceed this rate (errors per second)
+        errorRateThreshold: 0
+        # Duration threshold before alerting
+        forDuration: 5m
+      # History archive is unresponsive
+      historyArchiveUnresponsive:
+        enabled: true
+        # Trigger alert on HTTP 404/500 errors or timeout
+        forDuration: 10m
+      # Operator has stalled (no reconciliations happening)
+      reconciliationStalled:
+        enabled: true
+        # No reconciliation activity in this time window
+        stalledDuration: 10m
+      # Operator is experiencing high latency
+      reconciliationLatency:
+        enabled: true
+        # Alert if p99 latency exceeds this value (in seconds)
+        latencyThreshold: 30
+        # Duration threshold before alerting
+        forDuration: 10m
 
 # Default resource requests/limits for managed StellarNode pods.
 # Precedence: StellarNode spec.resources > Helm defaults > operator hardcoded fallback.
@@ -562,6 +625,12 @@ scpAnalytics:
     # Log level
     logLevel: "info"
 
+    # Pod-level security context for the consumer Deployment
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+
     # Resource limits
     resources:
       limits:
@@ -571,17 +640,49 @@ scpAnalytics:
         cpu: 200m
         memory: 256Mi
 
-# Helm hooks configuration
+# --- Admission webhook deployment settings -----------------------------------
+# Controls the webhook Deployment, Service, and ValidatingWebhookConfiguration
+# rendered by charts/stellar-operator/templates/webhook.yaml.
+webhook:
+  # Number of webhook server replicas. Set to >= 2 for production HA.
+  replicaCount: 2
+
+  # Port the webhook HTTPS server listens on inside the container.
+  port: 8443
+
+  # Port for the Prometheus /metrics endpoint on the webhook pod.
+  metricsPort: 9090
+
+  # Admission review timeout in seconds. Kubernetes maximum is 30.
+  timeoutSeconds: 10
+
+  # Action when the webhook is unreachable: Fail (safe default) or Ignore.
+  # Fail: admission is blocked if the webhook cannot be reached.
+  # Ignore: admission proceeds without the webhook response.
+  failurePolicy: Fail
+
+  # Resource requests and limits for the webhook server container.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# --- Helm lifecycle hooks ----------------------------------------------------
 hooks:
-  # Pre-install hook - runs validation checks before first installation
+  # Pre-install hook — validation checks before first installation.
   preInstall:
     enabled: true
-  
-  # Pre-upgrade hook - runs safety checks and creates backup before upgrade
+
+  # Pre-upgrade hook — safety checks and upgrade checkpoint before chart upgrade.
   preUpgrade:
     enabled: true
-    # Enable rollback capability verification
+    # Verify a previous Helm revision exists so rollback remains possible.
     enableRollbackCheck: true
+
+# --- High availability reference ---------------------------------------------
 # ============================================================================
 # HIGH AVAILABILITY CONFIGURATION EXAMPLE
 # ============================================================================

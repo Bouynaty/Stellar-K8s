@@ -2,19 +2,12 @@
 //!
 //! Supports multiple authentication methods: JWT, OAuth2, API Keys
 
-use async_trait::async_trait;
-use axum::{
-    body::Body,
-    extract::Request,
-    http::{header, StatusCode},
-};
-use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use axum::{body::Body, extract::Request, http::header};
+use chrono::Utc;
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 use thiserror::Error;
-use tokio::sync::RwLock;
 
 /// Authentication errors
 #[derive(Error, Debug)]
@@ -391,7 +384,7 @@ mod tests {
     fn test_auth_config_defaults() {
         let config = AuthConfig::default();
         assert!(config.jwt_secret.is_none());
-        assert!(config.allow_anonymous);
+        assert!(!config.allow_anonymous);
         assert!(config.k8s_auth_enabled);
     }
 

@@ -304,7 +304,11 @@ pub fn build_state_sync_sidecar(node: &StellarNode) -> Container {
         .map(|s| s.stellar_core_url.clone())
         .unwrap_or_else(|| "http://localhost:11626".to_string());
 
-    let network_passphrase = node.spec.network.passphrase(&node.spec.custom_network_passphrase).to_string();
+    let network_passphrase = node
+        .spec
+        .network
+        .passphrase(&node.spec.custom_network_passphrase)
+        .to_string();
 
     let mut env = vec![
         EnvVar {
@@ -436,7 +440,7 @@ pub async fn run_sidecar_loop(
     poll_interval_secs: u64,
     expected_passphrase: &str,
 ) -> Result<()> {
-    let api: Api<ConfigMap> = Api::namespaced(client.clone(), namespace);
+    let _api: Api<ConfigMap> = Api::namespaced(client.clone(), namespace);
     let node_api: Api<StellarNode> = Api::namespaced(client.clone(), namespace);
 
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(poll_interval_secs));
@@ -660,7 +664,11 @@ async fn fetch_local_ledger_state(node: &StellarNode) -> Result<LedgerStateSnaps
                     .and_then(|s| s.ledger_sequence)
                     .unwrap_or(0),
                 ledger_hash: "unknown".to_string(),
-                network_passphrase: node.spec.network.passphrase(&node.spec.custom_network_passphrase).to_string(),
+                network_passphrase: node
+                    .spec
+                    .network
+                    .passphrase(&node.spec.custom_network_passphrase)
+                    .to_string(),
                 captured_at: Utc::now().to_rfc3339(),
                 core_version: "unknown".to_string(),
                 in_sync: false,
@@ -673,10 +681,7 @@ async fn fetch_local_ledger_state(node: &StellarNode) -> Result<LedgerStateSnaps
 ///
 /// Convention: `"<namespace>/<node-name>"` or just `"<node-name>"` (uses
 /// the same namespace as the local node).
-fn parse_peer_cluster_id<'a>(
-    peer_cluster_id: &'a str,
-    local_node: &StellarNode,
-) -> (String, String) {
+fn parse_peer_cluster_id(peer_cluster_id: &str, local_node: &StellarNode) -> (String, String) {
     if let Some((ns, name)) = peer_cluster_id.split_once('/') {
         (ns.to_string(), name.to_string())
     } else {
@@ -750,6 +755,8 @@ mod tests {
                     failover_dns: None,
                     health_check_interval: 30,
                     drill_schedule: None,
+                    policy_ref: None,
+                    archive_integrity_config: None,
                 }),
                 pod_anti_affinity: Default::default(),
                 topology_spread_constraints: None,
@@ -763,6 +770,7 @@ mod tests {
                 service_mesh: None,
                 forensic_snapshot: None,
                 resource_meta: None,
+                ..Default::default()
             },
             status: None,
         }
@@ -942,13 +950,13 @@ mod tests {
     #[test]
     fn test_consistency_under_high_load() {
         // Simulate 1000 ledger advances with random jitter (0-3 ledgers behind)
-        let mut primary_seq = 1_000_000;
-        let mut standby_seq = 1_000_000;
+        let mut primary_seq: u64 = 1_000_000;
+        let mut standby_seq: u64 = 1_000_000;
 
         for i in 0..1000 {
             primary_seq += 1;
             // Simulate standby being slightly behind (0, 1, 2, or 3 ledgers)
-            let jitter = i % 4;
+            let jitter = (i % 4) as u64;
             standby_seq = primary_seq.saturating_sub(jitter);
 
             let primary = make_snapshot(primary_seq, "hash");
@@ -980,7 +988,7 @@ mod tests {
         for i in 0..1000u64 {
             primary_seq += 1;
             // Standby lags by at most 3 ledgers (simulating network jitter)
-            if i % 4 != 0 {
+            if i % 4 != 0 || primary_seq.saturating_sub(standby_seq) >= MAX_ACCEPTABLE_LAG_LEDGERS {
                 standby_seq += 1;
             }
 

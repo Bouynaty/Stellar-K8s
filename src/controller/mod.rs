@@ -51,6 +51,7 @@
 pub mod benchmark;
 pub mod blue_green;
 pub mod canary;
+pub mod event_taxonomy;
 pub mod cross_cloud_failover;
 pub mod feature_flags;
 pub mod gas_autoscaling;
@@ -61,11 +62,14 @@ pub mod horizon_scaler;
 pub mod jurisdiction;
 pub mod label_propagation;
 pub mod maintenance;
+pub mod migration;
 pub mod network_isolation;
 pub mod predictive_scaling;
 pub mod pss;
 pub mod quota;
+pub mod registry_controller;
 pub mod resource_meta;
+pub mod retry_policy_tuner;
 pub mod snapshot_integrity;
 
 pub mod anomaly_detection;
@@ -188,6 +192,10 @@ pub use jurisdiction::{
     build_jurisdiction_node_affinity, compliance_report, merge_jurisdiction_tolerations,
     ComplianceReportEntry,
 };
+pub use migration::{
+    HorizonToSorobanMigrationController, MigrationConfig, MigrationPhase, MigrationState,
+    MIGRATE_TO_ANNOTATION,
+};
 pub use network_isolation::{
     check_network_safety, network_label_value, same_network_namespace_selector,
     NetworkSafetyViolation, NAMESPACE_NETWORK_LABEL, NODE_NETWORK_LABEL,
@@ -204,7 +212,10 @@ pub use pss::{
 };
 #[cfg(feature = "reconciler-fuzz")]
 pub use reconciler::reconcile_for_fuzz;
+pub use event_taxonomy::{EventAction, EventCategory, EventDescriptor, EventReason};
 pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
+pub use retry_policy_tuner::{ErrorClass, RetryPolicy, RetryPolicyTuner};
+pub use registry_controller::{check_admission, reconcile_stellar_registry, summary_to_cve_count};
 pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
 pub use service_mesh::{
     delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
@@ -218,5 +229,8 @@ pub mod health_check_sidecar;
 pub mod ml_pipeline;
 pub mod observability_dashboard;
 pub mod observability_pipeline;
+pub mod orphan_audit;
 pub mod pvc_autoscaler;
 pub mod resource_optimization;
+
+pub use orphan_audit::{OrphanAuditReport, OrphanAuditor, OrphanedResource};

@@ -65,7 +65,6 @@ fn default_storage() -> StorageConfig {
         annotations: None,
         node_affinity: None,
         snapshot_ref: None,
-        ..Default::default()
     }
 }
 
@@ -92,7 +91,6 @@ fn base_validator_spec() -> StellarNodeSpec {
             external_dns: None,
             known_peers: None,
             quorum_optimization: None,
-            ..Default::default()
         }),
         horizon_config: None,
         soroban_config: None,
@@ -373,6 +371,11 @@ async fn reconcile_with_failing_client_never_panics_and_converges() {
         ),
         plugin_registry: std::sync::Arc::new(stellar_k8s::plugin_sdk::PluginRegistry::new()),
         metrics_store: std::sync::Arc::new(Default::default()),
+        analytics_engine: std::sync::Arc::new(
+            stellar_k8s::logging::analytics::AnalyticsEngine::new(std::time::Duration::from_secs(
+                3600,
+            )),
+        ),
     });
     let node = make_node(
         base_validator_spec(),

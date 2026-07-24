@@ -1,7 +1,3 @@
-#!/bin/bash
-set -e
-echo "Starting local validation..."
-cargo fmt --all --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --no-run # Just check if it compiles
-echo "Validation complete."
+#!/usr/bin/env bash
+# scripts/validate.sh — Fast local validation (delegates to repo-health.sh --fast).
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/repo-health.sh" --fast "$@"

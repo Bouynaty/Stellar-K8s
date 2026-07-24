@@ -2,11 +2,16 @@ use crate::cli::BenchmarkArgs;
 use crate::Error;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use stellar_k8s::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 use tracing::info;
 
 pub async fn run_benchmark_controller_cmd(args: BenchmarkArgs) -> Result<(), Error> {
     use stellar_k8s::controller::run_benchmark_controller;
 
+    init_subscriber(SubscriberConfig::from_level_str(
+        &args.log_level,
+        LogOutputFormat::Json,
+    ));
     // Minimal tracing setup for the benchmark controller.
     let env_filter = tracing_subscriber::EnvFilter::builder()
         .with_default_directive(
@@ -18,6 +23,10 @@ pub async fn run_benchmark_controller_cmd(args: BenchmarkArgs) -> Result<(), Err
 
     tracing_subscriber::fmt()
         .json()
+        .flatten_event(true)
+        .with_current_span(true)
+        .with_span_list(true)
+        .with_target(true)
         .with_env_filter(env_filter)
         .init();
 

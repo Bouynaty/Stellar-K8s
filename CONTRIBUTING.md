@@ -2,6 +2,16 @@
 
 Thank you for contributing to Stellar-K8s! This guide explains how to work with the project, keep your pull requests ready for review, and follow our commit and merge conventions.
 
+## Troubleshooting Quick Links
+
+If you run into issues, jump to the relevant section below:
+- [Setup Issues](#setup-issues)
+- [Build Failures](#build-failures)
+- [Cargo Issues](#cargo-issues)
+- [Docker Issues](#docker-issues)
+- [Kubernetes Issues](#kubernetes-issues)
+- [CI Failures](#ci-failures)
+
 ## 1. Fork and Pull Request Workflow
 
 We use a fork-and-pull-request model. The basic flow is:
@@ -71,19 +81,23 @@ Before opening a PR, confirm the following:
 
 ### Required checks
 
-Run these locally before submitting:
+Run these locally before submitting. Always use the `make` targets — they
+wrap the underlying `cargo` commands with the workspace's feature flags
+(`rest-api`, `metrics`, `admission-webhook`, `k8s-v1-30`, `reconciler-fuzz`)
+and `K8S_OPENAPI_ENABLED_VERSION`, so plain `cargo fmt`/`cargo clippy`/`cargo
+test` invocations will not match CI exactly.
 
 ```bash
-cargo fmt --all
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-make ci-local
+make fmt          # Auto-format (wraps `cargo fmt --all`)
+make lint         # Clippy with project feature flags (wraps `cargo clippy ...`)
+make test         # Workspace tests + doc tests (wraps `cargo test ...`)
+make ci-local     # Full local CI gate: fmt-check + lint + audit + test + build + link-check
 ```
 
 If your change adds shell scripts or repository tooling, also run:
 
 ```bash
-find scripts -type f -name "*.sh" -print0 | xargs -0 shellcheck -S error
+make shellcheck
 ```
 
 ## 4. Commit Message Examples
@@ -157,33 +171,131 @@ The template ensures your change includes:
 
 ### Setup
 
-Use the project make targets and scripts:
+Use the OS setup script to install and pin all required tools, then run `make dev-setup` to install Rust components and pre-commit hooks:
 
 ```bash
+# macOS
+bash scripts/setup-mac.sh
+
+# Linux (Ubuntu/Debian/Fedora)
+bash scripts/setup-linux.sh
+
+# Both platforms: install Rust components and pre-commit hooks
 make dev-setup
-bash scripts/setup-mac.sh  # macOS only
 ```
 
-### Local checks
+Both setup scripts are idempotent and print a summary of installed versions.
+
+### Local checks — Canonical Workflow
+
+Always drive the local pipeline through `make` targets. They wrap `cargo`
+with the workspace's feature flags so the results match CI exactly:
 
 ```bash
-cargo fmt --all
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-make quick
-make ci-local
+make dev-setup     # One-time: install Rust toolchain, tools, and pre-commit hooks
+make quick         # Fast pre-commit check (fmt-check + cargo check)
+make ci-local      # Full CI pipeline (fmt-check + lint + audit + test + build + link-check)
+make health        # Full contributor health gate
+```
+
+Or run individual steps:
+
+```bash
+make fmt           # Format (wraps `cargo fmt --all`)
+make lint          # Clippy with project feature flags
+make test          # Workspace tests + doc tests
+make security-all  # Audit + shellcheck
+make link-check    # Markdown link/anchor check (PR-time)
+make link-check-all # Repo-wide link check via lychee (markdown + source + configs)
 ```
 
 ## 8. Coding Standards
 
-- Format Rust code with `cargo fmt`.
-- Use `cargo clippy --all-targets --all-features -- -D warnings` for linting.
-- Add or update tests for code changes.
+- Format Rust code with `make fmt`.
+- Lint with `make lint` (clippy with the project's feature flags).
+- Run tests with `make test`.
 - Document behavior changes in code comments and docs.
 - Keep PRs small and easy to review.
 
-## 9. Need Help?
+### Rust code conventions
+
+- Module names use `snake_case`.
+- Public types and functions require doc comments (`///`).
+- Do not add `#[allow(dead_code)]` without a comment explaining why the code must stay.
+- Unused imports must be removed before merging.
+- Feature-gated code that is no longer used should be deleted, not suppressed.
+
+### Documentation conventions
+
+- Documentation files use `kebab-case.md` (e.g., `disk-scaling.md`).
+- Files that belong to a topic area go in the matching `docs/<topic>/` subdirectory.
+- Root-level docs (`README.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`) are entry points only — detailed content belongs in `docs/`.
+- New doc files must be linked from `docs/README.md` under the appropriate section.
+
+### Script conventions
+
+- Scripts use `kebab-case.sh` (e.g., `setup-mac.sh`).
+- Every script must pass `shellcheck -S error`.
+- Historical or one-off scripts should be moved to `scripts/archive/` rather than left in the root of `scripts/`.
+
+### Manifest and config conventions
+
+- CRD YAML files follow the `stellar{feature}-crd.yaml` naming pattern under `config/crd/`.
+- Example manifests in `examples/` use descriptive, feature-based names — not issue numbers.
+- Generated manifests (CRDs, API reference, bundle) must be regenerated from their source before merging. See the [Regenerating Manifests](DEVELOPMENT.md#regenerating-manifests) table in DEVELOPMENT.md.
+
+## 9. Repo Health Checklist
+
+Run through this before marking a PR ready for review:
+
+- [ ] `make health` passes (format + lint + test + docs) — or `make ci-local` for the full audit + link-check gate
+- [ ] `make validate` passes for a quick pre-push compile check
+- [ ] No new `#[allow(dead_code)]` without an explanatory comment
+- [ ] No unused imports in modified files
+- [ ] Generated manifests are up to date with their source
+- [ ] Shell scripts pass `shellcheck -S error`
+- [ ] New doc files are linked from `docs/README.md`
+- [ ] Commit messages follow Conventional Commits and include a `Signed-off-by` line
+Before requesting a review for a Pull Request, please ensure all checks listed in the [Canonical Repository Health Checklist](docs/development/repo-health-checklist.md) have been run and verified.
+
+## 10. Need Help?
 
 If you're stuck, open a Draft PR or create an issue to ask for guidance.
 
 Refer to [README.md](README.md) and [DEVELOPMENT.md](DEVELOPMENT.md) for additional project setup and workflow information.
+
+## Troubleshooting
+
+### Setup Issues
+- **Problem**: `make` or `cargo` commands not found.
+  - **Solution**: Ensure you have installed the necessary dependencies from `DEVELOPMENT.md`.
+- **Problem**: Minikube / Kind cluster fails to start.
+  - **Solution**: Check your Docker daemon is running and has enough resources allocated (minimum 4GB RAM, 2 CPUs).
+
+### Build Failures
+- **Problem**: Code fails to compile due to missing dependencies.
+  - **Solution**: Run `cargo fetch` or `cargo update` to ensure you have the latest crates. Also, ensure your system has `cmake`, `libssl-dev`, and `pkg-config` installed.
+- **Problem**: Tests fail locally but pass on CI.
+  - **Solution**: Run `make clean` and then rebuild. Sometimes local artifacts can get stale.
+
+### Cargo Issues
+- **Problem**: Cargo build is extremely slow.
+  - **Solution**: We highly recommend using `sccache` to cache intermediate build results. Follow the instructions in `DEVELOPMENT.md` to set it up.
+
+### Docker Issues
+- **Problem**: Docker build fails with out of space errors.
+  - **Solution**: Run `docker system prune` to free up space. The build requires at least 10GB of free space due to the multi-stage cargo caching.
+- **Problem**: `make quick` fails during docker validation.
+  - **Solution**: Make sure you have the latest base images pulled locally.
+
+### Kubernetes Issues
+- **Problem**: Operator pod is crashlooping.
+  - **Solution**: Check the operator logs using `kubectl logs -n stellar-system -l app.kubernetes.io/name=stellar-operator`. Often, this is due to invalid RBAC permissions or missing secrets.
+- **Problem**: Custom Resource Definitions (CRDs) not applying.
+  - **Solution**: Ensure your KUBECONFIG points to the correct cluster. Run `make install` to manually install the CRDs into your cluster.
+
+### CI Failures
+- **Problem**: GitHub Actions workflow fails on linting.
+  - **Solution**: Run `make fmt` and `make lint` locally before pushing. Also, check `.pre-commit-config.yaml` to ensure your pre-commit hooks are installed.
+- **Problem**: Link validation CI fails.
+  - **Solution**: Run `make link-check` for markdown link/anchor issues, or `make link-check-all` for the full repo-wide check (markdown + source + configs).

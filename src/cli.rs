@@ -13,7 +13,6 @@ use stellar_k8s::incident;
 #[command(
     author,
     version,
-    disable_version_flag = true,
     about = "Stellar-K8s: Cloud-Native Kubernetes Operator for Stellar Infrastructure",
     long_about = "\
 \x1b[1;36m\
@@ -48,10 +47,6 @@ pub struct Args {
     /// Skip the background version check against GitHub releases.
     #[arg(long, global = true, env = "STELLAR_OFFLINE")]
     pub offline: bool,
-
-    /// Print version and exit
-    #[arg(short = 'v', long, global = true)]
-    pub version: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -70,6 +65,8 @@ pub enum Commands {
     CheckCrd,
     /// Verify local CLI tooling, Kubernetes context, and operator permissions
     Doctor(DoctorArgs),
+    /// Run offline repository validation checks
+    HealthCheck(crate::commands::health_check::HealthCheckArgs),
     /// Prune old history archive checkpoints
     PruneArchive(PruneArchiveArgs),
     /// Show difference between desired and live cluster state
@@ -224,6 +221,17 @@ pub struct RunArgs {
     /// Run preflight checks and exit without starting the operator
     #[arg(long, env = "PREFLIGHT_ONLY")]
     pub preflight_only: bool,
+
+    /// Minimum log level emitted by the operator.
+    ///
+    /// Accepted values: trace, debug, info, warn, error.
+    /// Env: LOG_LEVEL
+    #[arg(long, env = "LOG_LEVEL", default_value = "info")]
+    pub log_level: String,
+
+    /// Log output format (json or pretty).
+    #[arg(long, env = "LOG_FORMAT", value_enum, default_value = "json")]
+    pub log_format: LogFormat,
 }
 
 impl RunArgs {

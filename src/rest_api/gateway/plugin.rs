@@ -5,7 +5,7 @@
 //! and analytics plugins.
 
 use async_trait::async_trait;
-use axum::{body::Body, extract::Request, response::Response};
+use axum::{body::Body, extract::Request};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -131,7 +131,7 @@ impl PluginManager {
         let mut plugins = self.plugins.write().await;
 
         // Initialize with default settings
-        let settings = PluginSettings {
+        let _settings = PluginSettings {
             name: name.clone(),
             version: plugin.version().to_string(),
             enabled: true,
@@ -152,19 +152,28 @@ impl PluginManager {
 
         drop(plugins);
         let mut settings = self.settings.write().await;
-        settings.insert(name, PluginSettings {
-            name: plugin_name,
-            version: plugin_version,
-            enabled: true,
-            config: HashMap::new(),
-            hooks: plugin_hooks,
-        });
+        settings.insert(
+            name,
+            PluginSettings {
+                name: plugin_name,
+                version: plugin_version,
+                enabled: true,
+                config: HashMap::new(),
+                hooks: plugin_hooks,
+            },
+        );
     }
 
     /// Unregister a plugin
     pub async fn unregister(&self, name: &str) -> bool {
         let mut plugins = self.plugins.write().await;
-        plugins.remove(name).is_some()
+        let removed = plugins.remove(name).is_some();
+        drop(plugins);
+        if removed {
+            let mut settings = self.settings.write().await;
+            settings.remove(name);
+        }
+        removed
     }
 
     /// Enable/disable a plugin
@@ -230,10 +239,8 @@ impl PluginManager {
                 plugin.post_request(ctx).await;
             }
 
-            if ctx.response_status.is_some() {
-                if plugin.hooks().contains(&PluginHook::PostResponse) {
-                    plugin.post_response(ctx).await;
-                }
+            if ctx.response_status.is_some() && plugin.hooks().contains(&PluginHook::PostResponse) {
+                plugin.post_response(ctx).await;
             }
         }
     }
@@ -284,6 +291,12 @@ pub struct CustomAuthPlugin {
 
 impl CustomAuthPlugin {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for CustomAuthPlugin {
+    fn default() -> Self {
         Self {
             name: "custom-auth".to_string(),
             version: "1.0.0".to_string(),
@@ -343,6 +356,12 @@ pub struct LoggingPlugin {
 
 impl LoggingPlugin {
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for LoggingPlugin {
+    fn default() -> Self {
         Self {
             name: "request-logger".to_string(),
             version: "1.0.0".to_string(),
