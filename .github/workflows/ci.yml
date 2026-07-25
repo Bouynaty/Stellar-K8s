@@ -245,6 +245,38 @@ jobs:
             './**/*.html'
           fail: true
 
+  # ── 3b. Secret-handling checks (Issue #1116) ────────────────────────────────
+  secret-checks:
+    name: Secret Handling Audit
+    runs-on: ubuntu-latest
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run secret-handling checks
+        run: |
+          chmod +x scripts/check-secrets.sh
+          bash scripts/check-secrets.sh
+
+  # ── 3c. Feature & dead-import audit (Issue #1114) ────────────────────────────
+  feature-audit:
+    name: Feature & Dead-Import Audit
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.rust_core == 'true' || needs.changes.outputs.deps == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: "ci-feature-audit"
+
+      - name: Run feature & dead-import audit
+        run: |
+          chmod +x scripts/audit-features.sh
+          bash scripts/audit-features.sh --report
+
   # ── 4. Security audit (only when deps change) ────────────────────────────────
   security-audit:
     name: Security Audit
@@ -448,10 +480,11 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: [security-audit, lint]
+    needs: [security-audit, lint, secret-checks]
     if: >-
       always() &&
       needs.lint.result == 'success' &&
+      needs.secret-checks.result == 'success' &&
       (needs.security-audit.result == 'success' || needs.security-audit.result == 'skipped')
     steps:
       - uses: actions/checkout@v7
@@ -468,11 +501,12 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
-    needs: [security-audit, lint]
+    needs: [security-audit, lint, secret-checks]
     if: >-
       github.event_name != 'pull_request' &&
       always() &&
       needs.lint.result == 'success' &&
+      needs.secret-checks.result == 'success' &&
       (needs.security-audit.result == 'success' || needs.security-audit.result == 'skipped')
     steps:
       - uses: actions/checkout@v7
