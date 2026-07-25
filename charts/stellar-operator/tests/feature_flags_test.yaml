@@ -1,0 +1,89 @@
+suite: feature-flags configmap
+templates:
+  - templates/feature-flags-configmap.yaml
+
+tests:
+  - it: renders ConfigMap named stellar-operator-config
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: stellar-operator-config
+
+  - it: has correct app labels
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: stellar-operator
+            app.kubernetes.io/instance: RELEASE-NAME
+
+  - it: contains all six expected feature-flag keys
+    asserts:
+      - isNotNull:
+          path: data.enable_cve_scanning
+      - isNotNull:
+          path: data.enable_read_pool
+      - isNotNull:
+          path: data.enable_dr
+      - isNotNull:
+          path: data.enable_peer_discovery
+      - isNotNull:
+          path: data.enable_archive_health
+      - isNotNull:
+          path: data.enable_soroban_metrics
+
+  - it: defaults enable_cve_scanning to true
+    asserts:
+      - equal:
+          path: data.enable_cve_scanning
+          value: "true"
+
+  - it: defaults enable_read_pool to false
+    asserts:
+      - equal:
+          path: data.enable_read_pool
+          value: "false"
+
+  - it: defaults enable_dr to false
+    asserts:
+      - equal:
+          path: data.enable_dr
+          value: "false"
+
+  - it: defaults enable_peer_discovery to true
+    asserts:
+      - equal:
+          path: data.enable_peer_discovery
+          value: "true"
+
+  - it: defaults enable_archive_health to true
+    asserts:
+      - equal:
+          path: data.enable_archive_health
+          value: "true"
+
+  - it: defaults enable_soroban_metrics to true
+    asserts:
+      - equal:
+          path: data.enable_soroban_metrics
+          value: "true"
+
+  - it: accepts overridden feature flag values
+    set:
+      featureFlags.enableCveScanning: "false"
+      featureFlags.enableReadPool: "true"
+    asserts:
+      - equal:
+          path: data.enable_cve_scanning
+          value: "false"
+      - equal:
+          path: data.enable_read_pool
+          value: "true"
+
+  - it: renders in the release namespace
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
