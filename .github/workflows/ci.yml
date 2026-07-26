@@ -249,12 +249,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Restore lychee cache
-        uses: actions/cache@v4
-        with:
-          path: .lycheecache
-          key: cache-lychee-${{ github.sha }}
-          restore-keys: cache-lychee-
+      - name: (optional) Restore lychee cache removed
+        run: echo "Skipping cache restore in CI to satisfy repository hygiene checks. Lychee will run without cache."
 
       - name: Run lychee
         uses: lycheeverse/lychee-action@v2
