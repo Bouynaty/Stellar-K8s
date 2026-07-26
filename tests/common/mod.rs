@@ -340,3 +340,49 @@ pub fn skip_if_tools_missing(tools: &[&str]) -> bool {
     );
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_namespace_guard_struct_creation() {
+        let guard = NamespaceGuard {
+            name: "test-ns-guard".to_string(),
+        };
+        assert_eq!(guard.name, "test-ns-guard");
+    }
+
+    #[test]
+    fn test_stellar_node_guard_creation() {
+        let guard = StellarNodeGuard::new("node-1", "stellar-test");
+        assert_eq!(guard.name, "node-1");
+        assert_eq!(guard.namespace, "stellar-test");
+    }
+
+    #[test]
+    fn test_manifest_guard_creation() {
+        let guard = ManifestGuard::new("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test-cm");
+        assert!(guard.manifest.contains("test-cm"));
+    }
+
+    #[test]
+    fn test_e2e_test_guard_builder() {
+        let guard = E2eTestGuard::new()
+            .track_node("node-a", "default")
+            .track_operator_manifest("kind: Deployment")
+            .track_namespace("test-namespace");
+
+        assert_eq!(guard.stellar_nodes.len(), 1);
+        assert_eq!(guard.stellar_nodes[0], ("node-a".to_string(), "default".to_string()));
+        assert_eq!(guard.operator_manifest.as_deref(), Some("kind: Deployment"));
+        assert_eq!(guard.namespaces, vec!["test-namespace".to_string()]);
+    }
+
+    #[test]
+    fn test_skip_if_tools_missing_empty() {
+        let skip = skip_if_tools_missing(&[]);
+        assert!(!skip, "Empty tools list should not trigger skip");
+    }
+}
+
