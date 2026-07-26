@@ -47,6 +47,7 @@ jobs:
   cargo-audit:
     name: Cargo Audit (Vulnerabilities)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -56,7 +57,12 @@ jobs:
           cache-key: "dep-audit"
 
       - name: Install cargo-audit
-        run: cargo install --locked cargo-audit
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-audit && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Run cargo audit
         run: |
@@ -94,11 +100,17 @@ jobs:
   cargo-deny:
     name: Cargo Deny (Licenses + Bans)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - name: Install cargo-deny
-        run: cargo install --locked cargo-deny
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-deny && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Check licenses
         run: |
@@ -124,6 +136,7 @@ jobs:
   stale-deps:
     name: Stale Dependency Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Run on schedule and manual dispatch; also on dep changes
     if: >
       github.event_name == 'schedule' ||
@@ -138,7 +151,12 @@ jobs:
           cache-key: "dep-stale"
 
       - name: Install cargo-outdated
-        run: cargo install --locked cargo-outdated
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-outdated && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Check for outdated dependencies
         id: outdated
@@ -165,6 +183,7 @@ jobs:
   dep-diff:
     name: Dependency Diff (PR only)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -177,7 +196,12 @@ jobs:
           cache-key: "dep-diff"
 
       - name: Install cargo-diff-tree
-        run: cargo install --locked cargo-lock
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-lock && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Summarise Cargo.lock changes
         run: |
@@ -190,6 +214,7 @@ jobs:
   license-report:
     name: License Drift Report
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
@@ -200,7 +225,12 @@ jobs:
           cache-key: "dep-license"
 
       - name: Install cargo-license
-        run: cargo install --locked cargo-license
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-license && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Generate full license inventory
         run: |

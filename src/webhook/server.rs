@@ -1557,15 +1557,8 @@ mod tests {
             })
             .collect();
 
-        let all_futures: Vec<_> = valid_futures
-            .into_iter()
-            .chain(invalid_futures)
-            .collect();
-
-        let results = futures::future::join_all(all_futures).await;
-
-        let (valid_results, invalid_results): (Vec<_>, Vec<_>) =
-            results.iter().partition(|(tag, _)| *tag == "valid");
+        let valid_results: Vec<_> = futures::future::join_all(valid_futures).await;
+        let invalid_results: Vec<_> = futures::future::join_all(invalid_futures).await;
 
         let valid_denied = valid_results.iter().filter(|(_, ok)| !ok).count();
         let invalid_allowed = invalid_results.iter().filter(|(_, ok)| *ok).count();
