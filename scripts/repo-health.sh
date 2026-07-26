@@ -74,6 +74,7 @@ if [[ "${MODE}" == "fast" ]]; then
 else
   add_step sk8s_health_test "Tests (cargo test)"
   add_step sk8s_health_api_docs "API docs drift check"
+  add_step sk8s_health_stale_docs "Stale documentation check"
   add_step sk8s_health_link_check "Markdown link check"
   add_step sk8s_health_shellcheck "Shell script lint (shellcheck)"
 fi
@@ -115,6 +116,11 @@ for i in "${!STEPS[@]}"; do
       fi
       if ! sk8s_health_api_docs; then
         sk8s_fail "API docs drift detected" "Run 'make generate-api-docs' after CRD changes."
+      fi
+      ;;
+    sk8s_health_stale_docs)
+      if ! sk8s_health_stale_docs; then
+        sk8s_fail "Stale docs detected" "Run 'make check-stale-docs' for details."
       fi
       ;;
     sk8s_health_shellcheck)

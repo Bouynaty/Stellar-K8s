@@ -24,7 +24,7 @@
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint link-check link-check-all changelog \
-	generate-api-docs check-api-docs \
+	generate-api-docs check-api-docs check-stale-docs \
 	third-party-licenses check-third-party-licenses \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
@@ -238,6 +238,10 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--crd config/crd/stellarnode-crd.yaml \
 		--output docs/api-reference.md \
 		--check
+
+check-stale-docs: ## Check for documentation that has fallen behind source code
+	@echo "→ Checking for stale documentation..."
+	@$(CARGO) run --bin doc-check -- --warn-only
 
 # ── Kubernetes ────────────────────────────────────────────────────────────────
 
