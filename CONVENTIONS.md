@@ -127,6 +127,29 @@ must not appear in filenames — use the feature name instead
 
 ---
 
+## Structured Logging Conventions
+
+All structured log field names must use the field name constants defined in `src/logging/fields.rs` (`stellar_k8s::logging::fields as F`).
+
+- **Consistent keys**: Always reference `F::NODE`, `F::NAMESPACE`, `F::RECONCILE_ID`, `F::ERROR`, `F::DURATION_MS`, etc.
+- **No string literals for field names**: Eliminates key drift across CI log aggregators and dashboards.
+- **Redaction**: All sensitive fields (seeds, tokens, secrets) are scrubbed automatically via `RedactingFields`.
+
+---
+
+## Integration Test Teardown Conventions
+
+All integration and E2E tests that allocate Kubernetes resources or temporary state MUST use the RAII guards defined in `tests/common/mod.rs`:
+
+- `NamespaceGuard`: Automatically deletes temporary test namespaces on `Drop`.
+- `StellarNodeGuard`: Automatically deletes temporary `StellarNode` CRs on `Drop`.
+- `ManifestGuard`: Automatically deletes applied YAML manifests on `Drop`.
+- `E2eTestGuard`: Composite teardown guard managing nodes, operator manifests, and namespaces in proper dependency order.
+
+Using `Drop` guards ensures resource cleanup happens deterministically even if a test panics or returns early.
+
+---
+
 ## Enforcement
 
 These conventions are enforced by:
@@ -137,3 +160,4 @@ These conventions are enforced by:
 
 If you find a file that violates these conventions and is not covered by the checklist, open
 a PR to fix it or add it to the checklist.
+

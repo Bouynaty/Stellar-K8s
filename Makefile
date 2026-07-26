@@ -20,24 +20,18 @@
 .PHONY: help \
 	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all \
 	build test ci-local quick watch \
-	docker-build docker-build-ci \
 	docker-build docker-build-ci docker-multiarch \
-	dev-setup pre-commit pre-commit-install run run-local run-dev \
+	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
-	dev-setup pre-commit pre-commit-install run-local run-dev \
-	install-crd apply-samples crd-gen regenerate completions \
 	helm-lint link-check link-check-all changelog \
-	generate-api-docs check-api-docs \
+	generate-api-docs check-api-docs check-stale-docs \
 	third-party-licenses check-third-party-licenses \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
 	compose-up compose-dev compose-down compose-logs \
-	bundle bundle-build \
-	quickstart health health-fast validate preflight all \
-	quickstart validate preflight test-preflight all \
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
-	quickstart quickstart-setup quickstart-build quickstart-deploy quickstart-cleanup \
-	validate preflight health test-preflight test-shell all \
+	quickstart quickstart-setup quickstart-build quickstart-deploy \
+	health health-fast validate preflight test-preflight test-shell all \
 	clean
 
 .DEFAULT_GOAL := help
@@ -172,7 +166,7 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 
 # Multi-arch builds are handled by CI: .github/workflows/multiarch-build.yml
 # To trigger a multi-arch build, push a tag or manually dispatch that workflow.
-health: ## Run common repository health checks (format, lint, test, docs)
+health: ## Run common repository health checks (format, lint, test, docs, links)
 	@bash scripts/repo-health.sh
 
 health-fast: ## Fast health gate (format, lint, compile only)
@@ -212,9 +206,6 @@ third-party-licenses: ## Regenerate THIRD_PARTY_LICENSES.md from Cargo dependenc
 check-third-party-licenses: ## Verify THIRD_PARTY_LICENSES.md is up to date (used in CI)
 	@bash scripts/generate-third-party-licenses.sh --check
 
-health: ## Run common repository health checks (format, lint, test, docs)
-	@bash scripts/repo-health.sh
-
 quick: fmt-check ## Quick pre-commit check
 	@$(CARGO) check --workspace
 	@echo "✓ Quick checks passed"
@@ -247,6 +238,10 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--crd config/crd/stellarnode-crd.yaml \
 		--output docs/api-reference.md \
 		--check
+
+check-stale-docs: ## Check for documentation that has fallen behind source code
+	@echo "→ Checking for stale documentation..."
+	@$(CARGO) run --bin doc-check -- --warn-only
 
 # ── Kubernetes ────────────────────────────────────────────────────────────────
 
@@ -429,17 +424,6 @@ quickstart-deploy: ## Deploy operator and sample resources
 	@echo "  Watch nodes:    kubectl get stellarnode -n stellar-system -w"
 	@echo "  View resources: kubectl get deploy,sts,svc,pvc -n stellar-system"
 	@echo "  Cleanup:        kind delete cluster --name stellar-dev"
-
-preflight: ## Validate required local tools are installed (docker, kind, kubectl, helm, cargo)
-	@echo "→ Running local development preflight checks..."
-	@command -v docker  >/dev/null 2>&1 && echo "  ✓ docker"  || echo "  ✗ docker  — Install: https://docs.docker.com/engine/install/"
-	@command -v kind    >/dev/null 2>&1 && echo "  ✓ kind"    || echo "  ✗ kind    — Install: https://kind.sigs.k8s.io/docs/user/quick-start/#installation"
-	@command -v kubectl >/dev/null 2>&1 && echo "  ✓ kubectl" || echo "  ✗ kubectl — Install: https://kubernetes.io/docs/tasks/tools/"
-	@command -v helm    >/dev/null 2>&1 && echo "  ✓ helm"    || echo "  ✗ helm    — Install: https://helm.sh/docs/intro/install/"
-	@command -v cargo   >/dev/null 2>&1 && echo "  ✓ cargo"   || echo "  ✗ cargo   — Install: https://rustup.rs/"
-	@echo "→ Preflight complete. Fix any ✗ items above before continuing."
-validate: ## Run local validation script (format + lint + compile)
-	@bash scripts/validate.sh
 
 # ── Full Pipeline ──────────────────────────────────────────────────────────────
 

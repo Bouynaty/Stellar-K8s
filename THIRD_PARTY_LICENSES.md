@@ -73,6 +73,7 @@ Their names, versions, authors, and license identifiers are listed below.
 | tracing-subscriber | 0.3 | MIT | Tokio Contributors |
 | url | 2 | MIT OR Apache-2.0 | The rust-url developers |
 | urlencoding | 2 | MIT | Kornel Lesiński, David Tolnay |
+| walkdir | 2 | Unlicense OR MIT | Andrew Gallant |
 | wasmtime | 24 | Apache-2.0 | The Wasmtime Project Developers |
 | wasmtime-wasi | 24 | Apache-2.0 | The Wasmtime Project Developers |
 | x509-parser | 0.16 | MIT OR Apache-2.0 | Pierre Chifflier |

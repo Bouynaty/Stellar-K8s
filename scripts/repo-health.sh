@@ -74,13 +74,15 @@ if [[ "${MODE}" == "fast" ]]; then
 else
   add_step sk8s_health_test "Tests (cargo test)"
   add_step sk8s_health_api_docs "API docs drift check"
+  add_step sk8s_health_stale_docs "Stale documentation check"
+  add_step sk8s_health_link_check "Markdown link check"
   add_step sk8s_health_shellcheck "Shell script lint (shellcheck)"
 fi
 
 if [[ "${WITH_AUDIT}" -eq 1 ]]; then
   add_step sk8s_health_cargo_audit "Security audit (cargo audit)"
 fi
-if [[ "${WITH_LINKS}" -eq 1 ]]; then
+if [[ "${WITH_LINKS}" -eq 1 && "${MODE}" == "fast" ]]; then
   add_step sk8s_health_link_check "Markdown link check"
 fi
 if [[ "${WITH_HELM}" -eq 1 ]]; then
@@ -95,44 +97,6 @@ print_header() {
   echo "  Stellar-K8s repository health check (${MODE})"
   echo "  repo: ${REPO_ROOT}"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-K8S_OPENAPI_ENABLED_VERSION="${K8S_OPENAPI_ENABLED_VERSION:-1.30}"
-export K8S_OPENAPI_ENABLED_VERSION
-
-readonly TOTAL_STEPS=5
-STEP=0
-
-print_header() {
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  Stellar-K8s repository health check"
-  echo "  repo: ${REPO_ROOT}"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-}
-
-begin_step() {
-  STEP=$((STEP + 1))
-  sk8s_step "Step ${STEP}/${TOTAL_STEPS}" "$1"
-}
-
-pass_step() {
-  sk8s_pass "${1} passed"
-}
-
-fail_step() {
-  local name="$1"
-  local hint="$2"
-  sk8s_fail "failed at step ${STEP}/${TOTAL_STEPS}: ${name}" "${hint} — re-run: make health"
-}
-
-run_or_fail() {
-  local name="$1"
-  local hint="$2"
-  shift 2
-  if "$@"; then
-    pass_step "${name}"
-  else
-    fail_step "${name}" "${hint}"
-  fi
 }
 
 print_header
@@ -152,6 +116,11 @@ for i in "${!STEPS[@]}"; do
       fi
       if ! sk8s_health_api_docs; then
         sk8s_fail "API docs drift detected" "Run 'make generate-api-docs' after CRD changes."
+      fi
+      ;;
+    sk8s_health_stale_docs)
+      if ! sk8s_health_stale_docs; then
+        sk8s_fail "Stale docs detected" "Run 'make check-stale-docs' for details."
       fi
       ;;
     sk8s_health_shellcheck)
