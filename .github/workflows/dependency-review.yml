@@ -53,7 +53,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-audit"
+          cache-key: "ci-audit"
 
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit
@@ -135,7 +135,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-stale"
+          cache-key: "ci-stale"
 
       - name: Install cargo-outdated
         run: cargo install --locked cargo-outdated
@@ -174,7 +174,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-diff"
+          cache-key: "ci-diff"
 
       - name: Install cargo-diff-tree
         run: cargo install --locked cargo-lock
@@ -197,7 +197,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-license"
+          cache-key: "ci-license"
 
       - name: Install cargo-license
         run: cargo install --locked cargo-license
