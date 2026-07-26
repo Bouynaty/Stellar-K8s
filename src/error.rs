@@ -150,6 +150,24 @@ impl Error {
     pub fn status_message(&self) -> String {
         self.to_string()
     }
+
+    /// Map this error to the process exit code documented in
+    /// `docs/cli-commands-reference.md#exit-codes`.
+    ///
+    /// Rust's default `Termination` impl for `Result<(), Error>` always exits
+    /// with code 1 on `Err`, regardless of the error variant, so every CLI
+    /// command was silently ignoring the documented 2/3/4 exit codes unless it
+    /// special-cased `std::process::exit` itself. Routing every command's
+    /// error through this method instead keeps the exit code consistent with
+    /// the error category everywhere.
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            Error::ValidationError(_) | Error::InvalidNodeType(_) | Error::MissingRequiredField { .. } => 2,
+            Error::KubeError(_) | Error::KubeconfigError(_) | Error::FinalizerError(_) | Error::NotFound { .. } => 3,
+            Error::ConfigError(_) | Error::MaintenanceError(_) | Error::CertificateError(_) => 4,
+            _ => 1,
+        }
+    }
 }
 
 // Implement From for kube::runtime::finalizer::Error to enable ? operator
