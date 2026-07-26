@@ -63,23 +63,11 @@ jobs:
           # Fetch full history so git-log can compare commit timestamps.
           fetch-depth: 0
 
-      # ── Rust toolchain ──────────────────────────────────────────────────────
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      # ── Cargo cache ─────────────────────────────────────────────────────────
-      - name: Cache Cargo registry & build artefacts
-        uses: actions/cache@v4
+      # ── Rust toolchain & cache ─────────────────────────────────────────────
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
         with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-doc-check-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-doc-check-
-            ${{ runner.os }}-cargo-
+          cache-key: "stale-docs"
 
       # ── Build the doc-check binary ──────────────────────────────────────────
       - name: Build doc-check
