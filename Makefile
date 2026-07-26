@@ -166,7 +166,7 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 
 # Multi-arch builds are handled by CI: .github/workflows/multiarch-build.yml
 # To trigger a multi-arch build, push a tag or manually dispatch that workflow.
-health: ## Run common repository health checks (format, lint, test, docs)
+health: ## Run common repository health checks (format, lint, test, docs, links)
 	@bash scripts/repo-health.sh
 
 health-fast: ## Fast health gate (format, lint, compile only)

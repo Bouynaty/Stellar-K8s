@@ -91,7 +91,7 @@ make quick
 
 `make preflight` validates that `docker`, `kind`, `kubectl`, `helm`, and `cargo` are all in your `PATH` and prints an install hint for any that are missing. Fix any gaps before proceeding.
 
-`make health` runs format, lint, tests, API docs drift, and shellcheck (when available) in one command and stops at the first failure with a clear summary.
+`make health` runs format, lint, tests, API docs drift, markdown link checks, and shellcheck (when available) in one command and stops at the first failure with a clear summary.
 
 ---
 
