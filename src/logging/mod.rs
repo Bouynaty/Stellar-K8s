@@ -192,8 +192,86 @@ impl tracing::field::Visit for FullVisitor {
             .insert(field.name().to_string(), serde_json::json!(value));
     }
 
+    fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
+        self.extras
+            .insert(field.name().to_string(), serde_json::json!(value));
+    }
+
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         self.extras
             .insert(field.name().to_string(), serde_json::json!(value));
     }
+
+    fn record_error(&mut self, field: &tracing::field::Field, value: &(dyn std::error::Error + 'static)) {
+        self.extras
+            .insert(field.name().to_string(), serde_json::json!(value.to_string()));
+    }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_structured_log_serialization() {
+        let mut extras = HashMap::new();
+        extras.insert("component".to_string(), serde_json::json!("controller"));
+        extras.insert("duration_ms".to_string(), serde_json::json!(42));
+
+        let log = StructuredLog {
+            timestamp: "2026-07-26T10:00:00Z".to_string(),
+            level: "INFO".to_string(),
+            message: "Reconciliation successful".to_string(),
+            target: "stellar_k8s::controller".to_string(),
+            module: Some("stellar_k8s::controller".to_string()),
+            file: Some("src/controller/mod.rs".to_string()),
+            line: Some(100),
+            trace_id: Some("4bf92f3577b34da6a3ce929d0e0e4736".to_string()),
+            span_id: Some("00f067aa0ba902b7".to_string()),
+            k8s_node: Some("node-1".to_string()),
+            k8s_namespace: Some("default".to_string()),
+            reconcile_id: Some("rec-123".to_string()),
+            extras,
+        };
+
+        let json_str = serde_json::to_string(&log).expect("Failed to serialize StructuredLog");
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Failed to parse JSON");
+
+        assert_eq!(parsed["level"], "INFO");
+        assert_eq!(parsed["message"], "Reconciliation successful");
+        assert_eq!(parsed["target"], "stellar_k8s::controller");
+        assert_eq!(parsed["component"], "controller");
+        assert_eq!(parsed["duration_ms"], 42);
+        assert_eq!(parsed["reconcile_id"], "rec-123");
+    }
+
+    #[test]
+    fn test_structured_log_deserialization_roundtrip() {
+        let mut extras = HashMap::new();
+        extras.insert("custom_key".to_string(), serde_json::json!("custom_value"));
+
+        let log = StructuredLog {
+            timestamp: Utc::now().to_rfc3339(),
+            level: "WARN".to_string(),
+            message: "High memory usage detected".to_string(),
+            target: "stellar_k8s::monitoring".to_string(),
+            module: None,
+            file: None,
+            line: None,
+            trace_id: None,
+            span_id: None,
+            k8s_node: None,
+            k8s_namespace: None,
+            reconcile_id: None,
+            extras,
+        };
+
+        let json = serde_json::to_string(&log).unwrap();
+        let log_back: StructuredLog = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(log_back.level, "WARN");
+        assert_eq!(log_back.message, "High memory usage detected");
+        assert_eq!(log_back.extras.get("custom_key").unwrap(), "custom_value");
+    }
+}
+
