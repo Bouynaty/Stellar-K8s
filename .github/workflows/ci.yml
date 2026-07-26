@@ -466,12 +466,44 @@ jobs:
 
       - name: Run smoke test on examples
         run: |
+          mkdir -p /tmp/examples-smoke-triage
           for ns in stellar stellar-nodes stellar-system metallb-system; do
             kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
           done
+          status=0
           for f in validator-mainnet validator-testnet horizon soroban-rpc dr-setup; do
-            kubectl apply --dry-run=server -f "examples/${f}.yaml"
+            if kubectl apply --dry-run=server -f "examples/${f}.yaml" \
+              > "/tmp/examples-smoke-triage/${f}.log" 2>&1; then
+              cat "/tmp/examples-smoke-triage/${f}.log"
+            else
+              echo "FAILED: examples/${f}.yaml"
+              cat "/tmp/examples-smoke-triage/${f}.log"
+              status=1
+            fi
           done
+          exit "$status"
+
+      # ── Failure triage ────────────────────────────────────────────────────
+      # A regression here usually means an example manifest drifted out of
+      # sync with the CRD schema. The per-file apply logs above only show up
+      # in the raw job log; capturing them (plus live CRD/event state) as a
+      # downloadable artifact lets a reviewer diagnose the regression without
+      # re-running the job locally.
+      - name: Capture cluster diagnostics
+        if: failure()
+        run: |
+          kubectl get crd stellarnodes.stellar.org -o yaml \
+            > /tmp/examples-smoke-triage/crd-state.yaml 2>&1 || true
+          kubectl get events -A --sort-by=.lastTimestamp \
+            > /tmp/examples-smoke-triage/cluster-events.log 2>&1 || true
+
+      - name: Upload failure triage artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: examples-smoke-test-triage-${{ github.run_id }}
+          path: /tmp/examples-smoke-triage/
+          retention-days: 7
 
   # ── 9. Tests (unit + doc) ─────────────────────────────────────────────────────
   # security-audit is conditional (only runs when deps change). We use
