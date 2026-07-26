@@ -9,6 +9,7 @@ jobs:
   stale-artifact-audit:
     name: Stale Artifact Regression
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +24,7 @@ jobs:
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +34,12 @@ jobs:
           cache-key: "maintenance-audit"
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        run: |
+          for i in 1 2 3; do
+            cargo install cargo-audit --locked && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Run security audit
         run: |
@@ -57,6 +64,7 @@ jobs:
   docs-health:
     name: Docs Health Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 

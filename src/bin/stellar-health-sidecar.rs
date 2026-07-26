@@ -7,7 +7,6 @@ use stellar_k8s::controller::health_check_sidecar::{
 use tokio::sync::RwLock;
 use stellar_k8s::logging::{init_binary_subscriber, LogOutputFormat};
 use tracing::{error, info, Level};
-use tracing::info;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[tokio::main]
