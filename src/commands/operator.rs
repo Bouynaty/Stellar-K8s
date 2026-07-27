@@ -7,8 +7,8 @@ use std::sync::Arc;
 use tracing::{info, info_span, warn, Instrument, Level};
 
 use crate::cli::{LogFormat, RunArgs};
-use stellar_k8s::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 use stellar_k8s::logging::analytics::AnalyticsEngine;
+use stellar_k8s::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 #[cfg(feature = "rest-api")]
 use stellar_k8s::rest_api::metrics_store::StellarMetricsStore;
 use stellar_k8s::{controller, preflight, Error};
@@ -49,10 +49,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
         LogFormat::Json => LogOutputFormat::Json,
         LogFormat::Pretty => LogOutputFormat::Pretty,
     };
-    let log_level = args
-        .log_level
-        .parse()
-        .unwrap_or(Level::INFO);
+    let log_level = args.log_level.parse().unwrap_or(Level::INFO);
 
     let subscriber = init_subscriber(SubscriberConfig {
         level: log_level,
