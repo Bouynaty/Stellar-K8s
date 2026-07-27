@@ -96,6 +96,7 @@ nav:
     - deployment-guides/index.md
     - Validator Node: deployment-guides/validator.md
     - Horizon API: deployment-guides/horizon.md
+    - Horizon Query API Reference: horizon-query-api-reference.md
     - Soroban RPC: deployment-guides/soroban-rpc.md
   - Configuration:
     - configuration/index.md
