@@ -1,5 +1,8 @@
 # Scalability Benchmarking Report
 
+
+> **Note:** Runtime feature flags are limited to capabilities that still gate code paths (currently DR / cross-region). Dead flags were removed from the operator ConfigMap surface; see `src/controller/feature_flags.rs`.
+
 This document presents benchmarking results for the Stellar-K8s operator, evaluating how many `StellarNode` resources a single operator instance can reliably manage.
 
 ## Executive Summary

@@ -248,6 +248,12 @@ service:
   restApiPort: 9090
   metricsPort: 9090
 
+# Optional top-level Prometheus switch used by some sidecar templates
+# (e.g. scp-kafka-sidecar ServiceMonitor). Prefer `monitoring.*` for the
+# canonical Prometheus Operator integration below.
+prometheus:
+  enabled: false
+
 # Monitoring configuration for Prometheus Operator integration
 # Requires: Prometheus Operator (CRDs: PrometheusRule) to be installed
 monitoring:
@@ -660,6 +666,12 @@ webhook:
     limits:
       cpu: 500m
       memory: 512Mi
+
+  # When true, render cert-manager Certificate + ClusterIssuer for webhook TLS.
+  # Default false so installs work without the cert-manager CRDs (e.g. kind
+  # quickstart). Enable in environments that have cert-manager installed.
+  certManager:
+    enabled: false
 
 # --- Helm lifecycle hooks ----------------------------------------------------
 hooks:

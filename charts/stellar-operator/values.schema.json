@@ -190,6 +190,17 @@
         "resources": {
           "type": "object",
           "description": "Resource requests and limits for the webhook server container"
+        },
+        "certManager": {
+          "type": "object",
+          "description": "Optional cert-manager Certificate/ClusterIssuer rendering for webhook TLS",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "When true, render cert-manager Certificate and ClusterIssuer resources"
+            }
+          }
         }
       }
     }
