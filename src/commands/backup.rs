@@ -5,8 +5,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use stellar_k8s::backup::providers::StorageProviderTrait;
-use stellar_k8s::error::diagnostic;
+use crate::backup::providers::StorageProviderTrait;
+use crate::error::diagnostic;
 
 #[derive(Parser, Debug)]
 pub struct BackupArgs {
@@ -487,7 +487,7 @@ async fn cleanup_from_filecoin(_args: &CleanupArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stellar_k8s::error::diagnostic;
+    use crate::error::diagnostic;
 
     #[test]
     fn backup_source_missing_error_names_step() {

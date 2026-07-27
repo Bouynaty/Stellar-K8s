@@ -88,3 +88,8 @@ sk8s_health_cargo_audit() {
 sk8s_health_helm_lint() {
   helm lint charts/stellar-operator
 }
+
+sk8s_health_issue_templates() {
+  python3 scripts/issue_template_lint.py
+}
+

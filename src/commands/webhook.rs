@@ -1,11 +1,11 @@
 use crate::cli::{LogFormat, WebhookArgs};
-use stellar_k8s::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
-use stellar_k8s::Error;
+use crate::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
+use crate::Error;
 use tracing::{info, info_span, warn, Level};
 
 #[cfg(feature = "admission-webhook")]
-pub async fn run_webhook(args: WebhookArgs) -> Result<(), Error> {
-    use stellar_k8s::webhook::{runtime::WasmRuntime, server::WebhookServer};
+pub async fn run_webhook_server(args: WebhookArgs) -> Result<(), Error> {
+    use crate::webhook::{runtime::WasmRuntime, server::WebhookServer};
 
     let log_format = match args.log_format {
         LogFormat::Json => LogOutputFormat::Json,
