@@ -9,11 +9,6 @@ metadata:
     helm.sh/hook-weight: "-5"
 data:
   # Feature flags — set to "true" or "false" to toggle at runtime without restart.
-  # See docs/quickstart.md and src/controller/feature_flags.rs for full documentation.
-  enable_cve_scanning: {{ .Values.featureFlags.enableCveScanning | quote }}
-  enable_read_pool: {{ .Values.featureFlags.enableReadPool | quote }}
+  # Only enable_dr remains; it gates DR / cross-region Helm resources.
+  # See README.md and src/controller/feature_flags.rs for documentation.
   enable_dr: {{ .Values.featureFlags.enableDr | quote }}
-  enable_peer_discovery: {{ .Values.featureFlags.enablePeerDiscovery | quote }}
-  enable_archive_health: {{ .Values.featureFlags.enableArchiveHealth | quote }}
-  enable_soroban_metrics: {{ .Values.featureFlags.enableSorobanMetrics | quote }}
-  enable_scp_topology: {{ .Values.featureFlags.enableScpTopology | quote }}
