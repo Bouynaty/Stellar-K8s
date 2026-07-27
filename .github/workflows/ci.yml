@@ -40,6 +40,7 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       docker: ${{ steps.detect.outputs.docker }}
       helm: ${{ steps.detect.outputs.helm }}
@@ -102,6 +103,7 @@ jobs:
     name: Version Consistency Check
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -162,6 +164,8 @@ jobs:
     name: Lint & Format
     runs-on: ubuntu-latest
     needs: [changes, repo-hygiene]
+    timeout-minutes: 15
+    needs: [changes]
     steps:
       - uses: actions/checkout@v7
 
@@ -225,6 +229,7 @@ jobs:
   link-check:
     name: Markdown Link Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -246,6 +251,7 @@ jobs:
   repo-wide-link-check:
     name: Repo-Wide Link Check (lychee)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -267,6 +273,7 @@ jobs:
   secret-checks:
     name: Secret Handling Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [changes]
     steps:
       - uses: actions/checkout@v4
@@ -280,6 +287,7 @@ jobs:
   feature-audit:
     name: Feature & Dead-Import Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [changes]
     if: needs.changes.outputs.rust_core == 'true' || needs.changes.outputs.deps == 'true'
     steps:
@@ -300,6 +308,7 @@ jobs:
     name: Security Audit
     if: needs.changes.outputs.deps == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [changes]
     steps:
       - uses: actions/checkout@v7
@@ -311,7 +320,11 @@ jobs:
 
       - name: Run cargo audit
         run: |
-          cargo install cargo-audit --locked
+          for i in 1 2 3; do
+            cargo install cargo-audit --locked && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
           cargo audit \
             --ignore RUSTSEC-2020-0071 \
             --ignore RUSTSEC-2024-0380 \
@@ -339,6 +352,7 @@ jobs:
     name: Helm Lint & Schema Validation
     if: needs.changes.outputs.helm == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [changes]
     steps:
       - uses: actions/checkout@v7
@@ -406,6 +420,7 @@ jobs:
     name: Helm Unit Tests
     if: needs.changes.outputs.helm == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [changes, lint]
     steps:
       - uses: actions/checkout@v7
@@ -426,6 +441,7 @@ jobs:
     name: API Docs Drift Check
     if: needs.changes.outputs.api_docs == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [changes, lint]
     steps:
       - uses: actions/checkout@v7
@@ -454,6 +470,7 @@ jobs:
   docs-link-check:
     name: Docs Link Checker
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -470,6 +487,7 @@ jobs:
     name: Examples Smoke Test
     if: needs.changes.outputs.examples == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [changes]
     steps:
       - uses: actions/checkout@v7
@@ -498,6 +516,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [security-audit, lint, secret-checks]
     if: >-
       always() &&
@@ -519,6 +538,7 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [security-audit, lint, secret-checks]
     if: >-
       github.event_name != 'pull_request' &&
@@ -535,7 +555,12 @@ jobs:
           cache-key: "ci-coverage"
 
       - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
+        run: |
+          for i in 1 2 3; do
+            cargo install cargo-tarpaulin && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Generate coverage
         run: |
@@ -560,6 +585,7 @@ jobs:
     name: Build
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: test
     steps:
       - uses: actions/checkout@v7
@@ -590,6 +616,7 @@ jobs:
       (needs.helm-test.result == 'success' || needs.helm-test.result == 'skipped') &&
       (needs.api-docs.result == 'success' || needs.api-docs.result == 'skipped')
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [changes, build, helm-test, api-docs]
     env:
       DOCKER_PLATFORMS: linux/amd64
@@ -635,6 +662,7 @@ jobs:
   security-scan:
     name: Security Scan & Binary Verification
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: docker
     if: github.event_name != 'pull_request'
     permissions:
@@ -673,6 +701,7 @@ jobs:
   upgrade-test:
     name: Upgrade Workflow Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [test]
     if: >-
       always() &&
@@ -696,6 +725,7 @@ jobs:
   reconciler-benchmark:
     name: Reconciler Benchmark
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

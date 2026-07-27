@@ -68,30 +68,6 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
     let analytics_engine = subscriber
         .analytics_engine
         .unwrap_or_else(|| Arc::new(AnalyticsEngine::new(std::time::Duration::from_secs(3600))));
-    // Initialize tracing with OpenTelemetry
-    let env_filter = EnvFilter::builder()
-        .with_default_directive(Level::INFO.into())
-        .from_env_lossy();
-
-    let (env_filter, reload_handle) = tracing_subscriber::reload::Layer::new(env_filter);
-
-    let analytics_engine = Arc::new(AnalyticsEngine::new(std::time::Duration::from_secs(3600)));
-    let analytics_layer = AnalyticsLayer::new(SamplingConfig::default(), analytics_engine.clone());
-
-    let fmt_layer = fmt::layer()
-        .json()
-        .flatten_event(true)
-        .with_current_span(true)
-        .with_span_list(true)
-        .with_target(true);
-
-    // Register the subscriber with both stdout logging and OpenTelemetry tracing
-    let registry = tracing_subscriber::registry()
-        .with(env_filter)
-        .with(ScrubLayer::new())
-        .with(analytics_layer)
-        .with(fmt_layer);
-
     let otel_enabled = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok();
 
     let root_span = info_span!(

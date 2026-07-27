@@ -54,6 +54,7 @@ jobs:
   detect-stale-docs:
     name: Detect Stale Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
