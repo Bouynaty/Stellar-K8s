@@ -93,7 +93,7 @@ pub enum Commands {
         command: incident::IncidentCommands,
     },
     /// Compare performance metrics between two clusters
-    BenchmarkCompare(stellar_k8s::benchmark_compare::BenchmarkCompareArgs),
+    BenchmarkCompare(crate::benchmark_compare::BenchmarkCompareArgs),
     /// Export operator audit log and config as a signed compliance report
     ExportCompliance(ExportComplianceArgs),
     /// Backup commands for Stellar node data
