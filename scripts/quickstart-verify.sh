@@ -160,6 +160,8 @@ helm upgrade --install stellar-operator charts/stellar-operator \
   --set image.tag="${IMAGE_TAG}" \
   --set image.repository="stellar-operator" \
   --set image.pullPolicy=Never \
+  --set hooks.preInstall.enabled=false \
+  --set hooks.preUpgrade.enabled=false \
   --wait \
   --timeout "${TIMEOUT}"
 pass "Helm install complete"
