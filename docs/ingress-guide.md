@@ -1,6 +1,6 @@
 # Ingress Configuration Guide
 
-<!-- chart-sync: 2026-07-27T20:57Z remove duplicate tenant CRDs -->
+<!-- chart-sync: 2026-07-27T21:13Z distinct API/metrics ports -->
 
 ## Overview
 

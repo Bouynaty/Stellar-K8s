@@ -192,8 +192,8 @@ operator:
   # Enable REST API
   restApiEnabled: true
   # REST API port
-  restApiPort: 9090
-  # Metrics port
+  restApiPort: 8080
+  # Metrics port (must differ from restApiPort — Service ports are unique by number)
   metricsPort: 9090
   # Namespace to watch (empty = all namespaces)
   watchNamespace: ""
@@ -245,7 +245,7 @@ forkDetector:
 # Service for REST API and metrics
 service:
   type: ClusterIP
-  restApiPort: 9090
+  restApiPort: 8080
   metricsPort: 9090
 
 # Optional top-level Prometheus switch used by some sidecar templates
