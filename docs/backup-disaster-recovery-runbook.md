@@ -221,7 +221,7 @@ aws s3 ls s3://stellar-reports/verification-reports/ --recursive | tail -5
 
 ### 6.3 Full regional DR
 
-Follow [multi-region-deployment-and-failover.md](multi-region-deployment-and-failover.md) and [dr-failover.md](dr-failover.md) when failing over clusters, not only restoring PVCs.
+Follow [dr-failover.md](dr-failover.md) and [multi-cluster.md](multi-cluster.md) when failing over clusters, not only restoring PVCs.
 
 ### 6.4 GitOps state restore
 
