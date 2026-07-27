@@ -200,23 +200,30 @@ tests:
           path: spec.template.spec.containers[0].args
           content: --watch-namespace=stellar-system
 
-  - it: "[SNAPSHOT] rest-api arg present by default"
+  - it: "[SNAPSHOT] run subcommand present by default"
     asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: run
       - contains:
-          path: spec.template.spec.containers[0].args
-          content: --enable-rest-api
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REST_API_PORT
+            value: "8080"
 
-  - it: "[SNAPSHOT] rest-api arg present when enabled"
+  - it: "[SNAPSHOT] REST_API_PORT present when enabled"
     set:
       operator.restApiEnabled: true
       operator.restApiPort: 8080
     asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: run
       - contains:
-          path: spec.template.spec.containers[0].args
-          content: --enable-rest-api
-      - contains:
-          path: spec.template.spec.containers[0].args
-          content: --rest-api-port=8080
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REST_API_PORT
+            value: "8080"
 
   # ── Annotation propagation snapshots ─────────────────────────────────────
   - it: "[SNAPSHOT] extraAnnotations appear on deployment metadata"

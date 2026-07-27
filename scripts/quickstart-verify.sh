@@ -155,7 +155,7 @@ pass "Namespace '${NAMESPACE}' ready"
 # ── Step 7: Install operator via Helm ────────────────────────────────────────
 # Mirrors README Helm install command (using local chart instead of remote repo)
 step "Step 7: Install operator via Helm"
-helm upgrade --install stellar-operator charts/stellar-operator \
+if ! helm upgrade --install stellar-operator charts/stellar-operator \
   --namespace "${NAMESPACE}" \
   --set image.tag="${IMAGE_TAG}" \
   --set image.repository="stellar-operator" \
@@ -166,7 +166,14 @@ helm upgrade --install stellar-operator charts/stellar-operator \
   --set webhook.enabled=false \
   --disable-openapi-validation \
   --wait \
-  --timeout "${TIMEOUT}"
+  --timeout "${TIMEOUT}"; then
+  fail "Helm install failed — collecting diagnostics before exit"
+  kubectl get pods -n "${NAMESPACE}" -o wide || true
+  kubectl describe deployment -n "${NAMESPACE}" stellar-operator || true
+  kubectl get events -n "${NAMESPACE}" --sort-by='.lastTimestamp' | tail -40 || true
+  kubectl logs -n "${NAMESPACE}" -l "app.kubernetes.io/name=stellar-operator" --all-containers --tail=200 || true
+  exit 1
+fi
 pass "Helm install complete"
 
 # ── Step 8: Verify operator pod is Running/Ready ──────────────────────────────

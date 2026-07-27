@@ -56,6 +56,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: OPERATOR_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            {{- if .Values.operator.restApiEnabled }}
+            - name: REST_API_PORT
+              value: {{ .Values.operator.restApiPort | quote }}
+            {{- end }}
             {{- if .Values.otel.enabled }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.otel.endpoint | quote }}
@@ -71,12 +77,9 @@ spec:
               mountPath: /etc/stellar-operator
               readOnly: true
           args:
+            - run
             - --log-level={{ .Values.operator.logLevel }}
-            {{- if .Values.operator.restApiEnabled }}
-            - --enable-rest-api
-            - --rest-api-port={{ .Values.operator.restApiPort }}
-            {{- end }}
-            - --metrics-port={{ .Values.operator.metricsPort }}
+            - --namespace={{ .Release.Namespace }}
             {{- if .Values.operator.watchNamespace }}
             - --watch-namespace={{ .Values.operator.watchNamespace }}
             {{- end }}
@@ -87,9 +90,11 @@ spec:
             - name: metrics
               containerPort: {{ .Values.operator.metricsPort }}
               protocol: TCP
+          {{- if .Values.operator.restApiEnabled }}
           {{- include "stellar-operator.restApiStartupProbe" . | nindent 10 }}
           {{- include "stellar-operator.restApiLivenessProbe" . | nindent 10 }}
           {{- include "stellar-operator.restApiReadinessProbe" . | nindent 10 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
         {{- if .Values.sidecar.enabled }}
