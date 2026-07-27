@@ -33,7 +33,7 @@ spec:
       volumes:
         - name: operator-config
           configMap:
-            name: {{ include "stellar-operator.fullname" . }}-config
+            name: {{ include "stellar-operator.fullname" . }}-defaults
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
