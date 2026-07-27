@@ -1,5 +1,7 @@
 # Local Development with k3d
 
+<!-- chart-sync: 2026-07-27T23:45Z Dockerfile cargo-chef latest-rust-1.95-slim-bookworm -->
+
 This guide walks you through setting up a fully functional Stellar development environment on your local machine using [k3d](https://k3d.io) — K3s running inside Docker. No cloud account required.
 
 ---
