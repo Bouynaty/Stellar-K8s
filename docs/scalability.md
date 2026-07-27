@@ -404,3 +404,7 @@ curl -s localhost:9090/metrics | grep stellar_operator
 **Last Updated**: 2026-02-25  
 **Tested Version**: v0.1.0  
 **Author**: Stellar K8s Contributors
+
+---
+
+*Last verified: 2026-07-27 (cleanup wave #1187/#1189/#1190/#1191).*

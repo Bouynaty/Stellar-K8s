@@ -403,3 +403,7 @@ pub struct IngressPath {
 - [cert-manager Documentation](https://cert-manager.io/docs/)
 - [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
 - [Traefik Ingress Controller](https://doc.traefik.io/traefik/providers/kubernetes-ingress/)
+
+---
+
+*Last verified: 2026-07-27 (cleanup wave #1187/#1189/#1190/#1191).*
