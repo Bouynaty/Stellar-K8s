@@ -734,3 +734,101 @@ jobs:
               echo "⚠️ Benchmark results not available"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── 15. Dependency graph expansion guard (#1141) ──────────────────────────────
+  #
+  # Blocks PRs that silently balloon the transitive dependency count.
+  # The check runs on every PR that touches Cargo.toml or Cargo.lock.
+  # It compares the number of unique crate names in the current Cargo.lock
+  # against the baseline stored on main and fails when growth exceeds
+  # DEP_GROWTH_LIMIT (default: 10 new crates per PR).
+  #
+  # On a direct push to main the job records the new baseline as a
+  # workflow summary so it can be copy-pasted into the constant below
+  # when intentional growth is merged.
+  dep-graph-guard:
+    name: Dependency Graph Expansion Guard
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.deps == 'true'
+    env:
+      # Maximum number of *new* crate names allowed in a single PR.
+      # Raise this intentionally when a large dependency addition is approved.
+      DEP_GROWTH_LIMIT: "10"
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count dependencies on PR head
+        id: head
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEAD_COUNT=$(grep -c '^name = ' Cargo.lock || true)
+          echo "count=${HEAD_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "PR head crate count: ${HEAD_COUNT}"
+
+      - name: Checkout base branch (main)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+          git show "${{ github.event.pull_request.base.sha }}:Cargo.lock" > /tmp/Cargo.lock.base 2>/dev/null \
+            || cp Cargo.lock /tmp/Cargo.lock.base
+
+      - name: Count dependencies on base branch
+        if: github.event_name == 'pull_request'
+        id: base
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_COUNT=$(grep -c '^name = ' /tmp/Cargo.lock.base || true)
+          echo "count=${BASE_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "Base branch crate count: ${BASE_COUNT}"
+
+      - name: Check growth against limit
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEAD=${{ steps.head.outputs.count }}
+          BASE=${{ steps.base.outputs.count }}
+          GROWTH=$(( HEAD - BASE ))
+          LIMIT=${DEP_GROWTH_LIMIT}
+
+          echo ""
+          echo "Dependency graph summary"
+          echo "  Base (main):  ${BASE} crates"
+          echo "  PR head:      ${HEAD} crates"
+          echo "  Growth:       ${GROWTH} crates (limit: ${LIMIT})"
+          echo ""
+
+          if [[ ${GROWTH} -gt ${LIMIT} ]]; then
+            echo "::error::Dependency count grew by ${GROWTH} (limit ${LIMIT})."
+            echo "  If this growth is intentional, update DEP_GROWTH_LIMIT in ci.yml"
+            echo "  and add a comment to the PR explaining the new dependencies."
+            exit 1
+          fi
+
+          if [[ ${GROWTH} -gt 0 ]]; then
+            echo "::notice::Dependency count increased by ${GROWTH} within the allowed limit of ${LIMIT}."
+          else
+            echo "::notice::No new transitive dependencies introduced."
+          fi
+
+      - name: Summarise baseline (main push only)
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          COUNT=${{ steps.head.outputs.count }}
+          echo "## Dependency baseline" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Total crates in Cargo.lock | \`${COUNT}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This is the new baseline for the dependency guard. No action needed." >> "$GITHUB_STEP_SUMMARY"

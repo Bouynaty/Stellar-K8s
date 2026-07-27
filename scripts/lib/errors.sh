@@ -2,6 +2,9 @@
 # scripts/lib/errors.sh
 # Shared step-aware diagnostics for shell scripts.
 #
+# Sourced by other scripts — strict mode is expected to be set by the caller.
+# Callers MUST have `set -euo pipefail` before sourcing this file.
+#
 # Usage:
 #   source "${SCRIPT_DIR}/lib/errors.sh"
 #   sk8s_step "format check" "Running cargo fmt --all --check"
