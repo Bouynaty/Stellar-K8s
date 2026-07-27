@@ -93,16 +93,10 @@ pub fn validate_config_map_data(data: &BTreeMap<String, String>) -> Vec<FlagVali
 }
 
 /// Runtime feature flags. All fields default to safe production values.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct FeatureFlags {
     /// Enable disaster-recovery drill scheduling / cross-region DR resources.
     pub enable_dr: bool,
-}
-
-impl Default for FeatureFlags {
-    fn default() -> Self {
-        Self { enable_dr: false }
-    }
 }
 
 impl FeatureFlags {

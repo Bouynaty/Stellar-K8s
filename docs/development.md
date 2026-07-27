@@ -28,6 +28,8 @@ helm version
 > - **CPUs**: 4
 > - **Memory**: 8 GB
 > - **Disk**: 40 GB
+>
+> Production images are built from the root `Dockerfile` (Debian bookworm-slim, digest-pinned). Prefer `Dockerfile.dev` / `docker-compose.dev.yml` for iterative local rebuilds.
 
 ---
 
