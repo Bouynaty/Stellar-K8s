@@ -64,25 +64,16 @@ jobs:
           # Fetch full history so git-log can compare commit timestamps.
           fetch-depth: 0
 
-      # ── Rust toolchain ──────────────────────────────────────────────────────
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      # ── Cargo cache ─────────────────────────────────────────────────────────
-      - name: Cache Cargo registry & build artefacts
-        uses: actions/cache@v4
+      # ── Rust toolchain (shared composite action, issue #1136) ──────────────
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
         with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-doc-check-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-doc-check-
-            ${{ runner.os }}-cargo-
+          cache-key: "stale-docs"
 
       # ── Build the doc-check binary ──────────────────────────────────────────
+      # Uses cargo directly; the binary is an internal tool that does not need
+      # a Makefile wrapper.  The Makefile targets check-stale-docs and
+      # docs-check-strict invoke it via `cargo run` after this build step.
       - name: Build doc-check
         run: cargo build --locked --bin doc-check
         env:
