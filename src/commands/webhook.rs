@@ -4,7 +4,7 @@ use crate::Error;
 use tracing::{info, info_span, warn, Level};
 
 #[cfg(feature = "admission-webhook")]
-pub async fn run_webhook_server(args: WebhookArgs) -> Result<(), Error> {
+pub async fn run_webhook(args: WebhookArgs) -> Result<(), Error> {
     use crate::webhook::{runtime::WasmRuntime, server::WebhookServer};
 
     let log_format = match args.log_format {
