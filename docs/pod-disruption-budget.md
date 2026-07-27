@@ -1,6 +1,6 @@
 # PodDisruptionBudget Guide for Stellar-K8s
 
-<!-- chart-sync: 2026-07-27T21:32Z webhook.enabled default false -->
+<!-- chart-sync: 2026-07-27T22:40Z operator Deployment uses `run` subcommand + REST_API_PORT -->
 
 This guide explains how Stellar-K8s uses Kubernetes PodDisruptionBudgets (PDBs) to protect the operator and validator nodes during voluntary disruptions such as node drains, cluster upgrades, and maintenance operations.
 

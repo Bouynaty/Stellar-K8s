@@ -1,6 +1,6 @@
 # Ingress Configuration Guide
 
-<!-- chart-sync: 2026-07-27T21:32Z webhook.enabled default false -->
+<!-- chart-sync: 2026-07-27T22:40Z operator Deployment uses `run` subcommand + REST_API_PORT -->
 
 ## Overview
 
