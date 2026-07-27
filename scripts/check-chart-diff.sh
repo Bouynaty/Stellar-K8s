@@ -118,17 +118,4 @@ else
     echo "✅ Chart render is consistent"
     exit 0
 fi
-
-</parameter>
-<task_progress>
-- [x] Analyze requirements for issues #1146, #1147, #1145, #1144
-- [x] Implement stale sample manifest detector (#1146)
-- [x] Implement CRD backward-compatibility gate (#1147)
-- [ ] Re-implement chart render diff checks after reset (#1145)
-- [ ] Re-implement benchmark sanity checks after reset (#1144)
-- [ ] Re-apply CI workflow changes
-- [ ] Re-add test files (cli_examples_test.rs, backup_restore_smoke_test.rs)
-- [ ] Commit and push changes
-- [ ] Create PR description
-</task_progress>
-</write_to_file>
+
