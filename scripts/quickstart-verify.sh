@@ -137,6 +137,15 @@ else
   FAILURES=$((FAILURES + 1))
 fi
 
+# Helm also renders CRDs from templates/; adopt the kubectl-applied CRD so the
+# subsequent helm install can take ownership without metadata conflicts.
+kubectl label --overwrite crd stellarnodes.stellar.org \
+  app.kubernetes.io/managed-by=Helm >/dev/null
+kubectl annotate --overwrite crd stellarnodes.stellar.org \
+  meta.helm.sh/release-name=stellar-operator \
+  meta.helm.sh/release-namespace="${NAMESPACE}" >/dev/null
+pass "CRD labeled for Helm release ownership"
+
 # ── Step 6: Create namespace ──────────────────────────────────────────────────
 # Mirrors README: "--namespace stellar-system --create-namespace"
 step "Step 6: Create namespace '${NAMESPACE}'"
@@ -146,11 +155,8 @@ pass "Namespace '${NAMESPACE}' ready"
 # ── Step 7: Install operator via Helm ────────────────────────────────────────
 # Mirrors README Helm install command (using local chart instead of remote repo)
 step "Step 7: Install operator via Helm"
-# CRDs were applied in Step 5 via kubectl; skip chart CRDs to avoid Helm
-# ownership conflicts on stellarnodes.stellar.org.
 helm upgrade --install stellar-operator charts/stellar-operator \
   --namespace "${NAMESPACE}" \
-  --skip-crds \
   --set image.tag="${IMAGE_TAG}" \
   --set image.repository="stellar-operator" \
   --set image.pullPolicy=Never \
