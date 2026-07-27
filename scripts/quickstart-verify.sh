@@ -146,8 +146,11 @@ pass "Namespace '${NAMESPACE}' ready"
 # ── Step 7: Install operator via Helm ────────────────────────────────────────
 # Mirrors README Helm install command (using local chart instead of remote repo)
 step "Step 7: Install operator via Helm"
+# CRDs were applied in Step 5 via kubectl; skip chart CRDs to avoid Helm
+# ownership conflicts on stellarnodes.stellar.org.
 helm upgrade --install stellar-operator charts/stellar-operator \
   --namespace "${NAMESPACE}" \
+  --skip-crds \
   --set image.tag="${IMAGE_TAG}" \
   --set image.repository="stellar-operator" \
   --set image.pullPolicy=Never \

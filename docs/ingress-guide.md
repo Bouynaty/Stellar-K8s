@@ -1,5 +1,7 @@
 # Ingress Configuration Guide
 
+<!-- chart-sync: 2026-07-27 webhook/monitoring cleanup -->
+
 ## Overview
 
 The Stellar-K8s operator automates the creation of Kubernetes Ingress resources to expose Horizon and Soroban RPC nodes over HTTPS. Combined with **cert-manager**, it provides automatic TLS certificate provisioning and renewal using Let's Encrypt or custom Certificate Authorities.
