@@ -2,7 +2,7 @@
 
 End-to-end **backup, restore, and disaster recovery** procedures for Stellar-K8s: what to protect, schedules defined in the repository, verification, restoration steps, and operator checklists.
 
-**Related:** [Backup verification](backup-verification.md) · [Volume snapshots](volume-snapshots.md) · [DR failover](dr-failover.md) · [Forensic snapshots](forensic-snapshot.md) · [Multi-region failover](multi-region-deployment-and-failover.md) · [Operations index](operations/index.md)
+**Related:** [Backup verification](backup-verification.md) · [Volume snapshots](volume-snapshots.md) · [DR failover](dr-failover.md) · [Forensic snapshots](forensic-snapshot.md) · [Multi-cluster guide](multi-cluster.md) · [Operations index](operations/index.md)
 
 ---
 
@@ -270,7 +270,7 @@ Follow [multi-region-deployment-and-failover.md](multi-region-deployment-and-fai
 - [ ] All `StellarNode` resources `Ready`
 - [ ] Horizon `/health` returns `core_synced: true`
 - [ ] Ledger sequence advancing on validators
-- [ ] SCP topology `healthy: true` ([scp-consensus-topology-and-monitoring.md](scp-consensus-topology-and-monitoring.md))
+- [ ] SCP topology `healthy: true` ([scp-topology-dashboard.md](scp-topology-dashboard.md))
 - [ ] Document incident in [incident-response/post-mortem.md](incident-response/post-mortem.md) template
 
 ### DR drill (quarterly recommended)
