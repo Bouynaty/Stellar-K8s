@@ -1,6 +1,6 @@
 # PodDisruptionBudget Guide for Stellar-K8s
 
-<!-- chart-sync: 2026-07-27 webhook/monitoring cleanup -->
+<!-- chart-sync: 2026-07-27T20:40Z defaults ConfigMap rename -->
 
 This guide explains how Stellar-K8s uses Kubernetes PodDisruptionBudgets (PDBs) to protect the operator and validator nodes during voluntary disruptions such as node drains, cluster upgrades, and maintenance operations.
 

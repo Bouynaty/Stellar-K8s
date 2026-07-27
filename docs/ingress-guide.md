@@ -1,6 +1,6 @@
 # Ingress Configuration Guide
 
-<!-- chart-sync: 2026-07-27 webhook/monitoring cleanup -->
+<!-- chart-sync: 2026-07-27T20:40Z defaults ConfigMap rename -->
 
 ## Overview
 
