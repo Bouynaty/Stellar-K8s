@@ -44,9 +44,11 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 - [Diff Utility](diff-utility.md)
 - [Upgrade Workflow](upgrade-workflow.md)
 - [Disaster Recovery & Failover](dr-failover.md)
+- [Multi-Region Deployment and Failover](multi-region-deployment-and-failover.md)
 - [Cross-Cloud Failover](cross-cloud-failover.md)
 - [Pod Disruption Budgets](pod-disruption-budget.md)
 - [Backup Verification](backup-verification.md)
+- [Backup and Disaster Recovery Runbook](backup-disaster-recovery-runbook.md)
 - [Operations Runbook](operations/index.md)
 - [Incident Response](operations/incident-response.md)
 
@@ -88,6 +90,7 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 - [FMEA](fmea-stellarnode.md)
 - [Service Mesh](service-mesh.md)
 - [Multi-Cluster](multi-cluster.md)
+- [Multi-Region Deployment and Failover](multi-region-deployment-and-failover.md)
 - [Network Topology Management](network-topology-management.md)
 
 ## Performance & Benchmarking

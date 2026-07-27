@@ -108,6 +108,9 @@ nav:
     - Deploy Testnet Validator: tutorials/deploy-testnet-validator.md
     - Configure HA Setup: tutorials/configure-ha-setup.md
     - Backup and Restore: tutorials/backup-restore.md
+  - Operations:
+    - operations/index.md
+    - Backup and Disaster Recovery Runbook: backup-disaster-recovery-runbook.md
   - Troubleshooting:
     - troubleshooting/index.md
     - Operator Troubleshooting: troubleshooting/operator-troubleshooting.md
