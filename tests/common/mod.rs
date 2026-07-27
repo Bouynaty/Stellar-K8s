@@ -5,12 +5,19 @@
 /// guard returned by one of the functions below so that cleanup is guaranteed
 /// even when the test panics or returns early with `?`.
 ///
-/// # Design goals (issue #906)
+/// # Design goals (issue #906, extended in issue #1140)
 /// - Deterministic creation *and* removal of fixtures.
 /// - Cleanup runs in `Drop`, so it fires even on test failure.
 /// - No cross-test coupling: each test gets its own namespace or unique
 ///   resource name and tears it down independently.
+/// - Fixture data lives in `fixtures.rs`; guards live here.
+/// - All cluster-required tests are gated behind `#[ignore]` so they never
+///   run in unit-test mode and are never silently skipped.
 use std::process::{Command, Stdio};
+
+/// Re-export the fixtures module so integration tests can write
+/// `use common::fixtures::testnet_validator_manifest;`
+pub mod fixtures;
 
 // ---------------------------------------------------------------------------
 // Namespace guard
