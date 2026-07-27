@@ -1,6 +1,6 @@
 # Ingress Configuration Guide
 
-<!-- chart-sync: 2026-07-27T20:40Z defaults ConfigMap rename -->
+<!-- chart-sync: 2026-07-27T20:57Z remove duplicate tenant CRDs -->
 
 ## Overview
 

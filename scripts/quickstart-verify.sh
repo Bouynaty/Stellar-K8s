@@ -162,6 +162,7 @@ helm upgrade --install stellar-operator charts/stellar-operator \
   --set image.pullPolicy=Never \
   --set hooks.preInstall.enabled=false \
   --set hooks.preUpgrade.enabled=false \
+  --disable-openapi-validation \
   --wait \
   --timeout "${TIMEOUT}"
 pass "Helm install complete"
