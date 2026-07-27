@@ -127,17 +127,3 @@ else
     echo "✅ All sample manifests are valid and up-to-date"
     exit 0
 fi
-
-</parameter>
-<task_progress>
-- [x] Analyze requirements for issues #1146, #1147, #1145, #1144
-- [x] Implement stale sample manifest detector (#1146)
-- [x] Implement CRD backward-compatibility gate (#1147)
-- [x] Implement chart render diff checks (#1145)
-- [x] Implement benchmark sanity checks (#1144)
-- [x] Update CI workflow with new stages
-- [ ] Re-apply changes after git reset
-- [ ] Commit and push changes
-- [ ] Create PR description
-</task_progress>
-</write_to_file>

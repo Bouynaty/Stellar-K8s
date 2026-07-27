@@ -56,7 +56,10 @@ async fn test_secret_rotation_config_round_trip_preserves_all_fields() {
         deserialized.audit_log_destination,
         config.audit_log_destination
     );
-    assert_eq!(deserialized.notification_webhook, config.notification_webhook);
+    assert_eq!(
+        deserialized.notification_webhook,
+        config.notification_webhook
+    );
 }
 
 // ── Cluster tests (require a live Kubernetes API) ─────────────────────────────
