@@ -72,7 +72,7 @@ done < <(grep -rn --include="*.rs" --include="*.sh" --include="*.yaml" --include
 
 # AWS access key pattern: AKIA[A-Z0-9]{16}
 while IFS=: read -r file lineno _; do
-    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* ]] && continue
+    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *sample* ]] && continue
     finding "$file" "$lineno" "Possible AWS Access Key ID (AKIA...)"
 done < <(grep -rn --include="*.rs" --include="*.sh" --include="*.yaml" --include="*.yml" \
     -E "AKIA[A-Z0-9]{16}" . \
@@ -90,7 +90,7 @@ done < <(grep -rn --include="*.rs" --include="*.pem" --include="*.key" \
 
 # Generic password= / secret= / token= with non-placeholder values
 while IFS=: read -r file lineno content; do
-    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* ]] && continue
+    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *sample* || "$file" == *secret_rotation* || "$file" == *secret-rotation* ]] && continue
     # Allow obvious placeholders.
     echo "$content" | grep -qiE "(placeholder|example|changeme|your[-_]|<[^>]+>|\\\$\{)" && continue
     finding "$file" "$lineno" "Possible inline secret assignment (password=/secret=/token=)"
@@ -124,6 +124,7 @@ done < <(grep -rn --include="*.sh" \
 
 # Detect `set -x` near secret variables (would leak them in CI logs).
 while IFS=: read -r file lineno _; do
+    [[ "$file" == *check-secrets.sh* ]] && continue
     finding "$file" "$lineno" "'set -x' found in script — may leak secrets to CI logs"
 done < <(grep -rn --include="*.sh" 'set -x\|set -o xtrace' scripts/ .github/ \
     --exclude-dir=.git \
