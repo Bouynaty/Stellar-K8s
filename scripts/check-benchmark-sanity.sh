@@ -104,7 +104,7 @@ if [[ -f "$BASELINE_FILE" ]]; then
         # Check for significant deviations (simplified check)
         if [[ $LINE_RATIO -lt 80 ]] || [[ $LINE_RATIO -gt 120 ]]; then
             echo -e "  ${YELLOW}⚠${NC}  Significant deviation detected (>20% change)"
-            ((WARNINGS++))
+            WARNINGS=$((WARNINGS + 1))
         else
             echo -e "  ${GREEN}✓${NC} Within acceptable range (±20%)"
         fi
@@ -124,7 +124,7 @@ echo "→ Running sanity checks..."
 # Check 1: No panics in benchmark output
 if grep -qi "panic" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Panic detected in benchmark output"
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${GREEN}✓${NC} No panics detected"
 fi
@@ -134,7 +134,7 @@ if grep -qi "test result: ok" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${GREEN}✓${NC} All benchmark tests passed"
 elif grep -qi "test result: FAILED" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Benchmark tests failed"
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${YELLOW}⚠${NC}  Could not determine test result"
 fi

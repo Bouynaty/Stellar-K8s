@@ -80,7 +80,7 @@ if [[ -f "$BASELINE_FILE" ]]; then
         head -50 "$TEMP_DIR/diff.txt" | sed 's/^/    /'
         echo ""
         
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
         
         # Check if this is a PR (git available)
         if git rev-parse --git-dir > /dev/null 2>&1; then

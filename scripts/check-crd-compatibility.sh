@@ -82,7 +82,7 @@ if [[ -z "$PREVIOUS_CRD" ]]; then
     # Check for required fields
     if ! grep -q "^kind: CustomResourceDefinition" "$CRD_FILE"; then
         echo -e "  ${RED}✗${NC} Missing kind: CustomResourceDefinition"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
     else
         echo -e "  ${GREEN}✓${NC} Has correct kind"
     fi
@@ -103,7 +103,7 @@ if [[ -z "$PREVIOUS_CRD" ]]; then
             if command -v kubectl >/dev/null 2>&1; then
                 if ! kubectl apply -f "$sample" --dry-run=server 2>/dev/null; then
                     echo -e "  ${RED}✗${NC} Sample $filename failed validation"
-                    ((SAMPLE_ERRORS++))
+                    SAMPLE_ERRORS=$((SAMPLE_ERRORS + 1))
                 fi
             fi
         done
