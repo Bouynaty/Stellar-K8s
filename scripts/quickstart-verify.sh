@@ -7,7 +7,8 @@
 #
 # What it does:
 #   1. Creates a local kind cluster
-#   2. Builds the operator binary and Docker image
+#   2. Builds the operator Docker image via make docker-build-ci
+#      (container-native build; avoids host/glibc vs bookworm mismatches)
 #   3. Loads the image into kind
 #   4. Installs the operator via Helm (local chart, not the remote repo)
 #   5. Applies the sample StellarNode manifest
@@ -104,28 +105,23 @@ fi
 kubectl config use-context "kind-${CLUSTER_NAME}"
 pass "kubectl context set to kind-${CLUSTER_NAME}"
 
-# ── Step 2: Build operator binary ─────────────────────────────────────────────
-# Mirrors README dev section: "make build"
-step "Step 2: Build operator binary (make build)"
-make build
-pass "Binary built"
-
-# ── Step 3: Build Docker image ────────────────────────────────────────────────
-step "Step 3: Build Docker image (stellar-operator:${IMAGE_TAG})"
-DOCKER_BUILDKIT=1 docker build \
-  --target runtime-local \
-  -t "stellar-operator:${IMAGE_TAG}" \
-  .
+# ── Step 2: Build operator Docker image (container-native) ────────────────────
+# Prefer `make docker-build-ci` over host `make build` + `runtime-local`: GitHub
+# runners (and many local hosts) ship a newer glibc than debian:bookworm-slim,
+# which causes CrashLoopBackOff ("GLIBC_2.38/2.39 not found") when host binaries
+# are copied into the bookworm runtime image.
+step "Step 2: Build operator Docker image (make docker-build-ci)"
+IMAGE_NAME=stellar-operator IMAGE_TAG="${IMAGE_TAG}" make docker-build-ci
 pass "Docker image built"
 
-# ── Step 4: Load image into kind ─────────────────────────────────────────────
-step "Step 4: Load image into kind cluster"
+# ── Step 3: Load image into kind ─────────────────────────────────────────────
+step "Step 3: Load image into kind cluster"
 kind load docker-image "stellar-operator:${IMAGE_TAG}" --name "${CLUSTER_NAME}"
 pass "Image loaded into kind"
 
-# ── Step 5: Install CRD ──────────────────────────────────────────────────────
+# ── Step 4: Install CRD ──────────────────────────────────────────────────────
 # Mirrors README: "kubectl apply -f config/crd/stellarnode-crd.yaml"
-step "Step 5: Install StellarNode CRD"
+step "Step 4: Install StellarNode CRD"
 kubectl apply -f config/crd/stellarnode-crd.yaml
 pass "CRD applied"
 
@@ -146,15 +142,15 @@ kubectl annotate --overwrite crd stellarnodes.stellar.org \
   meta.helm.sh/release-namespace="${NAMESPACE}" >/dev/null
 pass "CRD labeled for Helm release ownership"
 
-# ── Step 6: Create namespace ──────────────────────────────────────────────────
+# ── Step 5: Create namespace ──────────────────────────────────────────────────
 # Mirrors README: "--namespace stellar-system --create-namespace"
-step "Step 6: Create namespace '${NAMESPACE}'"
+step "Step 5: Create namespace '${NAMESPACE}'"
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 pass "Namespace '${NAMESPACE}' ready"
 
-# ── Step 7: Install operator via Helm ────────────────────────────────────────
+# ── Step 6: Install operator via Helm ────────────────────────────────────────
 # Mirrors README Helm install command (using local chart instead of remote repo)
-step "Step 7: Install operator via Helm"
+step "Step 6: Install operator via Helm"
 if ! helm upgrade --install stellar-operator charts/stellar-operator \
   --namespace "${NAMESPACE}" \
   --set image.tag="${IMAGE_TAG}" \
@@ -176,8 +172,8 @@ if ! helm upgrade --install stellar-operator charts/stellar-operator \
 fi
 pass "Helm install complete"
 
-# ── Step 8: Verify operator pod is Running/Ready ──────────────────────────────
-step "Step 8: Verify operator deployment is Ready"
+# ── Step 7: Verify operator pod is Running/Ready ──────────────────────────────
+step "Step 7: Verify operator deployment is Ready"
 echo "  Waiting for Deployment rollout..."
 kubectl rollout status deployment/stellar-operator \
   --namespace "${NAMESPACE}" \
@@ -197,9 +193,9 @@ else
   kubectl get pods -n "${NAMESPACE}" || true
 fi
 
-# ── Step 9: Apply sample StellarNode ─────────────────────────────────────────
+# ── Step 8: Apply sample StellarNode ─────────────────────────────────────────
 # Mirrors README: "kubectl apply -f validator.yaml"
-step "Step 9: Apply sample StellarNode manifest"
+step "Step 8: Apply sample StellarNode manifest"
 kubectl apply -f config/samples/test-stellarnode.yaml
 pass "Sample StellarNode applied"
 
@@ -212,9 +208,9 @@ else
   kubectl get stellarnodes --all-namespaces 2>/dev/null || true
 fi
 
-# ── Step 10: Helm lint of local chart ────────────────────────────────────────
+# ── Step 9: Helm lint of local chart ────────────────────────────────────────
 # Mirrors README dev section: "make helm-lint"
-step "Step 10: Helm lint (make helm-lint)"
+step "Step 9: Helm lint (make helm-lint)"
 helm lint charts/stellar-operator
 pass "helm lint passed"
 
@@ -226,8 +222,7 @@ if [[ "$FAILURES" -eq 0 ]]; then
   echo ""
   echo "  The following README commands were verified:"
   echo "    • kind create cluster"
-  echo "    • make build"
-  echo "    • docker build"
+  echo "    • make docker-build-ci"
   echo "    • kind load docker-image"
   echo "    • kubectl apply -f config/crd/stellarnode-crd.yaml"
   echo "    • helm upgrade --install stellar-operator"
