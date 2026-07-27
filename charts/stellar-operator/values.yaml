@@ -641,6 +641,10 @@ scpAnalytics:
 # Controls the webhook Deployment, Service, and ValidatingWebhookConfiguration
 # rendered by charts/stellar-operator/templates/webhook.yaml.
 webhook:
+  # Master switch. Default false so kind/quickstart installs do not wait on a
+  # TLS-backed webhook Deployment. Enable with certManager when ready.
+  enabled: false
+
   # Number of webhook server replicas. Set to >= 2 for production HA.
   replicaCount: 2
 

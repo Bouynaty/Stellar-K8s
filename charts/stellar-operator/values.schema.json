@@ -159,6 +159,10 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, render admission webhook resources"
+        },
         "replicaCount": {
           "type": "integer",
           "minimum": 1,

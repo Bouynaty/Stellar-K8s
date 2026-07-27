@@ -1,3 +1,4 @@
+{{- if .Values.webhook.enabled }}
 ---
 # Namespace for the webhook
 apiVersion: v1
@@ -266,3 +267,4 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: stellar-webhook
+{{- end }}
