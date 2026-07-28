@@ -189,12 +189,15 @@ fn audit_fixture_file(path: &Path) -> Result<String, String> {
 }
 
 fn residual_secret(s: &str) -> bool {
-    // Stellar seed-like token still present
+    // Stellar seed-like token still present (may be bare or key=value attached).
     if s.split_whitespace().any(|tok| {
-        tok.starts_with('S')
-            && tok.len() == 56
-            && tok.chars().all(|c| c.is_ascii_alphanumeric())
-            && !tok.contains("[REDACTED")
+        if tok.contains("[REDACTED") {
+            return false;
+        }
+        let candidate = tok.rsplit('=').next().unwrap_or(tok);
+        candidate.starts_with('S')
+            && candidate.len() == 56
+            && candidate.chars().all(|c| c.is_ascii_alphanumeric())
     }) {
         return true;
     }

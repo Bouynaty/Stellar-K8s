@@ -60,8 +60,8 @@ separator
 # Stellar seed: 'S' + 55 base58 chars (56 total).
 # Exclude known test fixtures that carry safe-looking placeholder seeds.
 while IFS=: read -r file lineno content; do
-    # Skip files that are deliberately testing the scrubber itself.
-    [[ "$file" == *log_scrub* || "$file" == *tests* || "$file" == *test_* ]] && continue
+    # Skip files that are deliberately testing the scrubber / pipeline redaction.
+    [[ "$file" == *log_scrub* || "$file" == *pipeline_log_redaction* || "$file" == *pipeline_logs* || "$file" == *tests* || "$file" == *test_* ]] && continue
     finding "$file" "$lineno" "Possible Stellar seed (S...56 chars)"
 done < <(grep -rn --include="*.rs" --include="*.sh" --include="*.yaml" --include="*.yml" \
     -E "S[A-Za-z0-9]{54}[^A-Za-z0-9]" . \
@@ -83,7 +83,7 @@ done < <(grep -rn --include="*.rs" --include="*.sh" --include="*.yaml" --include
 
 # PEM private key block
 while IFS=: read -r file lineno _; do
-    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *log_scrub* ]] && continue
+    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *log_scrub* || "$file" == *pipeline_log_redaction* ]] && continue
     finding "$file" "$lineno" "PEM private key block committed to repository"
 done < <(grep -rn --include="*.rs" --include="*.pem" --include="*.key" \
     "BEGIN.*PRIVATE KEY" . \
@@ -201,8 +201,8 @@ rust_findings_before=$findings
 
 # Look for string literals that look like real Stellar seeds in non-test files.
 while IFS=: read -r file lineno content; do
-    # Allow test/fixture files and the scrubber itself.
-    [[ "$file" == *test* || "$file" == *scrub* || "$file" == *fixture* ]] && continue
+    # Allow test/fixture files and the scrubber / pipeline redaction checker itself.
+    [[ "$file" == *test* || "$file" == *scrub* || "$file" == *fixture* || "$file" == *pipeline_log_redaction* ]] && continue
     echo "$content" | grep -q 'FIXTURE\|placeholder\|example' && continue
     finding "$file" "$lineno" "Possible Stellar seed literal in non-test Rust source"
 done < <(grep -rn --include="*.rs" \
