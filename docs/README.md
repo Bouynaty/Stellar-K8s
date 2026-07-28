@@ -15,6 +15,7 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 
 - [Validator Node](deployment-guides/validator.md)
 - [Horizon API](deployment-guides/horizon.md)
+- [Horizon Query API Reference](horizon-query-api-reference.md)
 - [Soroban RPC](deployment-guides/soroban-rpc.md)
 - [OLM / OpenShift](deploy-olm.md)
 
