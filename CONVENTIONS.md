@@ -26,8 +26,8 @@ Stellar-K8s/
 ├── policy/              CEL and OPA policies
 ├── schemas/             JSON schemas
 ├── scripts/             Operational scripts
-│   ├── dev-utils/       Development helper utilities
 │   ├── lib/             Shared script library functions
+│   ├── ci/              CI validation helpers
 │   └── archive/         Historical one-off scripts (not part of normal workflow)
 ├── security/            Security policies and SBOM
 ├── src/                 Rust source code

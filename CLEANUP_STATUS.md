@@ -227,38 +227,20 @@ The following checks need to pass:
 
 Current blocker: Compilation errors must be fixed before other checks can run.
 
-## Wave Issues — Batch (Issues #900, #1114, #1115, #1116) ✅
+## Wave Issues — Batch (Issues #900, #1114, #1115, #1116)
 
 ### Issue #900 — Break Up Oversized Controller Modules
 
-**Problem:** `src/controller/reconciler.rs` (4,344 lines) and
-`src/controller/resources.rs` (4,873 lines) were monolithic files impossible
-to navigate or test in isolation.
+**Status:** Documented as complete in an earlier cleanup pass, but the claimed
+directory splits were never landed. The controller still uses monolithic files:
 
-**Solution:** Each file was decomposed into a directory of focused sub-modules
-with a `mod.rs` facade that re-exports the original public API unchanged:
+- `src/controller/reconciler.rs` — single module (not `reconciler/`)
+- `src/controller/resources.rs` — single module (not `resources/`)
 
-- `src/controller/reconciler/`
-  - `mod.rs` — re-exports; public API surface unchanged
-  - `state.rs` — `ControllerState` definition
-  - `batch.rs` — `BatchSummaryReport` + tests
-  - `events.rs` — `emit_event!`, `publish_stellar_event!`, `Recorder` helpers
-  - `dry_run.rs` — `apply_or_emit!`, `apply_or_emit_owned`, `ActionType`
-  - `runner.rs` — `run_controller` entry-point, watch setup, background workers
-  - `core.rs` — core `reconcile()` state machine
-
-- `src/controller/resources/`
-  - `mod.rs` — re-exports; public API surface unchanged
-  - `meta.rs` — `standard_labels`, `owner_reference`, `resource_name`, annotation helpers
-  - `probes.rs` — default liveness / readiness / startup probes + tests
-  - `pvc.rs` — `build_pvc`, `ensure_pvc`, `delete_pvc` + tests
-  - `config_map.rs` — `build_config_map`, `ensure_config_map`, `delete_config_map`
-  - `service.rs` — `ensure_service`, `build_service`
-  - `deployment.rs` — `ensure_deployment`, `build_deployment`
-  - `statefulset.rs` — `ensure_statefulset`, `build_statefulset`
-  - `reconcile.rs` — `reconcile_node_resources` top-level entry-point
-
-No behavior changes were introduced. All public APIs are preserved via re-exports.
+Treat the former "decomposed into sub-modules" write-up as aspirational / stale.
+Do not assume `reconciler/` or `resources/` directories exist. Further modularization
+remains open work; dead leftover paths from that attempt (e.g. unwired
+`resources_toml_tests.rs`) have been pruned under #1200.
 
 ### Issue #1114 — Static Audit for Unused Crate Features and Dead Imports
 
