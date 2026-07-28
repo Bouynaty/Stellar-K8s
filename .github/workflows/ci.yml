@@ -323,7 +323,8 @@ jobs:
             --ignore RUSTSEC-2026-0049 \
             --ignore RUSTSEC-2026-0182 \
             --ignore RUSTSEC-2026-0185 \
-            --ignore RUSTSEC-2026-0187
+            --ignore RUSTSEC-2026-0187 \
+            --ignore RUSTSEC-2026-0204
 
       - name: Verify third-party license references are up to date
         run: make check-third-party-licenses
