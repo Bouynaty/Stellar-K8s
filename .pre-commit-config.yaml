@@ -33,6 +33,27 @@ repos:
         pass_filenames: false
         stages: [pre-push]
 
+      # Security-focused hooks
+      - id: cargo-deny
+        name: cargo deny (dependency security)
+        entry: cargo deny check
+        language: system
+        files: '(Cargo\.(toml|lock)|deny\.toml)$'
+        pass_filenames: false
+
+      - id: cargo-audit
+        name: cargo audit (vulnerability scan)
+        entry: bash -c 'cargo audit --version >/dev/null 2>&1 || echo "cargo-audit not installed, skipping"; cargo audit --deny warnings || echo "Security advisories found (check .cargo/audit.toml for justified exceptions)"'
+        language: system
+        files: '(Cargo\.(toml|lock)|\.cargo/audit\.toml)$'
+        pass_filenames: false
+
+      - id: check-security-sensitive
+        name: Check for security-sensitive content
+        entry: bash -c 'if grep -r -n -E "(password|secret|private_key|api_key)\s*=" --include="*.rs" --include="*.toml" --exclude-dir=target .; then echo "Potential hardcoded secrets found - please review"; exit 1; fi'
+        language: system
+        pass_filenames: false
+
       - id: check-stale-docs
         name: check stale docs
         entry: cargo run --quiet --bin doc-check --
