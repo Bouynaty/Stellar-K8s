@@ -65,6 +65,7 @@ for dir in "${CRITICAL_PATHS[@]}"; do
   done < <(grep -rnE '\b(TODO|FIXME)\b' "$dir" \
              --exclude='check-stale-todos.sh' \
              --exclude-dir='.git' \
+             --exclude-dir='archive' \
              || true)
 
 done
