@@ -47,6 +47,7 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 - [Cross-Cloud Failover](cross-cloud-failover.md)
 - [Pod Disruption Budgets](pod-disruption-budget.md)
 - [Backup Verification](backup-verification.md)
+- [Backup and Disaster Recovery Runbook](backup-disaster-recovery-runbook.md)
 - [Operations Runbook](operations/index.md)
 - [Incident Response](operations/incident-response.md)
 
