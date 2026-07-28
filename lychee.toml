@@ -77,6 +77,8 @@ exclude = [
   "^https://kubernetes\\.io/?$",
   # helm.sh front page also resets from GHA IPs intermittently.
   "^https://helm\\.sh/?$",
+  # SLSA site intermittently blocks/resets GHA crawlers.
+  "^https://slsa\\.dev/?$",
   # GitHub "latest/download" assets for kubernetes autoscaler are redirect-only and
   # intermittently fail DNS/TLS from GHA; pin checks provide no PR signal.
   "^https://github\\.com/kubernetes/autoscaler/releases/latest/download/",
