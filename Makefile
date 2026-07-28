@@ -124,15 +124,8 @@ lint-strict: ## Run clippy (adds complexity checks on top of lint; same base exc
 
 # ── Security ──────────────────────────────────────────────────────────────────
 
-audit: ## Security audit (cargo audit + deny)
-	@echo "→ Running security audit..."
-	@echo "  Installing security tools if needed..."
-	@command -v cargo-audit >/dev/null 2>&1 || cargo install --locked cargo-audit
-	@command -v cargo-deny >/dev/null 2>&1 || cargo install --locked cargo-deny
-	@echo "  Checking for known vulnerabilities..."
-	@$(CARGO) audit --deny unsound || echo "⚠️  Security issues found - review .cargo/audit.toml for justified exceptions"
-	@echo "  Checking dependency policies..."
-	@$(CARGO) deny check
+audit: ## Security audit (cargo audit + deny) via consolidated lockfile gate
+	@bash scripts/dep-gate.sh
 
 security-scan: ## Run security scan (audit + dependency policy + shellcheck)
 	@echo "→ Running comprehensive security scan..."

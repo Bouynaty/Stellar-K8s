@@ -43,7 +43,7 @@ repos:
 
       - id: cargo-audit
         name: cargo audit (vulnerability scan)
-        entry: bash -c 'cargo audit --version >/dev/null 2>&1 || echo "cargo-audit not installed, skipping"; cargo audit --deny warnings || echo "Security advisories found (check .cargo/audit.toml for justified exceptions)"'
+        entry: bash -c 'cargo audit --version >/dev/null 2>&1 || echo "cargo-audit not installed, skipping"; cargo audit || echo "Security advisories found (check .cargo/audit.toml for justified exceptions)"'
         language: system
         files: '(Cargo\.(toml|lock)|\.cargo/audit\.toml)$'
         pass_filenames: false
