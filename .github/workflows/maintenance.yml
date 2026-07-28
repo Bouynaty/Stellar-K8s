@@ -33,7 +33,6 @@ jobs:
         with:
           cache-key: "maintenance-audit"
           extra-tools: "cargo-audit"
-          cache-key: "ci-audit-maintenance"
 
       - name: Install cargo-audit
         run: |
