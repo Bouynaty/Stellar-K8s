@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # scripts/release-gate.sh
 #
-# Single-source release validation gate for Stellar-K8s.
-# Mirrors every hard gate documented in RELEASE_CHECKLIST.md.
+# Local mirror of .github/workflows/release-gate.yml.
+# Only runs gates that are unique to the release gate (CHANGELOG + helm
+# unittest). Semver / Cargo.toml / Chart.yaml matching, cargo audit, and
+# helm lint are enforced by release.yml and ci.yml — do not re-check here.
 #
 # Usage:
 #   VERSION=1.2.0 bash scripts/release-gate.sh
@@ -44,76 +46,19 @@ fi
 
 echo -e "\n${BOLD}Stellar-K8s Release Gate — v${VERSION}${RESET}"
 echo "══════════════════════════════════════════════"
+echo "Unique gates only (changelog + helm unittest)."
+echo "semver / Cargo.toml / Chart.yaml / audit / helm lint → release.yml + ci.yml"
 
-# ── Gate 1: Version format ────────────────────────────────────────────────────
-section "Gate 1: Version format"
-if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
-  pass "Version '$VERSION' is valid semver"
-else
-  fail "Version '$VERSION' is NOT valid semver (expected X.Y.Z or X.Y.Z-pre)"
-fi
-
-# ── Gate 2: Cargo.toml version matches ───────────────────────────────────────
-section "Gate 2: Cargo.toml version"
-CARGO_VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d'"' -f2)
-if [[ "$CARGO_VERSION" == "$VERSION" ]]; then
-  pass "Cargo.toml version ($CARGO_VERSION) matches tag"
-else
-  fail "Cargo.toml version ($CARGO_VERSION) != tag ($VERSION) — update Cargo.toml"
-fi
-
-# ── Gate 3: Chart.yaml version matches ───────────────────────────────────────
-section "Gate 3: Helm Chart version"
-CHART_VERSION=$(grep '^version:' charts/stellar-operator/Chart.yaml | head -1 | awk '{print $2}')
-CHART_APP_VERSION=$(grep '^appVersion:' charts/stellar-operator/Chart.yaml | head -1 | awk '{print $2}' | tr -d '"')
-
-if [[ "$CHART_VERSION" == "$VERSION" ]]; then
-  pass "Chart.yaml version ($CHART_VERSION) matches tag"
-else
-  fail "Chart.yaml version ($CHART_VERSION) != tag ($VERSION) — update charts/stellar-operator/Chart.yaml"
-fi
-
-if [[ "$CHART_APP_VERSION" == "$VERSION" ]]; then
-  pass "Chart.yaml appVersion ($CHART_APP_VERSION) matches tag"
-else
-  fail "Chart.yaml appVersion ($CHART_APP_VERSION) != tag ($VERSION) — update charts/stellar-operator/Chart.yaml"
-fi
-
-# ── Gate 4: CHANGELOG entry exists ───────────────────────────────────────────
-section "Gate 4: CHANGELOG entry"
+# ── Gate 1: CHANGELOG entry exists ───────────────────────────────────────────
+section "Gate 1: CHANGELOG entry"
 if grep -qE "^## \[?v?${VERSION}\]?" CHANGELOG.md 2>/dev/null; then
   pass "CHANGELOG.md has an entry for v${VERSION}"
 else
   fail "CHANGELOG.md is missing an entry for v${VERSION} — add release notes before tagging"
 fi
 
-# ── Gate 5: cargo audit ───────────────────────────────────────────────────────
-section "Gate 5: cargo audit (security)"
-if command -v cargo-audit >/dev/null 2>&1 || cargo install --locked cargo-audit --quiet 2>/dev/null; then
-  # Run audit; the .cargo/audit.toml file holds project-level ignores
-  if cargo audit --quiet 2>&1 | grep -qE "^error\["; then
-    fail "cargo audit found unignored vulnerabilities — resolve or add to .cargo/audit.toml"
-  else
-    pass "cargo audit passed"
-  fi
-else
-  warn "cargo-audit not available — skipping (install with: cargo install cargo-audit)"
-fi
-
-# ── Gate 6: Helm lint ─────────────────────────────────────────────────────────
-section "Gate 6: Helm lint"
-if command -v helm >/dev/null 2>&1; then
-  if helm lint charts/stellar-operator --strict --quiet 2>&1; then
-    pass "helm lint --strict passed"
-  else
-    fail "helm lint --strict failed — fix chart template errors"
-  fi
-else
-  warn "helm not found — skipping (install from https://helm.sh)"
-fi
-
-# ── Gate 7: Helm unit tests ───────────────────────────────────────────────────
-section "Gate 7: Helm unit tests"
+# ── Gate 2: Helm unit tests ───────────────────────────────────────────────────
+section "Gate 2: Helm unit tests"
 if command -v helm >/dev/null 2>&1 && helm plugin list 2>/dev/null | grep -q unittest; then
   if helm unittest charts/stellar-operator --strict --color 2>&1; then
     pass "helm unittest --strict passed"
@@ -129,7 +74,7 @@ fi
 echo ""
 echo "══════════════════════════════════════════════"
 if [[ "$FAILURES" -eq 0 ]]; then
-  echo -e "${GREEN}${BOLD}✓ All release gates passed — safe to publish v${VERSION}${RESET}"
+  echo -e "${GREEN}${BOLD}✓ Release gates passed — safe to publish v${VERSION}${RESET}"
   echo ""
   echo "  Next steps:"
   echo "    git tag v${VERSION} && git push origin v${VERSION}"
