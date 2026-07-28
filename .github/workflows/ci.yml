@@ -20,6 +20,13 @@ env:
 # ──────────────────────────────────────────────────────────────────────────────
 # Pipeline architecture
 # ──────────────────────────────────────────────────────────────────────────────
+# preflight (strict toolchain version gate) ─┐
+# changes ────────────────────────────────┬──┴── lint ─────────────────────────┐
+#                                          ├── security-audit ────────────────┐ │
+#                                          ├── helm-lint (helm changes only)   │ │
+#                                          ├── examples-smoke-test (examples) │ │
+#                                          └── api-docs (api_docs changes)     │ │
+#                                                                             ▼ ▼
 # changes ──┬── lint ──────────────────────────────────────────────────────────┐
 #           ├── security-audit ──────────────────────────────────────────────┐ │
 #           ├── helm-lint (helm changes only)                                 │ │
@@ -95,6 +102,24 @@ jobs:
           echo "examples=$(_match \
             '^(examples/|config/crd/|config/samples/)')" \
             >> "$GITHUB_OUTPUT"
+
+  # ── 1.5 Repository preflight gate ───────────────────────────────────────────
+  # Strictly enforces the pinned minimum toolchain versions in
+  # scripts/lib/versions.sh (see docs/development in that file for details).
+  # Every substantive job below depends on this passing.
+  preflight:
+    name: Preflight (toolchain versions)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: "ci-preflight"
+
+      - name: Run preflight tool/version gate
+        run: make preflight
 
   # ── 2. Version consistency (main push only) ──────────────────────────────────
   version-consistency:
