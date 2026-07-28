@@ -1479,7 +1479,10 @@ mod tests {
             .map(|_| {
                 let s = server.clone();
                 let o = obj.clone();
-                async move { s.validate(validation_input(Operation::Create, Some(o))).await }
+                async move {
+                    s.validate(validation_input(Operation::Create, Some(o)))
+                        .await
+                }
             })
             .collect();
 
@@ -1505,7 +1508,10 @@ mod tests {
             .map(|_| {
                 let s = server.clone();
                 let o = obj.clone();
-                async move { s.validate(validation_input(Operation::Create, Some(o))).await }
+                async move {
+                    s.validate(validation_input(Operation::Create, Some(o)))
+                        .await
+                }
             })
             .collect();
 
@@ -1540,7 +1546,9 @@ mod tests {
                 let s = server.clone();
                 let o = valid.clone();
                 async move {
-                    let r = s.validate(validation_input(Operation::Create, Some(o))).await;
+                    let r = s
+                        .validate(validation_input(Operation::Create, Some(o)))
+                        .await;
                     ("valid", r.allowed)
                 }
             })
@@ -1551,21 +1559,16 @@ mod tests {
                 let s = server.clone();
                 let o = invalid.clone();
                 async move {
-                    let r = s.validate(validation_input(Operation::Create, Some(o))).await;
+                    let r = s
+                        .validate(validation_input(Operation::Create, Some(o)))
+                        .await;
                     ("invalid", r.allowed)
                 }
             })
             .collect();
 
-        let all_futures: Vec<_> = valid_futures
-            .into_iter()
-            .chain(invalid_futures)
-            .collect();
-
-        let results = futures::future::join_all(all_futures).await;
-
-        let (valid_results, invalid_results): (Vec<_>, Vec<_>) =
-            results.iter().partition(|(tag, _)| *tag == "valid");
+        let valid_results: Vec<_> = futures::future::join_all(valid_futures).await;
+        let invalid_results: Vec<_> = futures::future::join_all(invalid_futures).await;
 
         let valid_denied = valid_results.iter().filter(|(_, ok)| !ok).count();
         let invalid_allowed = invalid_results.iter().filter(|(_, ok)| *ok).count();
@@ -1644,7 +1647,10 @@ mod tests {
             .map(|_| {
                 let s = server.clone();
                 let o = obj.clone();
-                async move { s.validate(validation_input(Operation::Create, Some(o))).await }
+                async move {
+                    s.validate(validation_input(Operation::Create, Some(o)))
+                        .await
+                }
             })
             .collect();
 

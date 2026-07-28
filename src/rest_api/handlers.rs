@@ -244,7 +244,7 @@ pub async fn healthz() -> Json<ProbeResponse> {
 }
 
 /// /readyz - deep health check verifying K8s API connectivity, watch stream health,
-/// and that the first reconciliation cycle has completed.
+/// and that the first reconciliation cycle has completed when work exists.
 pub async fn readyz(
     State(state): State<Arc<ControllerState>>,
 ) -> (StatusCode, Json<ProbeResponse>) {
@@ -257,22 +257,26 @@ pub async fn readyz(
 
     // 1. Basic K8s API connectivity & CRD presence
     let api: Api<StellarNode> = Api::all(state.client.clone());
-    if let Err(e) = api.list(&Default::default()).await {
-        crate::controller::metrics::set_ready_status(false);
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(ProbeResponse {
-                status: "not ready",
-                reason: Some(format!("K8s API/CRD check failed: {e}")),
-            }),
-        );
-    }
+    let listed = match api.list(&Default::default()).await {
+        Ok(list) => list,
+        Err(e) => {
+            crate::controller::metrics::set_ready_status(false);
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ProbeResponse {
+                    status: "not ready",
+                    reason: Some(format!("K8s API/CRD check failed: {e}")),
+                }),
+            );
+        }
+    };
 
-    // 2. Reconciliation progress: Ensure at least one success
+    // 2. Reconciliation progress: require a successful reconcile only when there
+    // is at least one StellarNode to manage. An empty cluster is ready to accept work.
     let last_success = state
         .last_reconcile_success
         .load(std::sync::atomic::Ordering::Relaxed);
-    if last_success == 0 {
+    if last_success == 0 && !listed.items.is_empty() {
         crate::controller::metrics::set_ready_status(false);
         return (
             StatusCode::SERVICE_UNAVAILABLE,

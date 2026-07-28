@@ -22,6 +22,7 @@ jobs:
   trivy-fs-scan:
     name: Trivy Filesystem Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       security-events: write
     steps:
@@ -45,6 +46,7 @@ jobs:
   docker-trivy:
     name: Trivy Container Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       security-events: write
     steps:
@@ -70,6 +72,7 @@ jobs:
   iac-checkov:
     name: IaC Security Scan (Helm/K8s manifests)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       security-events: write
     steps:
@@ -93,6 +96,7 @@ jobs:
   security-matrix:
     name: Security Dashboard
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [trivy-fs-scan, docker-trivy, iac-checkov]
     if: always()
     steps:

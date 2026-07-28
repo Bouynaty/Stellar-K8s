@@ -71,7 +71,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "e2e-quickstart"
+          cache-key: "verify-quickstart"
 
       # ── Tool installs ────────────────────────────────────────────────────
       - name: Install kind
@@ -139,6 +139,7 @@ jobs:
   readme-commands-lint:
     name: README Commands Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
