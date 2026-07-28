@@ -113,3 +113,7 @@ completions/
 charts/**/charts/
 charts/**/Chart.lock
 charts/**/*.tgz
+
+# Local toolchain downloads
+.tools/
+
