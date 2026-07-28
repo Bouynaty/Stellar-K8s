@@ -17,8 +17,13 @@ All reusable logic lives under `.github/actions/`:
 | `setup-rust` | Install Rust toolchain + system deps + Swatinem cache |
 | `setup-kind-cluster` | Provision kind cluster, load image, install CRDs, deploy operator |
 | `collect-e2e-logs` | Dump operator logs, K8s events, StellarNode status → artifact |
+| `collect-failure-diagnostics` | Unified failing-run diagnostics bundle (issue #1151) |
 | `setup-perf-env` | Install k6/kind/kubectl, create cluster, deploy operator with RBAC, port-forward |
 | `build-operator` | Build Rust binary + Docker image + artifact upload in one call (issue #1136) |
+
+See [`docs/ci-failure-diagnostics.md`](../docs/ci-failure-diagnostics.md) for the
+bundle layout and how to invoke `scripts/ci/collect-failure-diagnostics.sh`
+locally.
 
 ---
 

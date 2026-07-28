@@ -32,6 +32,7 @@
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
 	health health-fast validate preflight test-preflight test-shell all \
+	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
 	clean
 
@@ -337,6 +338,18 @@ test-shell: ## Run bats unit tests for shared shell helpers
 	@echo "→ Running shell helper bats tests..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
 	@bats scripts/tests/common.bats
+
+collect-failure-diagnostics: ## Assemble a local CI failure diagnostics bundle (#1151)
+	@echo "→ Assembling failure diagnostics bundle..."
+	@chmod +x scripts/ci/collect-failure-diagnostics.sh
+	@./scripts/ci/collect-failure-diagnostics.sh --no-cluster \
+		--bundle-dir "$${BUNDLE_DIR:-/tmp/ci-diagnostics}" \
+		--job-name "$${JOB_NAME:-local}"
+
+test-failure-diagnostics: ## Verify the unified diagnostics collector (#1151)
+	@echo "→ Testing failure diagnostics collector..."
+	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
+	@bats scripts/tests/failure-diagnostics.bats
 
 # ── Completions ────────────────────────────────────────────────────────────────
 

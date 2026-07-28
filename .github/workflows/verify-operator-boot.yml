@@ -133,7 +133,7 @@ jobs:
             echo "✅ No runtime errors detected"
           fi
 
-      # ── Upload log artifact ───────────────────────────────────────────────
+      # ── Upload log artifact (always-on boot log) ──────────────────────────
       - name: Upload operator log
         if: always() && steps.scope.outputs.run == 'true'
         uses: actions/upload-artifact@v7
@@ -141,6 +141,17 @@ jobs:
           name: operator-boot-log-${{ github.run_id }}
           path: /tmp/operator.log
           retention-days: 7
+
+      # ── Unified failure diagnostics bundle (issue #1151) ─────────────────
+      - name: Upload failure diagnostics bundle
+        if: failure() && steps.scope.outputs.run == 'true'
+        uses: ./.github/actions/collect-failure-diagnostics
+        with:
+          artifact-name: ci-diagnostics-verify-operator-boot-${{ github.run_id }}
+          operator-namespace: stellar-system
+          extra-paths: |
+            /tmp/operator.log
+          retention-days: "14"
 
       # ── Cleanup ───────────────────────────────────────────────────────────
       - name: Delete kind cluster

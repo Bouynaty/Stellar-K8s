@@ -310,6 +310,40 @@ jobs:
           chmod +x scripts/check-secrets.sh
           bash scripts/check-secrets.sh
 
+  # ── 3b1. Failure diagnostics collector self-test (Issue #1151) ─────────────
+  failure-diagnostics:
+    name: Failure Diagnostics Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Run diagnostics collector unit tests
+        run: |
+          chmod +x scripts/ci/collect-failure-diagnostics.sh
+          bats scripts/tests/failure-diagnostics.bats
+
+      - name: Assemble demo bundle artifact
+        if: always()
+        run: |
+          bash scripts/ci/collect-failure-diagnostics.sh \
+            --no-cluster \
+            --bundle-dir /tmp/ci-diagnostics-selftest \
+            --job-name failure-diagnostics \
+            --run-id "${{ github.run_id }}" \
+            --sha "${{ github.sha }}"
+
+      - name: Upload self-test diagnostics bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics-selftest-${{ github.run_id }}
+          path: /tmp/ci-diagnostics-selftest/
+          retention-days: 7
   # ── 3b2. Unreachable modules & dead code paths (Issue #1150) ────────────────
   unreachable-modules:
     name: Unreachable Modules & Dead Code Paths
@@ -650,11 +684,10 @@ jobs:
           done
           exit "$status"
 
-      # ── Failure triage ────────────────────────────────────────────────────
+      # ── Failure triage (unified diagnostics bundle — issue #1151) ─────────
       # A regression here usually means an example manifest drifted out of
-      # sync with the CRD schema. The per-file apply logs above only show up
-      # in the raw job log; capturing them (plus live CRD/event state) as a
-      # downloadable artifact lets a reviewer diagnose the regression without
+      # sync with the CRD schema. Capture apply logs + live CRD/event state
+      # into the standard diagnostics bundle so reviewers can triage without
       # re-running the job locally.
       - name: Capture cluster diagnostics
         if: failure()
@@ -664,13 +697,16 @@ jobs:
           kubectl get events -A --sort-by=.lastTimestamp \
             > /tmp/examples-smoke-triage/cluster-events.log 2>&1 || true
 
-      - name: Upload failure triage artifacts
+      - name: Upload failure diagnostics bundle
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/collect-failure-diagnostics
         with:
-          name: examples-smoke-test-triage-${{ github.run_id }}
-          path: /tmp/examples-smoke-triage/
-          retention-days: 7
+          artifact-name: ci-diagnostics-examples-smoke-${{ github.run_id }}
+          operator-namespace: stellar-system
+          extra-namespaces: stellar stellar-nodes metallb-system
+          extra-paths: |
+            /tmp/examples-smoke-triage
+          retention-days: "14"
 
   # ── 8.5. Stale Sample Manifest Detector ──────────────────────────────────────
   # Validates that sample manifests in config/samples/ are syntactically valid,
