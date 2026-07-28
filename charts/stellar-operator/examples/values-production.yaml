@@ -98,12 +98,7 @@ otel:
 
 # Feature flags
 featureFlags:
-  enableCveScanning: true
-  enableReadPool: true
   enableDr: true
-  enablePeerDiscovery: true
-  enableArchiveHealth: true
-  enableSorobanMetrics: true
 
 # Horizon HPA for auto-scaling
 horizonHpa:

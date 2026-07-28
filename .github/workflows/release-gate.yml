@@ -20,6 +20,7 @@ jobs:
   gate:
     name: Release Validation Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +40,12 @@ jobs:
         run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v0.5.1
 
       - name: Install cargo-audit
-        run: cargo install --locked cargo-audit
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-audit && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Extract version from tag
         id: version

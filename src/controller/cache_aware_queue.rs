@@ -45,18 +45,15 @@ use serde::{Deserialize, Serialize};
 ///
 /// Ordering is significant: variants declared later sort higher, so
 /// `Critical > High > Normal > Low` when compared or placed in a max-heap.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+)]
 pub enum ReconcilePriority {
     Low,
+    #[default]
     Normal,
     High,
     Critical,
-}
-
-impl Default for ReconcilePriority {
-    fn default() -> Self {
-        Self::Normal
-    }
 }
 
 /// Base delay for cache-aware exponential back-off.
