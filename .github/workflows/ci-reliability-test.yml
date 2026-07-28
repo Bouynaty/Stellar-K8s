@@ -129,8 +129,8 @@ jobs:
             echo "Checking $action versions..."
             
             # Find all uses of this action
-            VERSIONS=$(find .github -name "*.yml" -exec grep -h "uses: $action@" {} \; | sort | uniq)
-            VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
+          VERSIONS=$(find .github -name "*.yml" -exec grep -h "uses: $action@" {} \; | sed 's/^[[:space:]]*//' | sort -u)
+          VERSION_COUNT=$(echo "$VERSIONS" | grep -c . || true)
             
             if [ $VERSION_COUNT -gt 1 ]; then
               echo "❌ Inconsistent versions for $action:"
@@ -166,10 +166,10 @@ jobs:
         run: |
           echo "🔍 Checking for deprecated Rust cache settings..."
           
-          # Check for deprecated cache-all-crates
-          if grep -r "cache-all-crates" .github/; then
+          # Check for deprecated cache-all-crates: YAML keys (not comments)
+          if grep -r "cache-all-crates:" .github/; then
             echo "❌ Found deprecated 'cache-all-crates' setting:"
-            grep -r "cache-all-crates" .github/
+            grep -r "cache-all-crates:" .github/
             exit 1
           fi
           
