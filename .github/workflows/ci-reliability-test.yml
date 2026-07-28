@@ -31,8 +31,8 @@ jobs:
 
       - name: Validate base image digest
         run: |
-          # Extract the digest from Dockerfile
-          DIGEST=$(grep -E "FROM debian:bookworm-slim@sha256:" Dockerfile | cut -d'@' -f2)
+          # Extract the digest from Dockerfile (strip optional "AS <stage>" suffix)
+          DIGEST=$(grep -E "FROM debian:bookworm-slim@sha256:" Dockerfile | sed -E 's/.*@(sha256:[a-fA-F0-9]{64}).*/\1/')
           echo "Found digest: $DIGEST"
           
           # Verify it's a valid SHA256 (64 hex characters)
