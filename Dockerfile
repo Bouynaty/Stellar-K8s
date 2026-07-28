@@ -80,7 +80,7 @@ COPY target/release/kubectl-stellar /kubectl-stellar
 # health-check declaration that are identical between the local-dev and CI
 # runtime images.  Both runtime-local and runtime inherit from this stage.
 # ==============================================================================
-FROM debian:bookworm-slim@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef AS runtime-base
+FROM debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818 AS runtime-base
 
 # Install runtime dependencies for dynamic linking
 RUN apt-get update -qq && \
