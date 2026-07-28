@@ -41,9 +41,12 @@ jobs:
           cache-key: "docs-deploy"
 
       - name: Generate Rust API documentation
+        # Issue #1138: RUSTDOCFLAGS=-D warnings turns any rustdoc warning into
+        # a hard error so that documentation quality is enforced in CI.
+        # The continue-on-error guard has been removed — broken docs must be
+        # fixed before they are published to the docs site.
         run: |
-          cargo doc --no-deps --document-private-items
-        continue-on-error: true  # Don't fail if Rust project has issues
+          RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
 
       - name: Configure Git
         run: |

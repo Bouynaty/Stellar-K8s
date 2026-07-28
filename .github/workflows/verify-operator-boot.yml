@@ -51,16 +51,13 @@ jobs:
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # ── Build (AC #1) ─────────────────────────────────────────────────────
-      - name: Setup Rust
+      # ── Build (AC #1) — shared composite action (issue #1136) ──────────────
+      - name: Build operator binary
         if: steps.scope.outputs.run == 'true'
-        uses: ./.github/actions/setup-rust
+        uses: ./.github/actions/build-operator
         with:
           cache-key: "verify-boot"
-
-      - name: Build release binary
-        if: steps.scope.outputs.run == 'true'
-        run: cargo build --release --locked --bin stellar-operator
+          binary-only: "true"
 
       - name: Confirm binary exists
         if: steps.scope.outputs.run == 'true'

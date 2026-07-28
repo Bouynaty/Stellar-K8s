@@ -2,47 +2,9 @@
 
 ## Overview
 
-This document describes the hardened CI/CD pipeline architecture with reliability
-improvements addressing stability, security, and production correctness issues.
-
-**Recent Updates (2026-07-28):** Major stability and security hardening wave
-focused on eliminating CI failures, standardizing configurations, and improving
-error handling.
-
----
-
-## Pipeline Reliability Improvements (2026-07-28)
-
-### Critical Fixes Applied
-
-#### ✅ Docker Base Image Security
-- **Fixed invalid digest**: Updated `debian:bookworm-slim` with valid SHA256 digest
-- **Supply chain security**: Ensures reproducible, verified base images
-- **Impact**: Eliminates "invalid digest format" build failures
-
-#### ✅ Security Audit Hardening  
-- **Centralized configuration**: Uses `.cargo/audit.toml` instead of inline CLI ignores
-- **Documented ignores**: Each CVE ignore includes justification and review date
-- **Removed stale entries**: Eliminated non-existent year-2026 RUSTSEC IDs
-- **Audit trail**: Clear tracking of security decisions
-
-#### ✅ Action Version Consistency
-- **Standardized versions**: All workflows use consistent action versions
-- **Updated versions**:
-  - `actions/setup-python`: `@v6` (was inconsistent `@v5`/`@v6`)
-  - `aquasecurity/trivy-action`: `@v0.36.0` (was mixed `@v0.35.0`/`@v0.36.0`)
-- **Prevents**: Breaking changes from automatic minor version updates
-
-#### ✅ Rust Cache Optimization
-- **Removed deprecated setting**: `cache-all-crates: true` → `cache-directories`
-- **Explicit cache paths**: Prevents cache thrashing between jobs  
-- **Save optimization**: Only saves cache on main branch pushes
-- **Performance**: Faster cache restoration, reduced cache size
-
-#### ✅ Enhanced Error Handling
-- **Retry logic**: Robust handling of network failures for tool installation
-- **Exponential backoff**: Built-in retry patterns for transient failures
-- **Timeout management**: Proper timeouts prevent hanging jobs
+This document describes the optimized CI/CD pipeline architecture.  It covers
+the original cleanup wave (issues #700, #701, #703, #714) as well as the
+follow-up hardening wave (issues #1136, #1137, #1138, #1139).
 
 ---
 
@@ -50,17 +12,112 @@ error handling.
 
 All reusable logic lives under `.github/actions/`:
 
-| Action | Purpose | Reliability Features |
-|--------|---------|---------------------|
-| `setup-rust` | Install Rust toolchain + system deps + cache | ✅ Optimized cache config, retry logic |
-| `setup-kind-cluster` | Provision kind cluster, load image, install CRDs | ✅ Timeout handling, error recovery |
-| `collect-e2e-logs` | Dump logs → artifact | ✅ Guaranteed artifact collection |
-| `setup-perf-env` | Install k6/kind/kubectl, deploy operator | ✅ Dependency verification |
-| `security-scan` | Run Trivy security scanning | ✅ Updated to v0.36.0 |
+| Action | Purpose |
+|--------|---------|
+| `setup-rust` | Install Rust toolchain + system deps + Swatinem cache |
+| `setup-kind-cluster` | Provision kind cluster, load image, install CRDs, deploy operator |
+| `collect-e2e-logs` | Dump operator logs, K8s events, StellarNode status → artifact |
+| `setup-perf-env` | Install k6/kind/kubectl, create cluster, deploy operator with RBAC, port-forward |
+| `build-operator` | Build Rust binary + Docker image + artifact upload in one call (issue #1136) |
 
 ---
 
-## Core CI Workflows (#700)
+## Hardening Wave: Issues #1136–#1139
+
+### #1136 — Consolidate duplicated command bootstrap across CI workflows
+
+The `chaos-tests`, `soak-test`, `performance`, and `verify-operator-boot`
+workflows previously each contained their own copy of:
+
+```
+setup-rust → cargo build --release → docker build → docker save → upload-artifact
+```
+
+This is now consolidated into `.github/actions/build-operator/action.yml`.
+Each workflow calls the composite action with the appropriate `image-tag`,
+`cache-key`, and optional `binary-only` / `upload-artifact` flags.
+
+Additionally, `stale-docs.yml` previously had its own `dtolnay/rust-toolchain`
+install + manual `actions/cache` block.  It now uses `setup-rust` for
+consistency.
+
+**Verification:** grep for `dtolnay/rust-toolchain` outside of
+`.github/actions/setup-rust/action.yml` — the only remaining hit should be
+`release.yml` (cross-compilation matrix targets require direct toolchain
+installation per platform).
+
+### #1137 — Enforce command parity between README, Makefile, and CI jobs
+
+Missing Makefile targets that were declared in `.PHONY` but had no recipe
+body:
+
+| Target | Fix |
+|--------|-----|
+| `docker-multiarch` | Added recipe that dispatches the `multiarch-build.yml` workflow via `gh workflow run` |
+| `run` | Added recipe as a documented alias for `run-local` (matches README references) |
+| `update-doc-baseline` | New target to run `doc-check --update-baseline` |
+| `docs-check-strict` | New target that runs `doc-check status` without `--warn-only` (hard fail) |
+| `docs-lint` | New target that runs `cargo doc` with `RUSTDOCFLAGS="-D warnings"` |
+| `sort-manifests` | New target that invokes `scripts/sort-manifests.py` on stdin |
+
+**Verification:** `make help` — all targets declared in `.PHONY` now have a
+corresponding recipe and description.
+
+### #1138 — Add strict failure-on-warning policy for Rust lint and docs stages
+
+Two changes enforce a zero-tolerance warning policy:
+
+1. **`ci.yml` lint job** — a new "Check rustdoc (warnings as errors)" step runs
+   `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace …` immediately
+   after the existing clippy steps.  A missing or malformed doc comment now
+   fails CI.
+
+2. **`docs-deploy.yml`** — removed the `continue-on-error: true` guard on the
+   `cargo doc` step and added `RUSTDOCFLAGS="-D warnings"`.  Broken docs can no
+   longer silently pass and be published.
+
+3. **Makefile `ci-local`** — `docs-lint` is now part of the local CI pipeline
+   so contributors catch doc warnings before pushing.
+
+**Verification:**
+```bash
+# Local check
+make docs-lint
+
+# Simulate CI
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace \
+  --features "rest-api,metrics,admission-webhook,k8s-v1-30"
+```
+
+### #1139 — Create deterministic ordering for generated manifests in pipelines
+
+Two sources of non-determinism have been addressed:
+
+1. **`crd-gen` Makefile target** — output of `cargo run --bin crdgen` is now
+   piped through `scripts/sort-manifests.py`, which sorts all YAML mapping keys
+   recursively and orders documents by `(kind, namespace, name)`.
+
+2. **`bundle-render` Makefile target** — output of `helm template` is sorted the
+   same way before being written to `rendered/manifests.yaml`.
+
+3. **`ci.yml` `manifest-order` job** — new CI job that:
+   - Verifies `config/crd/stellarnode-crd.yaml` is already in canonical sorted
+     order (fails if uncommitted CRD changes are present without sorting).
+   - Renders the Helm chart twice and diffs the sorted outputs to confirm
+     idempotence.
+
+**Verification:**
+```bash
+# Sort an existing manifest and check for diffs
+python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml \
+  | diff - config/crd/stellarnode-crd.yaml && echo "Already sorted"
+
+# Regenerate CRD with deterministic output
+make crd-gen
+git diff config/crd/stellarnode-crd.yaml  # should be empty if already sorted
+```
+
+---
 
 ### `ci.yml`
 - **Change detection** gates expensive jobs (helm-lint, api-docs, examples-smoke-test,
