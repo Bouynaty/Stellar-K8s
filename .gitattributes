@@ -1,0 +1,3 @@
+# Keep shell scripts LF so sourced vars / bash don't break on Windows checkouts.
+*.sh text eol=lf
+scripts/lib/* text eol=lf
