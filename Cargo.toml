@@ -212,6 +212,10 @@ name = "doc-check"
 path = "src/bin/doc_check.rs"
 
 [[bin]]
+name = "check-unreachable-modules"
+path = "src/bin/check_unreachable_modules.rs"
+
+[[bin]]
 name = "stellar-sidecar"
 path = "src/sidecar.rs"
 

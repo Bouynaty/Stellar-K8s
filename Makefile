@@ -33,6 +33,7 @@
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
 	health health-fast validate preflight test-preflight test-shell all \
 	collect-failure-diagnostics test-failure-diagnostics \
+	check-unreachable-modules \
 	clean
 
 .DEFAULT_GOAL := help
@@ -221,6 +222,10 @@ validate: ## Fast validation (alias for health-fast)
 	@bash scripts/repo-health.sh --fast
 
 # ── Quality & Health ───────────────────────────────────────────────────────────
+
+check-unreachable-modules: ## Static check for unreachable modules and dead code paths (#1150)
+	@echo "→ Checking unreachable modules and dead code paths..."
+	@$(CARGO) run --quiet --locked --bin check-unreachable-modules
 
 link-check: ## Check markdown links (internal anchors + relative paths)
 	@echo "→ Running markdown link checker..."
