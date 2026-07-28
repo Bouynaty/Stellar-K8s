@@ -6,34 +6,7 @@ The Stellar-K8s operator includes a real-time visualization of the Stellar Conse
 
 ## Enabling the Feature
 
-The SCP topology endpoints are always available when the operator is running. Set the `enable_scp_topology` feature flag to `"true"` in the `stellar-operator-config` ConfigMap to signal to the operator that topology polling should be prioritized:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: stellar-operator-config
-  namespace: stellar-system
-data:
-  enable_scp_topology: "true"
-```
-
-### Via Helm
-
-Set the flag in your `values.yaml`:
-
-```yaml
-featureFlags:
-  enableScpTopology: "true"
-```
-
-Or pass it on the CLI:
-
-```bash
-helm upgrade stellar-operator charts/stellar-operator \
-  --namespace stellar-system \
-  --set featureFlags.enableScpTopology=true
-```
+The SCP topology endpoints are always available when the operator is running — no feature flag is required. Open the operator dashboard (or call the topology API routes) to visualize the quorum graph.
 
 ---
 

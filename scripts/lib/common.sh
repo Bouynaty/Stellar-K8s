@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # scripts/lib/common.sh
 # Shared utilities: repository resolution, dry-run parsing, and retry logic.
+#
+# Sourced by other scripts — strict mode is expected to be set by the caller.
+# Callers MUST have `set -euo pipefail` before sourcing this file.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 # shellcheck source=scripts/lib/errors.sh

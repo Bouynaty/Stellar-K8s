@@ -150,6 +150,24 @@ impl Error {
     pub fn status_message(&self) -> String {
         self.to_string()
     }
+
+    /// Map this error to the process exit code documented in
+    /// `docs/cli-commands-reference.md#exit-codes`.
+    ///
+    /// Rust's default `Termination` impl for `Result<(), Error>` always exits
+    /// with code 1 on `Err`, regardless of the error variant, so every CLI
+    /// command was silently ignoring the documented 2/3/4 exit codes unless it
+    /// special-cased `std::process::exit` itself. Routing every command's
+    /// error through this method instead keeps the exit code consistent with
+    /// the error category everywhere.
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            Error::ValidationError(_) | Error::InvalidNodeType(_) | Error::MissingRequiredField { .. } => 2,
+            Error::KubeError(_) | Error::KubeconfigError(_) | Error::FinalizerError(_) | Error::NotFound { .. } => 3,
+            Error::ConfigError(_) | Error::MaintenanceError(_) | Error::CertificateError(_) => 4,
+            _ => 1,
+        }
+    }
 }
 
 // Implement From for kube::runtime::finalizer::Error to enable ? operator
@@ -302,7 +320,10 @@ mod tests {
             invalid_node_err.to_string(),
             "[SK8S-007] Invalid node type: bad_type"
         );
-        assert_eq!(invalid_node_err.status_message(), invalid_node_err.to_string());
+        assert_eq!(
+            invalid_node_err.status_message(),
+            invalid_node_err.to_string()
+        );
 
         let missing_field_err = Error::MissingRequiredField {
             field: "image".to_string(),
@@ -312,21 +333,30 @@ mod tests {
             missing_field_err.to_string(),
             "[SK8S-008] Missing required field: image for node type core"
         );
-        assert_eq!(missing_field_err.status_message(), missing_field_err.to_string());
+        assert_eq!(
+            missing_field_err.status_message(),
+            missing_field_err.to_string()
+        );
 
         let archive_health_err = Error::ArchiveHealthCheckError("unreachable".to_string());
         assert_eq!(
             archive_health_err.to_string(),
             "[SK8S-009] Archive health check failed: unreachable"
         );
-        assert_eq!(archive_health_err.status_message(), archive_health_err.to_string());
+        assert_eq!(
+            archive_health_err.status_message(),
+            archive_health_err.to_string()
+        );
 
         let remediation_err = Error::RemediationError("failed to restart".to_string());
         assert_eq!(
             remediation_err.to_string(),
             "[SK8S-011] Remediation failed: failed to restart"
         );
-        assert_eq!(remediation_err.status_message(), remediation_err.to_string());
+        assert_eq!(
+            remediation_err.status_message(),
+            remediation_err.to_string()
+        );
 
         let plugin_err = Error::PluginError("crash".to_string());
         assert_eq!(plugin_err.to_string(), "[SK8S-012] Plugin error: crash");
@@ -352,6 +382,9 @@ mod tests {
             maintenance_err.to_string(),
             "[SK8S-017] Database maintenance error: db locked"
         );
-        assert_eq!(maintenance_err.status_message(), maintenance_err.to_string());
+        assert_eq!(
+            maintenance_err.status_message(),
+            maintenance_err.to_string()
+        );
     }
 }

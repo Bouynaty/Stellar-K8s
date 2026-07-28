@@ -110,11 +110,11 @@ nav:
     - Backup and Restore: tutorials/backup-restore.md
   - Troubleshooting:
     - troubleshooting/index.md
-    - Operator Troubleshooting: troubleshooting/operator-troubleshooting.md
     - Common Issues: troubleshooting/common-issues.md
     - Networking: troubleshooting/networking.md
-    - Disk Scaling: troubleshooting/disk-scaling.md
-    - Sync Problems: troubleshooting/sync-problems.md
+    - Diagnostic Decision Trees: troubleshooting/diagnostic-decision-trees.md
+    - Operator Runbooks: troubleshooting/operator-runbooks.md
+    - Metrics and Alerting: troubleshooting/metrics-alerting.md
   - API Reference:
     - api-reference/index.md
   - Security:

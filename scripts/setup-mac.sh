@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Repeatable macOS dev environment bootstrap for Stellar-K8s.
 # Safe to run multiple times — skips steps already at the right version.
 set -euo pipefail

@@ -10,6 +10,9 @@
 //! ```rust
 //! use stellar_k8s::logging::fields as F;
 //!
+//! # let node_name = "node-1".to_string();
+//! # let namespace = "default".to_string();
+//! # let reconcile_id = 42u64;
 //! tracing::info!(
 //!     { F::NODE }      = %node_name,
 //!     { F::NAMESPACE } = %namespace,
@@ -127,15 +130,27 @@ pub const FEATURES: &str = "features";
 
 /// All field name constants, used by the field-name audit test.
 pub const ALL_FIELDS: &[&str] = &[
-    NODE, NAMESPACE, NODE_TYPE, CLUSTER, K8S_NODE,
-    RECONCILE_ID, PHASE,
-    ERROR, DURATION_MS, COMPONENT,
-    LEDGER, VERSION, REGION,
+    NODE,
+    NAMESPACE,
+    NODE_TYPE,
+    CLUSTER,
+    K8S_NODE,
+    RECONCILE_ID,
+    PHASE,
+    ERROR,
+    DURATION_MS,
+    COMPONENT,
+    LEDGER,
+    VERSION,
+    REGION,
     JOB_ID,
     AUDIT_ACTION,
     SCRUB_PATTERN,
-    TRACE_ID, SPAN_ID,
-    CI_STEP, GIT_SHA, FEATURES,
+    TRACE_ID,
+    SPAN_ID,
+    CI_STEP,
+    GIT_SHA,
+    FEATURES,
 ];
 
 #[cfg(test)]
@@ -146,7 +161,11 @@ mod tests {
     #[test]
     fn all_field_names_are_non_empty() {
         for field in ALL_FIELDS {
-            assert!(!field.is_empty(), "field name must not be empty: {:?}", field);
+            assert!(
+                !field.is_empty(),
+                "field name must not be empty: {:?}",
+                field
+            );
         }
     }
 
@@ -154,7 +173,9 @@ mod tests {
     fn all_field_names_are_lowercase_snake_case() {
         for field in ALL_FIELDS {
             assert!(
-                field.chars().all(|c| c.is_lowercase() || c == '_'),
+                field
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()),
                 "field name '{}' must be lowercase_snake_case",
                 field
             );
