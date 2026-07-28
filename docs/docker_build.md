@@ -44,7 +44,7 @@ docker image inspect --format='{{.RepoDigests}}' stellar-operator:latest
 Both runs should output the **same** digest (e.g. `stellar-operator@sha256:abcd1234…`).
 
 ## CI integration
-Multi-arch images are built and published by the GitHub workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (Docker Build job). Release re-tagging is handled by [`.github/workflows/release.yml`](../.github/workflows/release.yml).
+Multi-arch images are built and published by the CI multi-arch workflow (see [CI commands](../.github/CI_COMMANDS.md)). Release re-tagging is handled by [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
 Local kind/e2e tests should prefer `make docker-build` or the shared [setup-kind-cluster](../.github/actions/setup-kind-cluster/action.yml) composite action instead of ad-hoc `docker build` scripts.
 
