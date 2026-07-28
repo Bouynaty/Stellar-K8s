@@ -121,6 +121,18 @@ jobs:
         with:
           cache-key: "ci-preflight"
 
+      - name: Install pinned kubectl, helm, and kind
+        run: |
+          set -euo pipefail
+          # shellcheck source=scripts/lib/versions.sh
+          source scripts/lib/versions.sh
+          curl -fsSL -o kubectl "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
+          curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" | tar xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          curl -fsSL -o kind "https://kind.sigs.k8s.io/dl/v${KIND_VERSION}/kind-linux-amd64"
+          chmod +x kind && sudo mv kind /usr/local/bin/kind
+
       - name: Run preflight tool/version gate
         run: make preflight
 
@@ -189,9 +201,8 @@ jobs:
   lint:
     name: Lint & Format
     runs-on: ubuntu-latest
-    needs: [changes, repo-hygiene]
+    needs: [changes, preflight]
     timeout-minutes: 15
-    needs: [changes]
     steps:
       - uses: actions/checkout@v7
 
