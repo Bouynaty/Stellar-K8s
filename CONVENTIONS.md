@@ -70,7 +70,7 @@ entry points only — detailed content belongs in `docs/`.
 | Element | Convention | Example |
 |---|---|---|
 | File names | `kebab-case.sh` | `setup-mac.sh` |
-| Operational scripts | live in `scripts/` | `scripts/validate.sh` |
+| Operational scripts | live in `scripts/` | `scripts/repo-health.sh` |
 | Historical / one-off | move to `scripts/archive/` | `scripts/archive/create_batch_2_issues.sh` |
 
 Every script must pass `shellcheck -S error` before merging.

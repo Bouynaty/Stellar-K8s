@@ -249,7 +249,7 @@ make link-check-all # Repo-wide link check via lychee (markdown + source + confi
 Run through this before marking a PR ready for review:
 
 - [ ] `make health` passes (format + lint + test + docs) — or `make ci-local` for the full audit + link-check gate
-- [ ] `make validate` passes for a quick pre-push compile check
+- [ ] `make health-fast` passes for a quick pre-push compile check
 - [ ] No new `#[allow(dead_code)]` without an explanatory comment
 - [ ] No unused imports in modified files
 - [ ] Generated manifests are up to date with their source

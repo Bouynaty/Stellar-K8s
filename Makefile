@@ -211,8 +211,7 @@ health: ## Run common repository health checks (format, lint, test, docs, links)
 health-fast: ## Fast health gate (format, lint, compile only)
 	@bash scripts/repo-health.sh --fast
 
-validate: ## Fast validation (alias for health-fast)
-	@bash scripts/repo-health.sh --fast
+validate: health-fast ## Fast validation (alias for health-fast)
 
 # ── Quality & Health ───────────────────────────────────────────────────────────
 

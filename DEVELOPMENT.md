@@ -24,7 +24,7 @@ The following one-off scripts were removed as part of repository hygiene (#1002)
 |---------|-------------|
 | `scripts/cleanup_root.sh` | Manual cleanup; no automated replacement |
 | `scripts/organize_scripts.sh` | Batch scripts live under `scripts/archive/` |
-| `scripts/dev-utils/*` | `make dev-setup`, `make preflight`, `make validate` |
+| `scripts/dev-utils/*` | `make dev-setup`, `make preflight`, `make health-fast` |
 | `benchmarks/test-webhook-local.sh` | `make benchmark-webhook` |
 | `benchmarks/run-proximity-benchmark.sh` | `make benchmark` |
 | `config/samples/benchmark-compare-example.sh` | `benchmarks/run-regression-test.sh` |
@@ -394,7 +394,7 @@ make clean         # Remove build artifacts
 make preflight     # Validate all required tools are installed (run this first)
 make health        # Recommended: format + lint + tests + docs (+ shellcheck)
 make quick         # Fast pre-commit check (format + compile)
-make validate      # Fast compile path: format + lint + compile check (no tests)
+make health-fast  # Fast compile path: format + lint + compile check (no tests)
 make ci-local      # Full CI pipeline locally (fmt-check + lint + audit + test + build + link-check)
 ```
 
@@ -686,7 +686,7 @@ make dev-setup                    # One-time setup
 make preflight                    # Validate required tools are installed
 make health                       # Common health gate (format, lint, test, docs)
 make quick                        # Fast pre-commit check
-make validate                     # Format + lint + compile check (no tests)
+make health-fast                 # Format + lint + compile check (no tests)
 make ci-local                     # Full CI validation
 
 # Development (canonical — prefer make targets to match CI feature flags)
