@@ -189,14 +189,15 @@ fn audit_fixture_file(path: &Path) -> Result<String, String> {
 }
 
 fn residual_secret(s: &str) -> bool {
-    // Stellar seed-like token still present (may be bare or key=value attached).
+    // Mirror log_scrub stellar_seed: 'S' + 54 alphanumerics = 55 chars total
+    // (see src/log_scrub.rs). Seeds may appear bare or as key=value tokens.
     if s.split_whitespace().any(|tok| {
         if tok.contains("[REDACTED") {
             return false;
         }
         let candidate = tok.rsplit('=').next().unwrap_or(tok);
-        candidate.starts_with('S')
-            && candidate.len() == 56
+        candidate.len() == 55
+            && candidate.starts_with('S')
             && candidate.chars().all(|c| c.is_ascii_alphanumeric())
     }) {
         return true;
