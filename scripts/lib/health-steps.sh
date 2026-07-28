@@ -79,10 +79,7 @@ sk8s_health_link_check() {
 }
 
 sk8s_health_cargo_audit() {
-  if ! command -v cargo-audit >/dev/null 2>&1; then
-    cargo install --locked cargo-audit
-  fi
-  cargo audit --deny unsound
+  bash "${REPO_ROOT}/scripts/dep-gate.sh" --audit-only
 }
 
 sk8s_health_helm_lint() {
