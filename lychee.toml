@@ -72,6 +72,12 @@ exclude = [
   # announced in their release notes — re-verifying them on every PR
   # provides almost no signal and costs every contributor a CI flake.
   "^https://kubernetes\\.io/docs/",
+  # Root/blog pages also reset from GHA IPs (same Cloudflare fronting as /docs/).
+  "^https://kubernetes\\.io/blog/",
+  "^https://kubernetes\\.io/?$",
+  # GitHub "latest/download" assets for kubernetes autoscaler are redirect-only and
+  # intermittently fail DNS/TLS from GHA; pin checks provide no PR signal.
+  "^https://github\\.com/kubernetes/autoscaler/releases/latest/download/",
   # Placeholder URLs that appear in code examples and snippets
   "^https://host/path/backup\\.tar\\.gz",
   "example\\.com",

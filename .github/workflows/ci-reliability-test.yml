@@ -67,7 +67,7 @@ jobs:
 
       - uses: ./.github/actions/setup-rust
         with:
-          cache-key: "audit-test"
+          cache-key: "ci-audit-test"
 
       - name: Test cargo audit configuration
         run: |
@@ -129,7 +129,8 @@ jobs:
             echo "Checking $action versions..."
             
             # Find all uses of this action
-            VERSIONS=$(find .github -name "*.yml" -exec grep -h "uses: $action@" {} \; | sort | uniq)
+            VERSIONS=$(find .github \( -name "*.yml" -o -name "*.yaml" \) -exec grep -h "uses: $action@" {} \; \
+              | sed 's/^[[:space:]]*//' | sort -u)
             VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
             
             if [ $VERSION_COUNT -gt 1 ]; then
@@ -166,10 +167,12 @@ jobs:
         run: |
           echo "🔍 Checking for deprecated Rust cache settings..."
           
-          # Check for deprecated cache-all-crates
-          if grep -r "cache-all-crates" .github/; then
+          # Check for deprecated cache-all-crates (ignore this workflow's own docs)
+          if grep -r --include='*.yml' --include='*.yaml' -n 'cache-all-crates:' .github/ \
+               | grep -v 'ci-reliability-test.yml'; then
             echo "❌ Found deprecated 'cache-all-crates' setting:"
-            grep -r "cache-all-crates" .github/
+            grep -r --include='*.yml' --include='*.yaml' -n 'cache-all-crates:' .github/ \
+              | grep -v 'ci-reliability-test.yml' || true
             exit 1
           fi
           

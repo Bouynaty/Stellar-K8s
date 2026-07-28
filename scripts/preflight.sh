@@ -50,9 +50,20 @@ fail() { echo -e "  ${RED}[FAIL]${NC} $*"; }
 warn() { echo -e "  ${YELLOW}[WARN]${NC} $*"; }
 
 # Pull the first x.y.z (optionally v-prefixed) version token out of arbitrary
-# `--version` output, regardless of exact tool-specific formatting.
+# version output, regardless of exact tool-specific formatting.
 _extract_semver() {
   grep -oE 'v?[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1 | sed 's/^v//'
+}
+
+# Tool-specific version probes — kubectl/helm do not accept a global --version.
+_tool_version_output() {
+  local binary="$1"
+  case "${binary}" in
+    kubectl) "${binary}" version --client 2>&1 ;;
+    helm)    "${binary}" version --short 2>&1 || "${binary}" version 2>&1 ;;
+    kind)    "${binary}" version 2>&1 ;;
+    *)       "${binary}" --version 2>&1 ;;
+  esac
 }
 
 # --------------------------------------------------------------------------- #
@@ -80,8 +91,12 @@ check_tools() {
     local hint="${VERSIONED_TOOLS[$binary]#*|}"
 
     local got=""
-    got=$(${binary} --version 2>&1 | _extract_semver) || got=""
-    [[ -z "${got}" ]] && got="missing"
+    if ! command -v "${binary}" >/dev/null 2>&1; then
+      got="missing"
+    else
+      got=$(_tool_version_output "${binary}" | _extract_semver) || got=""
+      [[ -z "${got}" ]] && got="missing"
+    fi
 
     if [[ "${got}" == "missing" ]]; then
       fail "${binary} not found in PATH (requires >= ${pinned})"

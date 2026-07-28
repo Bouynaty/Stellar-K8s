@@ -31,7 +31,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "maintenance-audit"
+          cache-key: "ci-maintenance-audit"
           extra-tools: "cargo-audit"
           cache-key: "ci-audit-maintenance"
 
