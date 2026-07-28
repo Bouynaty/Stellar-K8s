@@ -20,7 +20,9 @@ AdmissionReview → WebhookServer::validate
 ```
 
 All 52 tests are **hermetic** — no Kubernetes cluster, network connection, or
-external service is required.
+external service is required. Every test shares one `new_server()` helper for
+constructing the `WebhookServer` under test, so the construction path can't
+drift between individual tests as the suite grows.
 
 ## Running the Tests
 

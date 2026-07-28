@@ -33,3 +33,7 @@ When encountering these errors, the primary source of detailed insight will be t
 kubectl logs -n stellar-system deploy/stellar-operator
 ```
 Look for the `[SK8S-XXX]` prefix in the logging output for rapid filtering.
+
+---
+
+*Last verified: 2026-07-27 (cleanup wave #1187/#1189/#1190/#1191).*

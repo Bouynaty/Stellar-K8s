@@ -4,10 +4,11 @@
 set -euo pipefail
 
 # ── Pinned versions ───────────────────────────────────────────────────────────
-RUST_TOOLCHAIN="1.92"          # keep in sync with ci.yml toolchain
-KIND_VERSION="0.24.0"
-KUBECTL_VERSION="1.30.0"
-HELM_VERSION="3.16.0"
+# RUST_TOOLCHAIN / KIND_VERSION / KUBECTL_VERSION / HELM_VERSION come from the
+# shared lib so this script, setup-mac.sh, and preflight.sh can't drift apart.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/versions.sh
+source "${SCRIPT_DIR}/lib/versions.sh"
 K6_VERSION="0.54.0"
 
 # ── Colours ───────────────────────────────────────────────────────────────────

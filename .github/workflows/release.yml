@@ -37,6 +37,7 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       version: ${{ steps.version.outputs.version }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
@@ -73,6 +74,7 @@ jobs:
   build-artifacts:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     needs: validate
     strategy:
       fail-fast: false
@@ -160,6 +162,7 @@ jobs:
   container:
     name: Container
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: validate
     steps:
       - uses: actions/checkout@v7
@@ -240,6 +243,7 @@ jobs:
   security:
     name: Security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [validate, container]
     permissions:
       contents: read
@@ -262,6 +266,7 @@ jobs:
   helm:
     name: Helm
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: validate
     steps:
       - uses: actions/checkout@v7
@@ -293,6 +298,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [validate, build-artifacts, container, security, helm]
     steps:
       - uses: actions/checkout@v7
@@ -358,6 +364,7 @@ jobs:
   provenance-check:
     name: Provenance Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [validate, build-artifacts, container, release]
     permissions:
       contents: read
