@@ -56,7 +56,6 @@ jobs:
         with:
           cache-key: "dep-audit"
           extra-tools: "cargo-audit"
-          cache-key: "ci-audit"
 
       - name: Install cargo-audit
         run: |
@@ -129,7 +128,6 @@ jobs:
         with:
           cache-key: "dep-stale"
           extra-tools: "cargo-outdated"
-          cache-key: "ci-stale"
 
       - name: Install cargo-outdated
         run: |
@@ -176,7 +174,6 @@ jobs:
         with:
           cache-key: "dep-diff"
           extra-tools: "cargo-lock"
-          cache-key: "ci-diff"
 
       - name: Install cargo-diff-tree
         run: |
@@ -207,7 +204,6 @@ jobs:
         with:
           cache-key: "dep-license"
           extra-tools: "cargo-license"
-          cache-key: "ci-license"
 
       - name: Install cargo-license
         run: |
