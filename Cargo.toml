@@ -116,7 +116,7 @@ prometheus-client = { version = "0.22", optional = true }
 once_cell = { version = "1", optional = true }
 
 # TLS and certificate generation
-rustls = "0.23"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rcgen = { version = "0.13", features = ["pem", "x509-parser"] }
 axum-server = { version = "0.7.0", features = ["tls-rustls"] }
 rustls-pki-types = "1.14.1"
