@@ -15,7 +15,6 @@
 /// - `rotation_*`     — `SecretRotationConfig`
 /// - `manifest_*`     — raw YAML strings for `kubectl apply` tests
 /// - `k8s_*`          — Kubernetes API objects (Pods, Containers, VolumeMounts)
-
 use k8s_openapi::api::core::v1::{Container, VolumeMount};
 
 // ---------------------------------------------------------------------------

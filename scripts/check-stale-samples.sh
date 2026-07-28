@@ -51,10 +51,10 @@ for sample in "$SAMPLES_DIR"/*.yaml; do
         continue
     fi
     
-    # Check 1: Valid YAML syntax
-    if ! python3 -c "import yaml; yaml.safe_load(open('$sample'))" 2>/dev/null; then
+    # Check 1: Valid YAML syntax (multi-document samples supported)
+    if ! python3 -c "import yaml; list(yaml.safe_load_all(open('$sample')))" 2>/dev/null; then
         echo -e "  ${RED}✗${NC} Invalid YAML syntax"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
         continue
     fi
     echo -e "  ${GREEN}✓${NC} Valid YAML syntax"
@@ -62,14 +62,14 @@ for sample in "$SAMPLES_DIR"/*.yaml; do
     # Check 2: Has apiVersion and kind
     if ! grep -q "^apiVersion:" "$sample"; then
         echo -e "  ${RED}✗${NC} Missing apiVersion field"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
     else
         echo -e "  ${GREEN}✓${NC} Has apiVersion"
     fi
     
     if ! grep -q "^kind:" "$sample"; then
         echo -e "  ${RED}✗${NC} Missing kind field"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
     else
         echo -e "  ${GREEN}✓${NC} Has kind"
     fi
@@ -77,7 +77,7 @@ for sample in "$SAMPLES_DIR"/*.yaml; do
     # Check 3: Has metadata.name
     if ! grep -q "^  name:" "$sample"; then
         echo -e "  ${YELLOW}⚠${NC}  Missing metadata.name"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
     else
         echo -e "  ${GREEN}✓${NC} Has metadata.name"
     fi
@@ -85,22 +85,21 @@ for sample in "$SAMPLES_DIR"/*.yaml; do
     # Check 4: Has metadata.namespace
     if ! grep -q "^  namespace:" "$sample"; then
         echo -e "  ${YELLOW}⚠${NC}  Missing metadata.namespace"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
     else
         echo -e "  ${GREEN}✓${NC} Has metadata.namespace"
     fi
     
-    # Check 5: Validate against CRD schema if kubectl is available
-    if command -v kubectl >/dev/null 2>&1; then
-        # Dry-run validation against the CRD
-        if kubectl apply -f "$sample" --dry-run=server 2>/dev/null; then
+    # Check 5: Validate against a live cluster only (server dry-run needs API server)
+    if command -v kubectl >/dev/null 2>&1 && kubectl cluster-info >/dev/null 2>&1; then
+        if kubectl apply -f "$sample" --dry-run=server >/dev/null 2>&1; then
             echo -e "  ${GREEN}✓${NC} Passes CRD validation (dry-run)"
         else
             echo -e "  ${RED}✗${NC} Failed CRD validation (dry-run)"
-            ((ERRORS++))
+            ERRORS=$((ERRORS + 1))
         fi
     else
-        echo -e "  ${YELLOW}⚠${NC}  kubectl not available - skipping CRD validation"
+        echo -e "  ${YELLOW}⚠${NC}  kubectl cluster not available - skipping CRD validation"
     fi
     
     echo ""
@@ -127,17 +126,3 @@ else
     echo "✅ All sample manifests are valid and up-to-date"
     exit 0
 fi
-
-</parameter>
-<task_progress>
-- [x] Analyze requirements for issues #1146, #1147, #1145, #1144
-- [x] Implement stale sample manifest detector (#1146)
-- [x] Implement CRD backward-compatibility gate (#1147)
-- [x] Implement chart render diff checks (#1145)
-- [x] Implement benchmark sanity checks (#1144)
-- [x] Update CI workflow with new stages
-- [ ] Re-apply changes after git reset
-- [ ] Commit and push changes
-- [ ] Create PR description
-</task_progress>
-</write_to_file>

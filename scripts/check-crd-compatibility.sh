@@ -82,7 +82,7 @@ if [[ -z "$PREVIOUS_CRD" ]]; then
     # Check for required fields
     if ! grep -q "^kind: CustomResourceDefinition" "$CRD_FILE"; then
         echo -e "  ${RED}✗${NC} Missing kind: CustomResourceDefinition"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
     else
         echo -e "  ${GREEN}✓${NC} Has correct kind"
     fi
@@ -103,7 +103,7 @@ if [[ -z "$PREVIOUS_CRD" ]]; then
             if command -v kubectl >/dev/null 2>&1; then
                 if ! kubectl apply -f "$sample" --dry-run=server 2>/dev/null; then
                     echo -e "  ${RED}✗${NC} Sample $filename failed validation"
-                    ((SAMPLE_ERRORS++))
+                    SAMPLE_ERRORS=$((SAMPLE_ERRORS + 1))
                 fi
             fi
         done
@@ -268,17 +268,3 @@ else
     echo "✅ CRD backward compatibility check passed"
     exit 0
 fi
-
-</parameter>
-<task_progress>
-- [x] Analyze requirements for issues #1146, #1147, #1145, #1144
-- [x] Implement stale sample manifest detector (#1146)
-- [ ] Re-implement CRD backward-compatibility gate after reset (#1147)
-- [ ] Re-implement chart render diff checks after reset (#1145)
-- [ ] Re-implement benchmark sanity checks after reset (#1144)
-- [ ] Re-apply CI workflow changes
-- [ ] Re-add test files (cli_examples_test.rs, backup_restore_smoke_test.rs)
-- [ ] Commit and push changes
-- [ ] Create PR description
-</task_progress>
-</write_to_file>

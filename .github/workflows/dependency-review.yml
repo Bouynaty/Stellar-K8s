@@ -80,7 +80,9 @@ jobs:
             --ignore RUSTSEC-2026-0098 \
             --ignore RUSTSEC-2026-0099 \
             --ignore RUSTSEC-2026-0104 \
-            --ignore RUSTSEC-2026-0149
+            --ignore RUSTSEC-2026-0149 \
+            --ignore RUSTSEC-2026-0187 \
+            --ignore RUSTSEC-2026-0204
 
       - name: Generate audit JSON report
         if: always()

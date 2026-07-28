@@ -104,7 +104,7 @@ if [[ -f "$BASELINE_FILE" ]]; then
         # Check for significant deviations (simplified check)
         if [[ $LINE_RATIO -lt 80 ]] || [[ $LINE_RATIO -gt 120 ]]; then
             echo -e "  ${YELLOW}⚠${NC}  Significant deviation detected (>20% change)"
-            ((WARNINGS++))
+            WARNINGS=$((WARNINGS + 1))
         else
             echo -e "  ${GREEN}✓${NC} Within acceptable range (±20%)"
         fi
@@ -124,7 +124,7 @@ echo "→ Running sanity checks..."
 # Check 1: No panics in benchmark output
 if grep -qi "panic" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Panic detected in benchmark output"
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${GREEN}✓${NC} No panics detected"
 fi
@@ -134,7 +134,7 @@ if grep -qi "test result: ok" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${GREEN}✓${NC} All benchmark tests passed"
 elif grep -qi "test result: FAILED" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Benchmark tests failed"
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${YELLOW}⚠${NC}  Could not determine test result"
 fi
@@ -166,17 +166,3 @@ else
     echo "✅ Benchmark sanity checks passed"
     exit 0
 fi
-
-</parameter>
-<task_progress>
-- [x] Analyze requirements for issues #1146, #1147, #1145, #1144
-- [x] Implement stale sample manifest detector (#1146)
-- [x] Implement CRD backward-compatibility gate (#1147)
-- [x] Implement chart render diff checks (#1145)
-- [x] Implement benchmark sanity checks (#1144)
-- [ ] Update CI workflow with new stages
-- [ ] Re-add test files (cli_examples_test.rs, backup_restore_smoke_test.rs)
-- [ ] Commit and push changes
-- [ ] Create PR description
-</task_progress>
-</write_to_file>
