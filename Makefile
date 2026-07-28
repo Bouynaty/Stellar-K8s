@@ -24,8 +24,8 @@
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint link-check link-check-all changelog \
-	generate-api-docs check-api-docs check-stale-docs \
-	third-party-licenses check-third-party-licenses \
+	generate-api-docs check-api-docs check-stale-docs update-doc-baseline docs-check-strict docs-lint \
+	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
 	compose-up compose-dev compose-down compose-logs \
@@ -164,8 +164,14 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 	@echo "→ Building Docker image (CI mode)..."
 	DOCKER_BUILDKIT=1 $(DOCKER) build --target runtime -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
+docker-multiarch: ## Trigger multi-arch build via the CI workflow (dispatches workflow_dispatch)
+	@echo "→ Triggering multi-arch build pipeline..."
+	@command -v gh >/dev/null 2>&1 || { echo "✗ gh CLI not found. Install: https://cli.github.com/"; exit 1; }
+	gh workflow run multiarch-build.yml
+	@echo "✓ Multi-arch build dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
+
 # Multi-arch builds are handled by CI: .github/workflows/multiarch-build.yml
-# To trigger a multi-arch build, push a tag or manually dispatch that workflow.
+# To trigger a multi-arch build, push a tag or run: make docker-multiarch
 health: ## Run common repository health checks (format, lint, test, docs, links)
 	@bash scripts/repo-health.sh
 
@@ -196,7 +202,7 @@ changelog: ## Generate/update CHANGELOG.md using git-cliff
 	@command -v git-cliff >/dev/null 2>&1 || cargo install git-cliff
 	git-cliff --output CHANGELOG.md
 
-ci-local: fmt-check lint audit test build link-check ## Run full CI locally
+ci-local: fmt-check lint docs-lint audit test build link-check ## Run full CI locally (includes strict docs lint)
 	@echo ""
 	@echo "✓ All CI checks passed!"
 
@@ -239,9 +245,32 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--output docs/api-reference.md \
 		--check
 
-check-stale-docs: ## Check for documentation that has fallen behind source code
+check-stale-docs: ## Check for documentation that has fallen behind source code (warns; use docs-check-strict to fail)
 	@echo "→ Checking for stale documentation..."
 	@$(CARGO) run --bin doc-check -- --warn-only
+
+update-doc-baseline: ## Update the .doc-hashes.toml baseline after deliberate doc updates
+	@echo "→ Updating doc-check baseline hashes..."
+	@$(CARGO) run --bin doc-check -- --update-baseline
+	@echo "✓ Baseline updated. Commit .doc-hashes.toml to record the new state."
+
+docs-check-strict: ## Fail CI if any doc is stale (no --warn-only; used in strict CI stages)
+	@echo "→ Running strict documentation staleness check..."
+	@$(CARGO) run --bin doc-check -- status
+
+docs-lint: ## Run rustdoc with warnings-as-errors (issue #1138: strict docs quality gate)
+	@echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
+	@RUSTDOCFLAGS="-D warnings" K8S_OPENAPI_ENABLED_VERSION=1.30 \
+		$(CARGO) doc --no-deps --workspace \
+		--features "rest-api,metrics,admission-webhook,k8s-v1-30"
+	@echo "✓ rustdoc passed — no documentation warnings"
+
+docs-lint: ## Run rustdoc with warnings-as-errors (issue #1138: strict docs quality gate)
+	@echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
+	@RUSTDOCFLAGS="-D warnings" K8S_OPENAPI_ENABLED_VERSION=1.30 \
+		$(CARGO) doc --no-deps --workspace \
+		--features "rest-api,metrics,admission-webhook,k8s-v1-30"
+	@echo "✓ rustdoc passed — no documentation warnings"
 
 # ── Kubernetes ────────────────────────────────────────────────────────────────
 
@@ -251,9 +280,10 @@ install-crd: ## Install CRDs
 apply-samples: install-crd ## Apply samples
 	$(KUBECTL) apply -f config/samples/
 
-crd-gen: ## Generate CRDs
+crd-gen: ## Generate CRDs (output is sorted for deterministic diffs)
 	@echo "→ Generating CRDs..."
-	@$(CARGO) run --bin crdgen > config/crd/stellarnode-crd.yaml
+	@$(CARGO) run --bin crdgen | python3 scripts/sort-manifests.py > config/crd/stellarnode-crd.yaml
+	@echo "✓ CRD written to config/crd/stellarnode-crd.yaml (deterministic order)"
 
 regenerate: crd-gen generate-api-docs bundle ## Regenerate all derived artifacts (CRDs, API docs, OLM bundle)
 	@echo "✓ All generated artifacts are up to date"
@@ -358,6 +388,9 @@ benchmark-upgrade: ## Run upgrade load test with k6
 
 # ── Running the Operator ──────────────────────────────────────────────────────
 
+run: build ## Run the operator (alias for run-local; matches README and CI references)
+	RUST_LOG=info ./target/release/stellar-operator run
+
 run-local: build ## Run operator locally from built release binary
 	RUST_LOG=info ./target/release/stellar-operator
 
@@ -369,10 +402,12 @@ run-dev: ## Run operator in dev mode with hot reload
 
 bundle: bundle-render bundle-generate bundle-validate ## Generate bundle manifests and metadata, then validate
 
-bundle-render: ## Render Helm chart to manifests
+bundle-render: ## Render Helm chart to manifests (sorted for deterministic pipeline diffs)
 	@echo "→ Generating manifests from Helm chart..."
 	@mkdir -p rendered
-	@helm template stellar-operator charts/stellar-operator > rendered/manifests.yaml
+	@helm template stellar-operator charts/stellar-operator \
+		| python3 scripts/sort-manifests.py > rendered/manifests.yaml
+	@echo "✓ Rendered manifests written to rendered/manifests.yaml (deterministic order)"
 
 bundle-generate: ## Generate OLM bundle from manifests
 	@echo "→ Generating bundle..."
@@ -386,6 +421,9 @@ bundle-validate: ## Validate generated bundle
 
 bundle-build: ## Build the bundle image.
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+sort-manifests: ## Sort and normalise a YAML manifest stream (reads stdin, writes stdout)
+	@python3 scripts/sort-manifests.py
 
 # ── Quickstart ────────────────────────────────────────────────────────────────
 

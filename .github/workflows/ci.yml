@@ -228,6 +228,23 @@ jobs:
         if: needs.changes.outputs.rust_core == 'true'
         run: make lint-strict
 
+      # ── Issue #1138: rustdoc warnings-as-errors ────────────────────────────
+      # Runs cargo doc with RUSTDOCFLAGS="-D warnings" so that any missing
+      # or malformed doc comments cause a hard CI failure instead of silently
+      # passing.  This mirrors the strict-warnings policy applied to clippy.
+      - name: Check rustdoc (warnings as errors)
+        if: needs.changes.outputs.rust_core == 'true'
+        run: |
+          set -euo pipefail
+          echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
+          RUSTDOCFLAGS="-D warnings" K8S_OPENAPI_ENABLED_VERSION=1.30 \
+            cargo doc \
+              --no-deps \
+              --workspace \
+              --features "rest-api,metrics,admission-webhook,k8s-v1-30" \
+              2>&1 | tee /tmp/rustdoc.log
+          echo "✓ rustdoc passed — no documentation warnings"
+
   # ── 3.5. Link Check ──────────────────────────────────────────────────────────
   link-check:
     name: Markdown Link Check
@@ -525,6 +542,60 @@ jobs:
 
       - name: Run link checker
         run: python3 scripts/check-links.py
+
+  # ── 7c. Manifest ordering check (issue #1139) ────────────────────────────────
+  # Verifies that generated manifests (CRDs, Helm renders) are committed in
+  # the canonical sorted order produced by scripts/sort-manifests.py.  This
+  # prevents non-deterministic YAML from causing spurious diffs in PRs and
+  # makes pipeline output reproducible regardless of Go/Rust map iteration order.
+  manifest-order:
+    name: Deterministic Manifest Order
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [changes]
+    if: needs.changes.outputs.helm == 'true' || needs.changes.outputs.rust_core == 'true'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Install Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: "3.14.0"
+
+      - name: Verify CRD manifest is in sorted order
+        run: |
+          set -euo pipefail
+          echo "→ Checking config/crd/stellarnode-crd.yaml is deterministically sorted..."
+          python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml \
+            > /tmp/stellarnode-crd-sorted.yaml
+          if ! diff -u config/crd/stellarnode-crd.yaml /tmp/stellarnode-crd-sorted.yaml; then
+            echo "::error::config/crd/stellarnode-crd.yaml is not in canonical sorted order."
+            echo "Run 'make crd-gen' and commit the result."
+            exit 1
+          fi
+          echo "✓ CRD manifest order is canonical"
+
+      - name: Verify Helm-rendered manifest is deterministic
+        run: |
+          set -euo pipefail
+          echo "→ Rendering Helm chart twice and comparing outputs..."
+          helm template stellar-operator charts/stellar-operator \
+            | python3 scripts/sort-manifests.py > /tmp/render-a.yaml
+          helm template stellar-operator charts/stellar-operator \
+            | python3 scripts/sort-manifests.py > /tmp/render-b.yaml
+          if ! diff -u /tmp/render-a.yaml /tmp/render-b.yaml; then
+            echo "::error::Helm template output is not deterministic between runs."
+            exit 1
+          fi
+          echo "✓ Helm-rendered manifests are deterministic"
 
   # ── 8. Examples smoke test ────────────────────────────────────────────────────
   examples-smoke-test:
