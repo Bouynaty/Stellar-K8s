@@ -347,6 +347,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "ci-audit"
+          extra-tools: "cargo-audit"
 
       - name: Run cargo audit
         run: |
@@ -699,6 +700,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "ci-coverage"
+          extra-tools: "cargo-tarpaulin"
 
       - name: Install tarpaulin
         run: |

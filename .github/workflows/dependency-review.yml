@@ -54,6 +54,8 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
+          cache-key: "dep-audit"
+          extra-tools: "cargo-audit"
           cache-key: "ci-audit"
 
       - name: Install cargo-audit
@@ -106,6 +108,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: "dep-deny"
+          extra-tools: "cargo-deny"
       - name: Install cargo-deny
         run: |
           for i in 1 2 3; do
@@ -150,6 +157,8 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
+          cache-key: "dep-stale"
+          extra-tools: "cargo-outdated"
           cache-key: "ci-stale"
 
       - name: Install cargo-outdated
@@ -195,6 +204,8 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
+          cache-key: "dep-diff"
+          extra-tools: "cargo-lock"
           cache-key: "ci-diff"
 
       - name: Install cargo-diff-tree
@@ -224,6 +235,8 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
+          cache-key: "dep-license"
+          extra-tools: "cargo-license"
           cache-key: "ci-license"
 
       - name: Install cargo-license

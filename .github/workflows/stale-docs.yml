@@ -64,6 +64,11 @@ jobs:
           # Fetch full history so git-log can compare commit timestamps.
           fetch-depth: 0
 
+      # ── Rust toolchain & cache ─────────────────────────────────────────────
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: "stale-docs"
       # ── Rust toolchain ──────────────────────────────────────────────────────
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
