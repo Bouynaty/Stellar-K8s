@@ -1,4 +1,4 @@
-# CI Pipeline Architecture & Optimization Guide
+# CI Pipeline Architecture & Reliability Guide
 
 ## Overview
 
@@ -197,18 +197,83 @@ the critical path by ~35–40% compared to the previous sequential layout.
 
 ---
 
-## Action Version Standardisation
+## Action Version Standardisation & Security
 
-All workflows now use consistent, valid action versions:
+All workflows now use consistent, security-hardened action versions:
 
-| Action | Version |
-|--------|---------|
-| `actions/checkout` | `v4` |
-| `actions/setup-node` | `v4` |
-| `actions/setup-python` | `v5` |
-| `actions/upload-artifact` | `v4` |
-| `actions/download-artifact` | `v4` |
-| `actions/cache` | `v4` |
-| `helm/kind-action` | `v1.14.0` |
-| `docker/build-push-action` | `v6` |
-| `Swatinem/rust-cache` | `v2` |
+| Action | Version | Security Notes |
+|--------|---------|----------------|
+| `actions/checkout` | `@v7` | Latest with security patches |
+| `actions/setup-node` | `@v4` | Stable, consistent |
+| `actions/setup-python` | `@v6` | **Fixed inconsistency** (was mixed v5/v6) |
+| `actions/upload-artifact` | `@v4` | Consistent across all workflows |
+| `actions/download-artifact` | `@v4` | Consistent across all workflows |
+| `actions/cache` | `@v4` | Stable caching |
+| `helm/kind-action` | `v1.14.0` | Pinned for stability |
+| `docker/build-push-action` | `@v7` | Latest with security improvements |
+| `aquasecurity/trivy-action` | `@v0.36.0` | **Fixed inconsistency** (was mixed v0.35.0/v0.36.0) |
+| `Swatinem/rust-cache` | `@v2` | **Optimized configuration** |
+
+### Security Hardening Applied
+
+#### Docker Image Security
+- **Valid base image digest**: Fixed dummy SHA256 → actual `debian:bookworm-slim` digest
+- **Supply chain verification**: Ensures reproducible, verified builds
+- **SBOM generation**: Enabled for all release artifacts
+- **Provenance attestation**: Cryptographic build provenance for containers
+
+#### Dependency Security
+- **Centralized audit config**: Moved from inline CLI ignores to documented `.cargo/audit.toml`
+- **Justified ignores**: Each security advisory ignore includes:
+  - Technical rationale for why it's safe to ignore
+  - Conditions for removal
+  - Review date for re-evaluation
+- **Eliminated phantom entries**: Removed non-existent future-year RUSTSEC IDs
+
+---
+
+## Reliability Testing & Monitoring
+
+### New CI Reliability Test (`ci-reliability-test.yml`)
+Validates pipeline stability and hardening:
+
+- ✅ **Docker config validation**: Verifies base image digests are valid
+- ✅ **Security audit testing**: Confirms audit configuration is functional  
+- ✅ **Action version consistency**: Detects version drift across workflows
+- ✅ **Cache configuration**: Validates deprecated settings are removed
+- ✅ **Retry logic testing**: Confirms error handling patterns exist
+- ✅ **Documentation completeness**: Ensures troubleshooting guides exist
+
+### Troubleshooting Documentation
+New comprehensive guide: `.github/CI_TROUBLESHOOTING.md`
+
+**Covers common failure scenarios:**
+- Docker build failures and digest issues
+- Security audit failures and ignore management  
+- Test timeouts and performance regressions
+- Cache restoration problems
+- Action version conflicts
+
+**Includes local reproduction steps:**
+```bash
+# Reproduce CI failures locally
+docker build --target runtime --platform linux/amd64 .
+cargo test --all-features --workspace
+cargo audit  # Uses .cargo/audit.toml config
+```
+
+---
+
+## Monitoring & Success Metrics
+
+### Target Reliability Metrics
+- **Success rate**: >95% on main branch
+- **Build duration**: <45 minutes end-to-end
+- **Cache hit rate**: >80% for Rust builds
+- **Security audit**: 0 unaddressed critical/high CVEs
+
+### Alert Conditions
+- 3+ consecutive main branch failures
+- Individual job runtime >60 minutes  
+- Cache hit rate <60% (indicates configuration issues)
+- New high/critical CVEs not addressed within 7 days
