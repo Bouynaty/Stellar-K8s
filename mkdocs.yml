@@ -108,9 +108,8 @@ nav:
     - Deploy Testnet Validator: tutorials/deploy-testnet-validator.md
     - Configure HA Setup: tutorials/configure-ha-setup.md
     - Backup and Restore: tutorials/backup-restore.md
-  - Operations:
-    - operations/index.md
-    - Backup and Disaster Recovery Runbook: backup-disaster-recovery-runbook.md
+  - Operations & Observability:
+    - SCP Consensus Topology and Monitoring: scp-consensus-topology-and-monitoring.md
   - Troubleshooting:
     - troubleshooting/index.md
     - Common Issues: troubleshooting/common-issues.md

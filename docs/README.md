@@ -53,6 +53,7 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 
 ## Observability
 
+- [SCP Consensus Topology and Monitoring](scp-consensus-topology-and-monitoring.md)
 - [Metrics Guide](metrics/STELLAR_METRICS_GUIDE.md)
 - [Grafana Dashboard Guide](monitoring/GRAFANA_DASHBOARD_GUIDE.md)
 - [SCP Analytics Pipeline](scp-analytics-pipeline.md)
