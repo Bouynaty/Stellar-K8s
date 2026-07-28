@@ -1,16 +1,10 @@
+mod common;
+
+use common::skip_if_tools_missing;
 use std::error::Error;
 use std::process::{Command, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-
-fn tool_available(binary: &str) -> bool {
-    Command::new(binary)
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok()
-}
 
 const OPERATOR_NAMESPACE: &str = "dr-operator-system";
 const PRIMARY_NAMESPACE: &str = "region-primary";
@@ -23,11 +17,8 @@ const STANDBY_NODE_NAME: &str = "e2e-dr-standby";
 #[ignore]
 fn e2e_dr_failover() -> Result<(), Box<dyn std::error::Error>> {
     // ── Prerequisite check ─────────────────────────────────────────────────────
-    for tool in &["kind", "kubectl", "docker"] {
-        if !tool_available(tool) {
-            eprintln!("Skipping e2e test: `{tool}` not found in PATH.");
-            return Ok(());
-        }
+    if skip_if_tools_missing(&["kind", "kubectl", "docker"]) {
+        return Ok(());
     }
 
     let cluster_name = std::env::var("KIND_CLUSTER_NAME").unwrap_or_else(|_| "stellar-e2e".into());

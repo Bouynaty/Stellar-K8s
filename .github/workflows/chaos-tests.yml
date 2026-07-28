@@ -53,6 +53,7 @@ jobs:
   build:
     name: Build Operator Image
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -622,6 +623,7 @@ jobs:
   report:
     name: Generate Resilience Report
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [chaos-group-a, chaos-group-b, chaos-group-c]
     if: always()
     steps:

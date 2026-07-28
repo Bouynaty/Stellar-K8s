@@ -202,9 +202,15 @@ impl tracing::field::Visit for FullVisitor {
             .insert(field.name().to_string(), serde_json::json!(value));
     }
 
-    fn record_error(&mut self, field: &tracing::field::Field, value: &(dyn std::error::Error + 'static)) {
-        self.extras
-            .insert(field.name().to_string(), serde_json::json!(value.to_string()));
+    fn record_error(
+        &mut self,
+        field: &tracing::field::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        self.extras.insert(
+            field.name().to_string(),
+            serde_json::json!(value.to_string()),
+        );
     }
 }
 
@@ -235,7 +241,8 @@ mod tests {
         };
 
         let json_str = serde_json::to_string(&log).expect("Failed to serialize StructuredLog");
-        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Failed to parse JSON");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json_str).expect("Failed to parse JSON");
 
         assert_eq!(parsed["level"], "INFO");
         assert_eq!(parsed["message"], "Reconciliation successful");
@@ -274,4 +281,3 @@ mod tests {
         assert_eq!(log_back.extras.get("custom_key").unwrap(), "custom_value");
     }
 }
-

@@ -36,6 +36,7 @@ jobs:
   resolve-matrix:
     name: Resolve Benchmark Matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       suites: ${{ steps.matrix.outputs.suites }}
     steps:
@@ -54,6 +55,7 @@ jobs:
   build:
     name: Build Operator
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -111,6 +113,7 @@ jobs:
   benchmark:
     name: "Benchmark (${{ matrix.suite }})"
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [build, resolve-matrix]
     strategy:
       fail-fast: false
@@ -289,6 +292,7 @@ jobs:
   report:
     name: Performance Report
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [build, benchmark]
     if: always() && needs.build.result == 'success'
     permissions:

@@ -1,0 +1,38 @@
+name: Dead Code & Unused Config Report
+
+# Periodic maintenance report (issue #1064). Informational only: the job
+# uploads a Markdown report as an artifact and never fails the build.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Generate report
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Generate dead-code and unused-config report
+        run: |
+          chmod +x scripts/dead-code-report.sh
+          ./scripts/dead-code-report.sh
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dead-code-report
+          path: target/reports/dead-code-report.md
+          retention-days: 30

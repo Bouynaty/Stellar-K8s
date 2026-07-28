@@ -59,9 +59,11 @@ HEADER
     | tail -n +2 \
     | sort -f \
     | awk -F'\t' '{
-        name=$1; version=$2; authors=$3; license=$4;
+        name=$1; version=$2; authors=$3; license=$5;
         gsub(/\|/, "\\|", name);
         gsub(/\|/, "\\|", authors);
+        gsub(/\|/, "\\|", license);
+        if (license == "") license = "(see crate)";
         printf "| %s | %s | %s | %s |\n", name, version, license, authors
       }'
 

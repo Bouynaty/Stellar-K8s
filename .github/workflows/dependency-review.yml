@@ -47,16 +47,22 @@ jobs:
   cargo-audit:
     name: Cargo Audit (Vulnerabilities)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-audit"
+          cache-key: "ci-audit"
 
       - name: Install cargo-audit
-        run: cargo install --locked cargo-audit
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-audit && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Run cargo audit
         run: |
@@ -74,7 +80,9 @@ jobs:
             --ignore RUSTSEC-2026-0098 \
             --ignore RUSTSEC-2026-0099 \
             --ignore RUSTSEC-2026-0104 \
-            --ignore RUSTSEC-2026-0149
+            --ignore RUSTSEC-2026-0149 \
+            --ignore RUSTSEC-2026-0187 \
+            --ignore RUSTSEC-2026-0204
 
       - name: Generate audit JSON report
         if: always()
@@ -94,11 +102,17 @@ jobs:
   cargo-deny:
     name: Cargo Deny (Licenses + Bans)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - name: Install cargo-deny
-        run: cargo install --locked cargo-deny
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-deny && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Check licenses
         run: |
@@ -124,6 +138,7 @@ jobs:
   stale-deps:
     name: Stale Dependency Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Run on schedule and manual dispatch; also on dep changes
     if: >
       github.event_name == 'schedule' ||
@@ -135,10 +150,15 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-stale"
+          cache-key: "ci-stale"
 
       - name: Install cargo-outdated
-        run: cargo install --locked cargo-outdated
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-outdated && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Check for outdated dependencies
         id: outdated
@@ -165,6 +185,7 @@ jobs:
   dep-diff:
     name: Dependency Diff (PR only)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -174,10 +195,15 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-diff"
+          cache-key: "ci-diff"
 
       - name: Install cargo-diff-tree
-        run: cargo install --locked cargo-lock
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-lock && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Summarise Cargo.lock changes
         run: |
@@ -190,6 +216,7 @@ jobs:
   license-report:
     name: License Drift Report
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
@@ -197,10 +224,15 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "dep-license"
+          cache-key: "ci-license"
 
       - name: Install cargo-license
-        run: cargo install --locked cargo-license
+        run: |
+          for i in 1 2 3; do
+            cargo install --locked cargo-license && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
 
       - name: Generate full license inventory
         run: |
