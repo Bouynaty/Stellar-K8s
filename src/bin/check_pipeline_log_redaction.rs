@@ -215,7 +215,9 @@ fn residual_secret(s: &str) -> bool {
     {
         return true;
     }
-    if s.contains("BEGIN ") && s.contains("PRIVATE KEY") && !s.contains("[REDACTED:pem_private_key]")
+    if s.contains("BEGIN ")
+        && s.contains("PRIVATE KEY")
+        && !s.contains("[REDACTED:pem_private_key]")
     {
         return true;
     }
