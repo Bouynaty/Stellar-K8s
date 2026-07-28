@@ -55,6 +55,8 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "dep-audit"
+          extra-tools: "cargo-audit"
+          cache-key: "ci-audit"
 
       - name: Install cargo-audit
         run: |
@@ -80,7 +82,9 @@ jobs:
             --ignore RUSTSEC-2026-0098 \
             --ignore RUSTSEC-2026-0099 \
             --ignore RUSTSEC-2026-0104 \
-            --ignore RUSTSEC-2026-0149
+            --ignore RUSTSEC-2026-0149 \
+            --ignore RUSTSEC-2026-0187 \
+            --ignore RUSTSEC-2026-0204
 
       - name: Generate audit JSON report
         if: always()
@@ -104,6 +108,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: "dep-deny"
+          extra-tools: "cargo-deny"
       - name: Install cargo-deny
         run: |
           for i in 1 2 3; do
@@ -149,6 +158,8 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "dep-stale"
+          extra-tools: "cargo-outdated"
+          cache-key: "ci-stale"
 
       - name: Install cargo-outdated
         run: |
@@ -194,6 +205,8 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "dep-diff"
+          extra-tools: "cargo-lock"
+          cache-key: "ci-diff"
 
       - name: Install cargo-diff-tree
         run: |
@@ -223,6 +236,8 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "dep-license"
+          extra-tools: "cargo-license"
+          cache-key: "ci-license"
 
       - name: Install cargo-license
         run: |

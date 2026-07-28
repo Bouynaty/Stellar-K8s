@@ -1,19 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Repeatable macOS dev environment bootstrap for Stellar-K8s.
 # Safe to run multiple times — skips steps already at the right version.
 set -euo pipefail
 
 # ── Pinned versions ───────────────────────────────────────────────────────────
-RUST_TOOLCHAIN="1.92"          # keep in sync with ci.yml toolchain
-KIND_VERSION="0.24.0"
-KUBECTL_VERSION="1.30.0"
-HELM_VERSION="3.16.0"
+# RUST_TOOLCHAIN / KIND_VERSION / KUBECTL_VERSION / HELM_VERSION come from the
+# shared lib so this script, setup-linux.sh, and preflight.sh can't drift apart.
 K6_VERSION="0.54.0"
 
 # Resolve scripts library dir
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/errors.sh
 source "${SCRIPT_DIR}/lib/errors.sh"
+# shellcheck source=lib/versions.sh
+source "${SCRIPT_DIR}/lib/versions.sh"
 
 ok()   { sk8s_pass "$*"; }
 warn() { sk8s_warn "$*"; }

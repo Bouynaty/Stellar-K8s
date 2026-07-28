@@ -30,6 +30,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "release-gate"
+          extra-tools: "cargo-audit"
 
       - name: Install Helm
         uses: azure/setup-helm@v4

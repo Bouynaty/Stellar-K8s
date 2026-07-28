@@ -4,6 +4,8 @@
 
 Stellar-K8s provides automated verification of database backups by spinning up temporary Kubernetes clusters, restoring backups, and validating data integrity. This ensures that backups are recoverable and meet recovery time objectives (RTO) and recovery point objectives (RPO).
 
+For end-to-end backup, restore, and DR checklists, see the [Backup and Disaster Recovery Runbook](backup-disaster-recovery-runbook.md).
+
 ## Features
 
 - **Automated Restore Testing**: Periodic verification of backup recoverability

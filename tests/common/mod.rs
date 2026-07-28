@@ -5,12 +5,19 @@
 /// guard returned by one of the functions below so that cleanup is guaranteed
 /// even when the test panics or returns early with `?`.
 ///
-/// # Design goals (issue #906)
+/// # Design goals (issue #906, extended in issue #1140)
 /// - Deterministic creation *and* removal of fixtures.
 /// - Cleanup runs in `Drop`, so it fires even on test failure.
 /// - No cross-test coupling: each test gets its own namespace or unique
 ///   resource name and tears it down independently.
+/// - Fixture data lives in `fixtures.rs`; guards live here.
+/// - All cluster-required tests are gated behind `#[ignore]` so they never
+///   run in unit-test mode and are never silently skipped.
 use std::process::{Command, Stdio};
+
+/// Re-export the fixtures module so integration tests can write
+/// `use common::fixtures::testnet_validator_manifest;`
+pub mod fixtures;
 
 // ---------------------------------------------------------------------------
 // Namespace guard
@@ -247,21 +254,14 @@ pub fn run_cmd_quiet(program: &str, args: &[&str]) -> Result<(), String> {
     if let Ok(kubeconfig) = std::env::var("KUBECONFIG") {
         cmd.env("KUBECONFIG", kubeconfig);
     }
-    let _ = cmd
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .output();
+    let _ = cmd.stdout(Stdio::null()).stderr(Stdio::null()).output();
     Ok(())
 }
 
 /// Pipe `input` into `program <args>` via stdin, capturing output.
 ///
 /// Returns `Ok(())` on success; returns `Err` with stdout/stderr on failure.
-pub fn run_cmd_with_stdin(
-    program: &str,
-    args: &[&str],
-    input: &str,
-) -> Result<(), String> {
+pub fn run_cmd_with_stdin(program: &str, args: &[&str], input: &str) -> Result<(), String> {
     use std::io::Write;
 
     let mut cmd = Command::new(program);
@@ -303,11 +303,7 @@ pub fn run_cmd_with_stdin(
 /// Pipe `input` into `program <args>` via stdin, suppressing all output.
 ///
 /// Returns `Ok(())` regardless of exit status.
-pub fn run_cmd_with_stdin_quiet(
-    program: &str,
-    args: &[&str],
-    input: &str,
-) -> Result<(), String> {
+pub fn run_cmd_with_stdin_quiet(program: &str, args: &[&str], input: &str) -> Result<(), String> {
     use std::io::Write;
 
     let mut cmd = Command::new(program);
@@ -341,7 +337,11 @@ pub fn kubectl_apply(manifest: &str) -> Result<(), String> {
 /// elapses.
 ///
 /// Returns `Err` with a diagnostic message when the timeout is exceeded.
-pub fn wait_for<F>(label: &str, timeout: std::time::Duration, mut condition: F) -> Result<(), String>
+pub fn wait_for<F>(
+    label: &str,
+    timeout: std::time::Duration,
+    mut condition: F,
+) -> Result<(), String>
 where
     F: FnMut() -> Result<bool, String>,
 {
@@ -667,7 +667,8 @@ mod tests {
 
     #[test]
     fn test_manifest_guard_creation() {
-        let guard = ManifestGuard::new("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test-cm");
+        let guard =
+            ManifestGuard::new("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test-cm");
         assert!(guard.manifest.contains("test-cm"));
     }
 
@@ -679,7 +680,10 @@ mod tests {
             .track_namespace("test-namespace");
 
         assert_eq!(guard.stellar_nodes.len(), 1);
-        assert_eq!(guard.stellar_nodes[0], ("node-a".to_string(), "default".to_string()));
+        assert_eq!(
+            guard.stellar_nodes[0],
+            ("node-a".to_string(), "default".to_string())
+        );
         assert_eq!(guard.operator_manifest.as_deref(), Some("kind: Deployment"));
         assert_eq!(guard.namespaces, vec!["test-namespace".to_string()]);
     }
@@ -690,4 +694,3 @@ mod tests {
         assert!(!skip, "Empty tools list should not trigger skip");
     }
 }
-

@@ -15,6 +15,7 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 
 - [Validator Node](deployment-guides/validator.md)
 - [Horizon API](deployment-guides/horizon.md)
+- [Horizon Query API Reference](horizon-query-api-reference.md)
 - [Soroban RPC](deployment-guides/soroban-rpc.md)
 - [OLM / OpenShift](deploy-olm.md)
 
@@ -44,14 +45,17 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 - [Diff Utility](diff-utility.md)
 - [Upgrade Workflow](upgrade-workflow.md)
 - [Disaster Recovery & Failover](dr-failover.md)
+- [Multi-Region Deployment and Failover](multi-region-deployment-and-failover.md)
 - [Cross-Cloud Failover](cross-cloud-failover.md)
 - [Pod Disruption Budgets](pod-disruption-budget.md)
 - [Backup Verification](backup-verification.md)
+- [Backup and Disaster Recovery Runbook](backup-disaster-recovery-runbook.md)
 - [Operations Runbook](operations/index.md)
 - [Incident Response](operations/incident-response.md)
 
 ## Observability
 
+- [SCP Consensus Topology and Monitoring](scp-consensus-topology-and-monitoring.md)
 - [Metrics Guide](metrics/STELLAR_METRICS_GUIDE.md)
 - [Grafana Dashboard Guide](monitoring/GRAFANA_DASHBOARD_GUIDE.md)
 - [SCP Analytics Pipeline](scp-analytics-pipeline.md)
@@ -88,6 +92,7 @@ Production-grade Stellar infrastructure on Kubernetes. This directory contains a
 - [FMEA](fmea-stellarnode.md)
 - [Service Mesh](service-mesh.md)
 - [Multi-Cluster](multi-cluster.md)
+- [Multi-Region Deployment and Failover](multi-region-deployment-and-failover.md)
 - [Network Topology Management](network-topology-management.md)
 
 ## Performance & Benchmarking

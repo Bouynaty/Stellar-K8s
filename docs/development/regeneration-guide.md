@@ -174,9 +174,10 @@ This regenerates `docs/api-reference.md` from the CRD schema. The CI job `api-do
 
 The CI pipeline automatically validates generated files:
 
-1. **CRD freshness** — the `api-docs` job regenerates `docs/api-reference.md` and fails if `git diff` shows changes
-2. **Helm chart correctness** — `helm-lint` and `helm-test` jobs validate chart syntax and run unit tests
-3. **Bundle validity** — `make bundle` validates with `operator-sdk bundle validate`
+1. **CRD freshness** — the `crd-drift` job runs `make crd-gen` and fails if `git diff` shows changes in `config/crd/`
+2. **API docs freshness** — the `api-docs` job regenerates `docs/api-reference.md` and fails if `git diff` shows changes
+3. **Helm chart correctness** — `helm-lint` and `helm-test` jobs validate chart syntax and run unit tests
+4. **Bundle validity** — `make bundle` validates with `operator-sdk bundle validate`
 
 When making PR changes, always run:
 
