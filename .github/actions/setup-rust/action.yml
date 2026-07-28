@@ -48,7 +48,8 @@ runs:
         shared-key: ${{ inputs.cache-key }}
         # Cache ~/.cargo/bin so cargo-installed tools (cargo-audit, tarpaulin,
         # cargo-watch) are restored across runs without reinstalling.
-        cache-all-crates: true
+        cache-directories: |
+          ~/.cargo/bin
 
     - name: Install extra cargo tools
       if: inputs.extra-tools != ''
