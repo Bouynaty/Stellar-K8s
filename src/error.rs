@@ -162,8 +162,13 @@ impl Error {
     /// the error category everywhere.
     pub fn exit_code(&self) -> i32 {
         match self {
-            Error::ValidationError(_) | Error::InvalidNodeType(_) | Error::MissingRequiredField { .. } => 2,
-            Error::KubeError(_) | Error::KubeconfigError(_) | Error::FinalizerError(_) | Error::NotFound { .. } => 3,
+            Error::ValidationError(_)
+            | Error::InvalidNodeType(_)
+            | Error::MissingRequiredField { .. } => 2,
+            Error::KubeError(_)
+            | Error::KubeconfigError(_)
+            | Error::FinalizerError(_)
+            | Error::NotFound { .. } => 3,
             Error::ConfigError(_) | Error::MaintenanceError(_) | Error::CertificateError(_) => 4,
             _ => 1,
         }
