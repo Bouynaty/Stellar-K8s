@@ -56,7 +56,7 @@ schemars = { version = "0.8", features = ["chrono"] }
 
 # Error handling
 thiserror = "1"
-anyhow = "1.0.103" # Patched for RUSTSEC-2026-0190
+anyhow = "1.0.108" # Latest patch with security fixes
 
 # CLI argument parsing
 clap = { version = "4.5", features = ["derive", "env"] }
@@ -64,8 +64,8 @@ clap_complete = "4.6"
 
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
-# Pinned to fix RUSTSEC-2026-0007; used transitively by many HTTP/async crates.
-bytes = "1.11.1"
+# Pinned to latest patch for security fixes; used transitively by many HTTP/async crates.
+bytes = "1.14.0"
 
 # Zip compression for incident reports
 zip = "2"
@@ -255,3 +255,30 @@ path = "src/bin/stellar-health-sidecar.rs"
 required-features = ["rest-api"]
 
 [workspace]
+
+# Security-hardened release profile
+[profile.release]
+# Remove debug symbols to reduce binary size and attack surface
+strip = true
+# Don't unwind on panic - abort immediately for security
+panic = "abort"  
+# Single codegen unit for better optimization
+codegen-units = 1
+# Enable link-time optimization for better security and performance
+lto = true
+# Optimize for performance while maintaining security
+opt-level = 3
+
+# Security-hardened profile for production deployments
+[profile.production]
+inherits = "release" 
+# Maximum optimization for production
+opt-level = 3
+# Aggressive dead code elimination
+lto = "fat"
+# Abort on panic in production
+panic = "abort"
+# Strip all symbols
+strip = "symbols"
+# Single codegen unit for maximum optimization
+codegen-units = 1

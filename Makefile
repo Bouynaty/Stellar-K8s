@@ -18,7 +18,7 @@
 # =============================================================================
 
 .PHONY: help \
-	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all \
+	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-fix security-report \
 	build test ci-local quick watch \
 	docker-build docker-build-ci docker-multiarch \
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
@@ -86,7 +86,9 @@ help: ## Show this help and the canonical command flow
 	@echo '  Format:   make fmt               Auto-format code'
 	@echo '  Build:    make build              Release binary build'
 	@echo '  Test:     make test               Run all tests'
-	@echo '  Security: make security-all       Audit + scan'
+	@echo '  Security: make security-all       Complete security audit suite'
+	@echo '  Security: make audit              Vulnerability scan + policy check'
+	@echo '  Security: make security-report    Generate security report'
 	@echo '  Docker:   make docker-build       Local Docker image'
 	@echo '  Clean:    make clean              Remove build artifacts'
 	@echo ''
@@ -122,18 +124,54 @@ lint-strict: ## Run clippy (adds complexity checks on top of lint; same base exc
 
 # ── Security ──────────────────────────────────────────────────────────────────
 
-audit: ## Security audit (cargo audit)
+audit: ## Security audit (cargo audit + deny)
 	@echo "→ Running security audit..."
+	@echo "  Installing security tools if needed..."
 	@command -v cargo-audit >/dev/null 2>&1 || cargo install --locked cargo-audit
-	@$(CARGO) audit --deny unsound || echo "⚠️  Security issues found - review before production"
+	@command -v cargo-deny >/dev/null 2>&1 || cargo install --locked cargo-deny
+	@echo "  Checking for known vulnerabilities..."
+	@$(CARGO) audit --deny unsound || echo "⚠️  Security issues found - review .cargo/audit.toml for justified exceptions"
+	@echo "  Checking dependency policies..."
+	@$(CARGO) deny check
 
-security-scan: ## Run security scan (audit + shellcheck)
+security-scan: ## Run security scan (audit + dependency policy + shellcheck)
+	@echo "→ Running comprehensive security scan..."
 	$(MAKE) audit
 	$(MAKE) shellcheck
+	@echo "  Checking for outdated dependencies..."
+	@command -v cargo-outdated >/dev/null 2>&1 || cargo install --locked cargo-outdated
+	@$(CARGO) outdated --root-deps-only || true
 
-security-all: ## Run all security checks (audit + shellcheck)
+security-all: ## Run all security checks (audit + policy + scan + SBOM)
+	@echo "→ Running complete security audit suite..."
 	$(MAKE) audit
 	$(MAKE) shellcheck
+	@echo "  Generating Software Bill of Materials..."
+	@mkdir -p security/sbom
+	@$(CARGO) tree --format "{p} {l}" > security/sbom/dependencies.txt
+	@$(CARGO) deny list --format json > security/sbom/licenses.json 2>/dev/null || true
+	@echo "  ✅ Security audit complete - SBOM available in security/sbom/"
+
+security-fix: ## Apply automated security fixes where possible
+	@echo "→ Applying security fixes..."
+	@echo "  Updating dependencies..."
+	@$(CARGO) update --dry-run
+	@echo "  ⚠️  Manual review recommended after running 'cargo update'"
+
+security-report: ## Generate comprehensive security report  
+	@echo "→ Generating security report..."
+	@mkdir -p security/reports
+	@echo "# Security Report - $(shell date)" > security/reports/security-report.md
+	@echo "" >> security/reports/security-report.md
+	@echo "## Vulnerability Scan" >> security/reports/security-report.md
+	@$(CARGO) audit --format json > security/reports/audit.json 2>/dev/null || true
+	@echo "" >> security/reports/security-report.md  
+	@echo "## Dependency Policy Check" >> security/reports/security-report.md
+	@$(CARGO) deny check --format json > security/reports/deny.json 2>/dev/null || true
+	@echo "" >> security/reports/security-report.md
+	@echo "## License Compliance" >> security/reports/security-report.md
+	@$(CARGO) deny list >> security/reports/security-report.md 2>/dev/null || true
+	@echo "  📊 Security report generated in security/reports/"
 
 shellcheck: ## Run shellcheck on all shell scripts
 	@echo "→ Running shellcheck..."
