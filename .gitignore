@@ -96,7 +96,9 @@ starfield.html
 skills-lock.json
 
 # Benchmark results — regenerate with: make benchmark-webhook-save
-results/
+# Keep results/.gitkeep tracked so the directory exists for local/CI writes.
+results/*
+!results/.gitkeep
 
 # Helm rendered manifests — regenerate with: helm template stellar-operator charts/stellar-operator
 rendered/
