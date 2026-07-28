@@ -26,7 +26,7 @@
 //! See `docs/stale-docs-detector.md` for the full user guide.
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt, fs,
     path::{Path, PathBuf},
     process::{Command, ExitCode},
@@ -106,7 +106,7 @@ struct Entry {
 struct Baseline {
     /// Map from doc path string to a [`BaselineEntry`].
     #[serde(flatten)]
-    entries: HashMap<String, BaselineEntry>,
+    entries: BTreeMap<String, BaselineEntry>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

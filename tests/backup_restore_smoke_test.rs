@@ -1,3 +1,20 @@
+//! Command-level smoke tests for backup and restore workflows.
+//!
+//! These tests validate that the backup and restore CLI commands work correctly
+//! end-to-end with the file backend. This ensures the core backup/restore workflows
+//! are functional and catches regressions.
+//!
+//! Related: #1149 - Add command-level smoke tests for backup and restore workflows
+
+use assert_cmd::Command;
+use predicates::prelude::*;
+use std::fs;
+use std::path::PathBuf;
+use tempfile::TempDir;
+
+/// Helper to build the CLI command
+fn stellar_operator() -> Command {
+    Command::cargo_bin("stellar-operator").expect("Binary should exist after cargo build")
 // tests/backup_restore_smoke_test.rs
 // Command-level smoke tests for backup and restore CLI commands.
 // These tests validate end-to-end behavior using assert-cmd.
