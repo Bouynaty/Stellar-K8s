@@ -14,7 +14,6 @@ use crate::commands::runbook::run_generate_runbook;
 use crate::commands::simulator::run_simulator;
 use crate::commands::webhook::run_webhook;
 use clap::Parser;
-use std::process;
 
 use stellar_k8s::controller::archive_prune::prune_archive;
 use stellar_k8s::controller::diff::diff;
@@ -22,13 +21,14 @@ use stellar_k8s::version_check;
 use stellar_k8s::{incident, Error};
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
-    // rustls 0.23 requires an explicit crypto provider when aws-lc-rs/ring are
-    // not auto-selected via default features (common with kube/reqwest stacks).
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .expect("failed to install rustls ring CryptoProvider");
+async fn main() {
+    if let Err(e) = run().await {
+        eprintln!("Error: {e}");
+        std::process::exit(e.exit_code());
+    }
+}
 
+async fn run() -> Result<(), Error> {
     let args = Args::parse();
 
     let offline = args.offline;
@@ -111,8 +111,7 @@ async fn main() -> Result<(), Error> {
         }
         Commands::Run(run_args) => {
             if let Err(e) = run_args.validate() {
-                eprintln!("error: {e}");
-                process::exit(2);
+                return Err(Error::validation_step("run args", e));
             }
             return run_operator(run_args).await;
         }
