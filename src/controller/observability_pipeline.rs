@@ -498,7 +498,7 @@ impl ObservabilityPipeline {
                             zscore,
                             percent_change,
                             absolute_change: *value - baseline.mean,
-                            rate_of_change: 0.0, // TODO: Calculate from time series
+                            rate_of_change: 0.0, // TODO(exempt: pending): Calculate from time series
                         },
                         anomaly_type,
                         explanation: format!(

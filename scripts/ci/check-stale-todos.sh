@@ -5,12 +5,12 @@ echo "========================================"
 echo "Checking for Stale TODO/FIXME References"
 echo "========================================"
 
-# Directories considered critical paths (exclude src/: legacy TODOs there are
-# tracked separately and would drown this hygiene gate).
+# Directories considered critical paths
 CRITICAL_PATHS=(
   ".github/"
   "scripts/"
   "charts/"
+  "src/"
 )
 
 ERRORS=0
