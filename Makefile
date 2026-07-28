@@ -32,6 +32,8 @@
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
 	health health-fast validate preflight test-preflight test-shell all \
+	collect-failure-diagnostics test-failure-diagnostics \
+	check-unreachable-modules \
 	clean
 
 .DEFAULT_GOAL := help
@@ -123,15 +125,8 @@ lint-strict: ## Run clippy (adds complexity checks on top of lint; same base exc
 
 # ── Security ──────────────────────────────────────────────────────────────────
 
-audit: ## Security audit (cargo audit + deny)
-	@echo "→ Running security audit..."
-	@echo "  Installing security tools if needed..."
-	@command -v cargo-audit >/dev/null 2>&1 || cargo install --locked cargo-audit
-	@command -v cargo-deny >/dev/null 2>&1 || cargo install --locked cargo-deny
-	@echo "  Checking for known vulnerabilities..."
-	@$(CARGO) audit --deny unsound || echo "⚠️  Security issues found - review .cargo/audit.toml for justified exceptions"
-	@echo "  Checking dependency policies..."
-	@$(CARGO) deny check
+audit: ## Security audit (cargo audit + deny) via consolidated lockfile gate
+	@bash scripts/dep-gate.sh
 
 security-scan: ## Run security scan (audit + dependency policy + shellcheck)
 	@echo "→ Running comprehensive security scan..."
@@ -220,6 +215,10 @@ validate: ## Fast validation (alias for health-fast)
 	@bash scripts/repo-health.sh --fast
 
 # ── Quality & Health ───────────────────────────────────────────────────────────
+
+check-unreachable-modules: ## Static check for unreachable modules and dead code paths (#1150)
+	@echo "→ Checking unreachable modules and dead code paths..."
+	@$(CARGO) run --quiet --locked --bin check-unreachable-modules
 
 link-check: ## Check markdown links (internal anchors + relative paths)
 	@echo "→ Running markdown link checker..."
@@ -339,6 +338,18 @@ test-shell: ## Run bats unit tests for shared shell helpers
 	@echo "→ Running shell helper bats tests..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
 	@bats scripts/tests/common.bats
+
+collect-failure-diagnostics: ## Assemble a local CI failure diagnostics bundle (#1151)
+	@echo "→ Assembling failure diagnostics bundle..."
+	@chmod +x scripts/ci/collect-failure-diagnostics.sh
+	@./scripts/ci/collect-failure-diagnostics.sh --no-cluster \
+		--bundle-dir "$${BUNDLE_DIR:-/tmp/ci-diagnostics}" \
+		--job-name "$${JOB_NAME:-local}"
+
+test-failure-diagnostics: ## Verify the unified diagnostics collector (#1151)
+	@echo "→ Testing failure diagnostics collector..."
+	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
+	@bats scripts/tests/failure-diagnostics.bats
 
 # ── Completions ────────────────────────────────────────────────────────────────
 

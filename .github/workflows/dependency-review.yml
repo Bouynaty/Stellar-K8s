@@ -69,22 +69,7 @@ jobs:
       - name: Run cargo audit
         run: |
           echo "── Security advisory audit ──────────────────────────────────────"
-          cargo audit \
-            --ignore RUSTSEC-2020-0071 \
-            --ignore RUSTSEC-2024-0380 \
-            --ignore RUSTSEC-2024-0381 \
-            --ignore RUSTSEC-2026-0085 \
-            --ignore RUSTSEC-2026-0086 \
-            --ignore RUSTSEC-2026-0087 \
-            --ignore RUSTSEC-2026-0091 \
-            --ignore RUSTSEC-2026-0094 \
-            --ignore RUSTSEC-2026-0097 \
-            --ignore RUSTSEC-2026-0098 \
-            --ignore RUSTSEC-2026-0099 \
-            --ignore RUSTSEC-2026-0104 \
-            --ignore RUSTSEC-2026-0149 \
-            --ignore RUSTSEC-2026-0187 \
-            --ignore RUSTSEC-2026-0204
+          cargo audit
 
       - name: Generate audit JSON report
         if: always()
@@ -121,25 +106,10 @@ jobs:
             sleep 5
           done
 
-      - name: Check licenses
+      - name: Run cargo deny check
         run: |
-          echo "── License compliance check ─────────────────────────────────────"
-          cargo deny check licenses
-
-      - name: Check bans (forbidden + duplicate crates)
-        run: |
-          echo "── Dependency bans check ────────────────────────────────────────"
-          cargo deny check bans
-
-      - name: Check advisories via deny
-        run: |
-          echo "── Advisory check via cargo-deny ────────────────────────────────"
-          cargo deny check advisories
-
-      - name: Check sources (registry whitelist)
-        run: |
-          echo "── Source registry check ────────────────────────────────────────"
-          cargo deny check sources
+          echo "── Dependency policy check (licenses + bans + advisories + sources) ──"
+          cargo deny check
 
   # ── 3. Stale dependency detection ───────────────────────────────────────────
   stale-deps:
