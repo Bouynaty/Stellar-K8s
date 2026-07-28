@@ -240,12 +240,17 @@ jobs:
   # ── 3.6. Repo-wide link check (lychee) ───────────────────────────────────────
   # Repo-wide companion to the markdown-link-check job above. Lychee scans
   # documentation files (Markdown + HTML) for broken links — anchors, redirects,
-  # and rot. Source files (*.rs, *.toml, *.yaml, *.sh) are intentionally NOT
-  # scanned: their URL string literals are K8s service DNS, cloud metadata
-  # endpoints, and format-string fragments that lychee cannot reach from CI and
-  # that aren't meaningful "links" anyway. Excludes and accept-codes live in
-  # `lychee.toml`. Runs on every push/PR and on a weekly schedule (see the
-  # standalone .github/workflows/link-check.yml) to catch link rot.
+  # and rot — plus the example manifests under examples/ (comments and string
+  # fields there often carry install/download URLs, e.g. VPA release assets).
+  # Other source files (*.rs, *.toml, *.sh, non-example *.yaml) are still
+  # intentionally NOT scanned: their URL string literals are K8s service DNS,
+  # cloud metadata endpoints, and format-string fragments that lychee cannot
+  # reach from CI and that aren't meaningful "links" anyway. In-cluster service
+  # DNS that does appear inside examples/ (e.g. stellar-core:11626) is excluded
+  # by hostname pattern in `lychee.toml` instead of dropping the whole
+  # directory. Excludes and accept-codes live in `lychee.toml`. Runs on every
+  # push/PR and on a weekly schedule (see the standalone
+  # .github/workflows/link-check.yml) to catch link rot.
   repo-wide-link-check:
     name: Repo-Wide Link Check (lychee)
     runs-on: ubuntu-latest
@@ -265,6 +270,8 @@ jobs:
             --cache
             './**/*.md'
             './**/*.html'
+            './examples/**/*.yaml'
+            './examples/**/*.yml'
           fail: true
 
   # ── 3b. Secret-handling checks (Issue #1116) ────────────────────────────────

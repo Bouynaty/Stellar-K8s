@@ -38,6 +38,8 @@ jobs:
             --cache
             './**/*.md'
             './**/*.html'
+            './examples/**/*.yaml'
+            './examples/**/*.yml'
           fail: false
           output: lychee-report.md
 
