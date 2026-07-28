@@ -598,3 +598,7 @@ See the [examples/plugins](../examples/plugins/) directory for complete examples
 - [Wasmtime](https://wasmtime.dev/)
 - [Kubernetes Admission Webhooks](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/)
 - [Rust Wasm Book](https://rustwasm.github.io/docs/book/)
+
+---
+
+*Last verified: 2026-07-27 (cleanup wave #1187/#1189/#1190/#1191).*

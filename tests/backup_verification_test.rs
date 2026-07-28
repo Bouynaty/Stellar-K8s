@@ -1,10 +1,23 @@
+//! Isolated fixture suite for backup verification types.
+//!
+//! Refactored in issue #1140: inline data builders replaced by shared fixtures;
+//! cluster-dependent tests gated behind `#[ignore]` instead of silent returns.
+
+mod common;
+
+use common::fixtures::{
+    backup_verification_defaults, backup_verification_quick, s3_backup_source,
+    volume_snapshot_backup_source,
+};
 use stellar_k8s::backup::{
     BackupSource, BackupVerificationConfig, VerificationResources, VerificationStrategy,
 };
 
+// ── Default value contract ────────────────────────────────────────────────────
+
 #[tokio::test]
 async fn test_backup_verification_config_default() {
-    let config = BackupVerificationConfig::default();
+    let config = backup_verification_defaults();
 
     assert!(!config.enabled);
     assert_eq!(config.schedule, "0 2 * * 0");
@@ -14,7 +27,28 @@ async fn test_backup_verification_config_default() {
 }
 
 #[tokio::test]
-async fn test_backup_source_s3() {
+async fn test_backup_verification_quick_fixture() {
+    let config = backup_verification_quick();
+
+    assert!(config.enabled);
+    assert_eq!(config.strategy, VerificationStrategy::Quick);
+    assert_eq!(config.timeout_minutes, 5);
+}
+
+// ── BackupSource serialisation round-trips ────────────────────────────────────
+
+#[tokio::test]
+async fn test_backup_source_s3_round_trip() {
+    let source = s3_backup_source();
+
+    let json = serde_json::to_string(&source).unwrap();
+    let deserialized: BackupSource = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(source, deserialized);
+}
+
+#[tokio::test]
+async fn test_backup_source_s3_custom_fields() {
     let source = BackupSource::S3 {
         bucket: "test-bucket".to_string(),
         region: "us-east-1".to_string(),
@@ -29,7 +63,17 @@ async fn test_backup_source_s3() {
 }
 
 #[tokio::test]
-async fn test_backup_source_volume_snapshot() {
+async fn test_backup_source_volume_snapshot_round_trip() {
+    let source = volume_snapshot_backup_source();
+
+    let json = serde_json::to_string(&source).unwrap();
+    let deserialized: BackupSource = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(source, deserialized);
+}
+
+#[tokio::test]
+async fn test_backup_source_volume_snapshot_custom_fields() {
     let source = BackupSource::VolumeSnapshot {
         snapshot_name: "my-snapshot".to_string(),
         storage_class: "fast-ssd".to_string(),
@@ -41,8 +85,10 @@ async fn test_backup_source_volume_snapshot() {
     assert_eq!(source, deserialized);
 }
 
+// ── VerificationStrategy enum ─────────────────────────────────────────────────
+
 #[tokio::test]
-async fn test_verification_strategy() {
+async fn test_verification_strategy_variants_are_distinct() {
     let quick = VerificationStrategy::Quick;
     let standard = VerificationStrategy::Standard;
     let full = VerificationStrategy::Full;
@@ -51,6 +97,8 @@ async fn test_verification_strategy() {
     assert_ne!(standard, full);
     assert_ne!(quick, full);
 }
+
+// ── VerificationResources defaults ───────────────────────────────────────────
 
 #[tokio::test]
 async fn test_verification_resources_default() {
@@ -61,17 +109,14 @@ async fn test_verification_resources_default() {
     assert_eq!(resources.storage_size, "100Gi");
 }
 
+// ── Full config serialisation ─────────────────────────────────────────────────
+
 #[tokio::test]
-async fn test_backup_verification_config_serialization() {
+async fn test_backup_verification_config_full_serialization() {
     let config = BackupVerificationConfig {
         enabled: true,
         schedule: "0 2 * * 0".to_string(),
-        backup_source: BackupSource::S3 {
-            bucket: "test-bucket".to_string(),
-            region: "us-west-2".to_string(),
-            prefix: "backups/".to_string(),
-            credentials_secret: "aws-credentials".to_string(),
-        },
+        backup_source: s3_backup_source(),
         strategy: VerificationStrategy::Full,
         timeout_minutes: 120,
         benchmark_enabled: true,

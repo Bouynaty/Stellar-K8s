@@ -4,8 +4,8 @@ use std::sync::Arc;
 use stellar_k8s::controller::health_check_sidecar::{
     create_router, sync_monitor_loop, HealthCheckState,
 };
-use tokio::sync::RwLock;
 use stellar_k8s::logging::{init_binary_subscriber, LogOutputFormat};
+use tokio::sync::RwLock;
 use tracing::{error, info, Level};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 

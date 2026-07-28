@@ -1,19 +1,12 @@
+mod common;
+
+use common::skip_if_tools_missing;
 use std::collections::HashMap;
 use std::error::Error;
 use std::process::{Command, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use tracing::info;
-
-/// Returns true if the given binary is accessible in PATH.
-fn tool_available(binary: &str) -> bool {
-    Command::new(binary)
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok()
-}
 
 const OPERATOR_NAMESPACE: &str = "stellar-system";
 const TEST_NAMESPACE: &str = "stellar-e2e";
@@ -45,11 +38,8 @@ const UPGRADE_NODE_NAME: &str = "upgrade-soroban";
 fn e2e_stellarnode_reconciliation() -> Result<(), Box<dyn std::error::Error>> {
     // ── Prerequisite check ─────────────────────────────────────────────────────
     // Skip gracefully when the required cluster tools are not installed.
-    for tool in &["kind", "kubectl", "docker"] {
-        if !tool_available(tool) {
-            eprintln!("Skipping e2e test: `{tool}` not found in PATH.");
-            return Ok(());
-        }
+    if skip_if_tools_missing(&["kind", "kubectl", "docker"]) {
+        return Ok(());
     }
 
     let cluster_name = std::env::var("KIND_CLUSTER_NAME").unwrap_or_else(|_| "stellar-e2e".into());

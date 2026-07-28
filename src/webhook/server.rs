@@ -1479,7 +1479,10 @@ mod tests {
             .map(|_| {
                 let s = server.clone();
                 let o = obj.clone();
-                async move { s.validate(validation_input(Operation::Create, Some(o))).await }
+                async move {
+                    s.validate(validation_input(Operation::Create, Some(o)))
+                        .await
+                }
             })
             .collect();
 
@@ -1505,7 +1508,10 @@ mod tests {
             .map(|_| {
                 let s = server.clone();
                 let o = obj.clone();
-                async move { s.validate(validation_input(Operation::Create, Some(o))).await }
+                async move {
+                    s.validate(validation_input(Operation::Create, Some(o)))
+                        .await
+                }
             })
             .collect();
 
@@ -1540,7 +1546,9 @@ mod tests {
                 let s = server.clone();
                 let o = valid.clone();
                 async move {
-                    let r = s.validate(validation_input(Operation::Create, Some(o))).await;
+                    let r = s
+                        .validate(validation_input(Operation::Create, Some(o)))
+                        .await;
                     ("valid", r.allowed)
                 }
             })
@@ -1551,7 +1559,9 @@ mod tests {
                 let s = server.clone();
                 let o = invalid.clone();
                 async move {
-                    let r = s.validate(validation_input(Operation::Create, Some(o))).await;
+                    let r = s
+                        .validate(validation_input(Operation::Create, Some(o)))
+                        .await;
                     ("invalid", r.allowed)
                 }
             })
@@ -1637,7 +1647,10 @@ mod tests {
             .map(|_| {
                 let s = server.clone();
                 let o = obj.clone();
-                async move { s.validate(validation_input(Operation::Create, Some(o))).await }
+                async move {
+                    s.validate(validation_input(Operation::Create, Some(o)))
+                        .await
+                }
             })
             .collect();
 
