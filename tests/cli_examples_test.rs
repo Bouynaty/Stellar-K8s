@@ -1,4 +1,3 @@
-
 //! Command-level smoke tests for documented CLI example commands.
 //!
 //! This test validates that all CLI examples from `docs/cli-commands-reference.md`
@@ -20,13 +19,22 @@ fn run_examples_parse() {
     // From docs/cli-commands-reference.md - "Development" section
     let examples = vec![
         vec!["stellar-operator", "run", "--namespace", "stellar-system"],
-        vec!["stellar-operator", "run", "--enable-mtls", "--namespace", "stellar-system"],
+        vec![
+            "stellar-operator",
+            "run",
+            "--enable-mtls",
+            "--namespace",
+            "stellar-system",
+        ],
         vec!["stellar-operator", "run", "--dry-run"],
     ];
 
     for example in examples {
         let parsed = parse_command(&example).unwrap_or_else(|e| {
-            panic!("Failed to parse documented example: {:?}\nError: {}", example, e);
+            panic!(
+                "Failed to parse documented example: {:?}\nError: {}",
+                example, e
+            );
         });
         if let Commands::Run(args) = parsed.command {
             println!("✓ Parsed: {:?}", example);
@@ -209,7 +217,12 @@ fn install_completion_examples_parse() {
 
 #[test]
 fn benchmark_examples_parse() {
-    let example = vec!["stellar-operator", "benchmark", "--namespace", "stellar-system"];
+    let example = vec![
+        "stellar-operator",
+        "benchmark",
+        "--namespace",
+        "stellar-system",
+    ];
     let parsed = parse_command(&example).unwrap();
     if let Commands::Benchmark(args) = parsed.command {
         assert_eq!(args.namespace, "stellar-system");
@@ -437,6 +450,8 @@ fn invalid_command_fails() {
     let result = parse_command(&["stellar-operator", "nonexistent-command"]);
     assert!(result.is_err(), "Unknown commands should fail");
     println!("✓ Invalid commands are rejected");
+}
+
 use assert_cmd::Command;
 
 #[test]

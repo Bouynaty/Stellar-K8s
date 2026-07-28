@@ -151,13 +151,8 @@ async fn contract_validate_truncated_json_is_rejected() {
 
 #[tokio::test]
 async fn contract_validate_wrong_content_type_plain_text_is_rejected() {
-    let (status, body) = post_raw(
-        new_app(),
-        "/validate",
-        Some("text/plain"),
-        Body::from("{}"),
-    )
-    .await;
+    let (status, body) =
+        post_raw(new_app(), "/validate", Some("text/plain"), Body::from("{}")).await;
     assert_client_error(status, &body, "wrong content-type");
 }
 
@@ -239,7 +234,8 @@ async fn contract_validate_wrong_kind_payload_is_client_error_or_denied() {
 #[tokio::test]
 async fn contract_validate_oversized_body_is_rejected() {
     // Axum default body limit is 2 MiB; send ~2.5 MiB of JSON noise.
-    let mut huge = String::from(r#"{"apiVersion":"admission.k8s.io/v1","kind":"AdmissionReview","pad":""#);
+    let mut huge =
+        String::from(r#"{"apiVersion":"admission.k8s.io/v1","kind":"AdmissionReview","pad":""#);
     huge.push_str(&"x".repeat(2_500_000));
     huge.push_str(r#""}"#);
     let (status, body) = post_json(new_app(), "/validate", Body::from(huge)).await;
