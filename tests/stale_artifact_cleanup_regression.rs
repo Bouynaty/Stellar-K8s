@@ -99,7 +99,7 @@ mod stale_artifact_cleanup_regression {
         let mut p = policy(30);
         p.enabled = false;
         p.schedule = Some("* * * * * *".to_string()); // every second
-        // disabled policies skip validation, so construct directly
+                                                      // disabled policies skip validation, so construct directly
         let worker = PruningWorker::new(PruningPolicy {
             enabled: false,
             ..PruningPolicy::default()
@@ -119,7 +119,8 @@ mod stale_artifact_cleanup_regression {
     #[test]
     fn enabled_policy_with_no_last_run_triggers() {
         let mut p = policy(30);
-        p.schedule = Some("0 0 * * *".to_string()); // daily at midnight
+        // cron crate expects seconds field (6-field expressions).
+        p.schedule = Some("0 0 0 * * *".to_string()); // daily at midnight
         let worker = PruningWorker::new(p).unwrap();
         // No last run recorded → should trigger immediately
         assert!(worker.should_run_scheduled(None));

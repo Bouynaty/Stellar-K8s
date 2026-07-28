@@ -94,6 +94,5 @@ fn command_link_check() {
 #[test]
 #[ignore]
 fn command_check_third_party_licenses() {
-    run_make("check-third-party-licenses")
-        .expect("third-party license check must pass");
+    run_make("check-third-party-licenses").expect("third-party license check must pass");
 }

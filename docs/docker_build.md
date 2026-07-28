@@ -9,7 +9,7 @@ This guide explains how to build deterministic Docker images for **Stellar-K8s**
 
 ## What we changed
 1. **Pinned base images**
-   - `lukemathwalker/cargo-chef:1.95-bookworm` (previously `latest-rust-1.95-bookworm`).
+   - `lukemathwalker/cargo-chef:latest-rust-1.95-slim-bookworm` (tag `1.95-bookworm` is unpublished on Docker Hub).
    - `debian:bookworm-slim` is now referenced by its SHA256 digest.
 2. **Source-date-epoch**
    - Added `ARG SOURCE_DATE_EPOCH=0` and `ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}` early in the Dockerfile. This forces the same timestamps for file metadata inside the image.
