@@ -41,8 +41,9 @@ pub struct RestoreArgs {
     #[arg(short, long)]
     pub destination: PathBuf,
 
-    /// Storage backend (file, s3, arweave, ipfs, filecoin
-    #[arg(short, long, default_value = "file")]
+    /// Storage backend (file, s3, arweave, ipfs, filecoin)
+    // long-only: short `-b` is already used by `--backup`
+    #[arg(long, default_value = "file")]
     pub backend: String,
 
     /// Verify restore

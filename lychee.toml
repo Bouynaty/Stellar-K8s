@@ -78,6 +78,15 @@ exclude = [
   "example\\.org",
   # Cargo doc helper anchors that lychee can't resolve without a build
   "^https://docs\\.rs/.*#",
+  # In-cluster Kubernetes service DNS referenced in example manifests
+  # (examples/**/*.yaml) — these hostnames only resolve inside a live
+  # cluster and are not real links to verify from CI.
+  "^https?://stellar-core(-svc)?:",
+  "^https?://validator-(mainnet|testnet):",
+  "^https?://core(-mainnet)?\\.default",
+  "^https?://prometheus-(k8s\\.monitoring\\.svc|operated\\.monitoring):",
+  "^https?://trivy\\.trivy\\.svc:",
+  "^https://kubernetes\\.default\\.svc",
 ]
 
 # Paths that lychee should not scan (matches anywhere in the path)

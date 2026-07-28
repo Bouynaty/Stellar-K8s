@@ -17,7 +17,6 @@
 //! See `docs/compat-matrix.md` for the full documentation.
 
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 // ---------------------------------------------------------------------------
 // Core types

@@ -25,12 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Restore lychee cache
-        uses: actions/cache@v4
-        with:
-          path: .lycheecache
-          key: cache-lychee-weekly-${{ github.run_id }}
-          restore-keys: cache-lychee-
+      - name: (optional) Restore lychee cache removed
+        run: echo "Skipping cache restore in scheduled link-check to satisfy repository hygiene checks. Lychee will run without cache."
 
       - name: Run lychee
         id: lychee
@@ -42,6 +38,8 @@ jobs:
             --cache
             './**/*.md'
             './**/*.html'
+            './examples/**/*.yaml'
+            './examples/**/*.yml'
           fail: false
           output: lychee-report.md
 

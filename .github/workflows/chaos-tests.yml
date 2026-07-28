@@ -50,6 +50,8 @@ env:
 
 jobs:
   # ── Build operator image once, share as artifact ─────────────────────────
+  # Uses the shared build-operator composite action (issue #1136) to avoid
+  # duplicating the Rust + Docker bootstrap across every chaos job group.
   build:
     name: Build Operator Image
     runs-on: ubuntu-latest
@@ -57,28 +59,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+      - name: Build operator binary and Docker image
+        uses: ./.github/actions/build-operator
         with:
+          image-tag: ${{ env.IMAGE_TAG }}
+          artifact-name: chaos-operator-image
           cache-key: "chaos-build"
-
-      - name: Build release binary
-        run: cargo build --release --locked --bin stellar-operator
-
-      - name: Build Docker image
-        run: docker build -t stellar-operator:${{ env.IMAGE_TAG }} .
-
-      - name: Export image tarball
-        run: |
-          docker save stellar-operator:${{ env.IMAGE_TAG }} \
-            | gzip > stellar-operator-chaos.tar.gz
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: chaos-operator-image
-          path: stellar-operator-chaos.tar.gz
-          retention-days: 1
 
   # ── Group A: Pod Kill + Network Partition ─────────────────────────────────
   chaos-group-a:

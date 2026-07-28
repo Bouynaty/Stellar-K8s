@@ -18,20 +18,22 @@
 # =============================================================================
 
 .PHONY: help \
-	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all \
+	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-fix security-report \
 	build test ci-local quick watch \
 	docker-build docker-build-ci docker-multiarch \
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint link-check link-check-all changelog \
-	generate-api-docs check-api-docs check-stale-docs \
-	third-party-licenses check-third-party-licenses \
+	generate-api-docs check-api-docs check-stale-docs update-doc-baseline docs-check-strict docs-lint \
+	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
 	compose-up compose-dev compose-down compose-logs \
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
 	health health-fast validate preflight test-preflight test-shell all \
+	collect-failure-diagnostics test-failure-diagnostics \
+	check-unreachable-modules \
 	clean
 
 .DEFAULT_GOAL := help
@@ -85,7 +87,9 @@ help: ## Show this help and the canonical command flow
 	@echo '  Format:   make fmt               Auto-format code'
 	@echo '  Build:    make build              Release binary build'
 	@echo '  Test:     make test               Run all tests'
-	@echo '  Security: make security-all       Audit + scan'
+	@echo '  Security: make security-all       Complete security audit suite'
+	@echo '  Security: make audit              Vulnerability scan + policy check'
+	@echo '  Security: make security-report    Generate security report'
 	@echo '  Docker:   make docker-build       Local Docker image'
 	@echo '  Clean:    make clean              Remove build artifacts'
 	@echo ''
@@ -121,18 +125,47 @@ lint-strict: ## Run clippy (adds complexity checks on top of lint; same base exc
 
 # ── Security ──────────────────────────────────────────────────────────────────
 
-audit: ## Security audit (cargo audit)
-	@echo "→ Running security audit..."
-	@command -v cargo-audit >/dev/null 2>&1 || cargo install --locked cargo-audit
-	@$(CARGO) audit --deny unsound || echo "⚠️  Security issues found - review before production"
+audit: ## Security audit (cargo audit + deny) via consolidated lockfile gate
+	@bash scripts/dep-gate.sh
 
-security-scan: ## Run security scan (audit + shellcheck)
+security-scan: ## Run security scan (audit + dependency policy + shellcheck)
+	@echo "→ Running comprehensive security scan..."
 	$(MAKE) audit
 	$(MAKE) shellcheck
+	@echo "  Checking for outdated dependencies..."
+	@command -v cargo-outdated >/dev/null 2>&1 || cargo install --locked cargo-outdated
+	@$(CARGO) outdated --root-deps-only || true
 
-security-all: ## Run all security checks (audit + shellcheck)
+security-all: ## Run all security checks (audit + policy + scan + SBOM)
+	@echo "→ Running complete security audit suite..."
 	$(MAKE) audit
 	$(MAKE) shellcheck
+	@echo "  Generating Software Bill of Materials..."
+	@mkdir -p security/sbom
+	@$(CARGO) tree --format "{p} {l}" > security/sbom/dependencies.txt
+	@$(CARGO) deny list --format json > security/sbom/licenses.json 2>/dev/null || true
+	@echo "  ✅ Security audit complete - SBOM available in security/sbom/"
+
+security-fix: ## Apply automated security fixes where possible
+	@echo "→ Applying security fixes..."
+	@echo "  Updating dependencies..."
+	@$(CARGO) update --dry-run
+	@echo "  ⚠️  Manual review recommended after running 'cargo update'"
+
+security-report: ## Generate comprehensive security report  
+	@echo "→ Generating security report..."
+	@mkdir -p security/reports
+	@echo "# Security Report - $(shell date)" > security/reports/security-report.md
+	@echo "" >> security/reports/security-report.md
+	@echo "## Vulnerability Scan" >> security/reports/security-report.md
+	@$(CARGO) audit --format json > security/reports/audit.json 2>/dev/null || true
+	@echo "" >> security/reports/security-report.md  
+	@echo "## Dependency Policy Check" >> security/reports/security-report.md
+	@$(CARGO) deny check --format json > security/reports/deny.json 2>/dev/null || true
+	@echo "" >> security/reports/security-report.md
+	@echo "## License Compliance" >> security/reports/security-report.md
+	@$(CARGO) deny list >> security/reports/security-report.md 2>/dev/null || true
+	@echo "  📊 Security report generated in security/reports/"
 
 shellcheck: ## Run shellcheck on all shell scripts
 	@echo "→ Running shellcheck..."
@@ -164,8 +197,14 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 	@echo "→ Building Docker image (CI mode)..."
 	DOCKER_BUILDKIT=1 $(DOCKER) build --target runtime -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
+docker-multiarch: ## Trigger multi-arch build via the CI workflow (dispatches workflow_dispatch)
+	@echo "→ Triggering multi-arch build pipeline..."
+	@command -v gh >/dev/null 2>&1 || { echo "✗ gh CLI not found. Install: https://cli.github.com/"; exit 1; }
+	gh workflow run multiarch-build.yml
+	@echo "✓ Multi-arch build dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
+
 # Multi-arch builds are handled by CI: .github/workflows/multiarch-build.yml
-# To trigger a multi-arch build, push a tag or manually dispatch that workflow.
+# To trigger a multi-arch build, push a tag or run: make docker-multiarch
 health: ## Run common repository health checks (format, lint, test, docs, links)
 	@bash scripts/repo-health.sh
 
@@ -176,6 +215,10 @@ validate: ## Fast validation (alias for health-fast)
 	@bash scripts/repo-health.sh --fast
 
 # ── Quality & Health ───────────────────────────────────────────────────────────
+
+check-unreachable-modules: ## Static check for unreachable modules and dead code paths (#1150)
+	@echo "→ Checking unreachable modules and dead code paths..."
+	@$(CARGO) run --quiet --locked --bin check-unreachable-modules
 
 link-check: ## Check markdown links (internal anchors + relative paths)
 	@echo "→ Running markdown link checker..."
@@ -196,7 +239,7 @@ changelog: ## Generate/update CHANGELOG.md using git-cliff
 	@command -v git-cliff >/dev/null 2>&1 || cargo install git-cliff
 	git-cliff --output CHANGELOG.md
 
-ci-local: fmt-check lint audit test build link-check ## Run full CI locally
+ci-local: fmt-check lint docs-lint audit test build link-check ## Run full CI locally (includes strict docs lint)
 	@echo ""
 	@echo "✓ All CI checks passed!"
 
@@ -239,9 +282,32 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--output docs/api-reference.md \
 		--check
 
-check-stale-docs: ## Check for documentation that has fallen behind source code
+check-stale-docs: ## Check for documentation that has fallen behind source code (warns; use docs-check-strict to fail)
 	@echo "→ Checking for stale documentation..."
 	@$(CARGO) run --bin doc-check -- --warn-only
+
+update-doc-baseline: ## Update the .doc-hashes.toml baseline after deliberate doc updates
+	@echo "→ Updating doc-check baseline hashes..."
+	@$(CARGO) run --bin doc-check -- --update-baseline
+	@echo "✓ Baseline updated. Commit .doc-hashes.toml to record the new state."
+
+docs-check-strict: ## Fail CI if any doc is stale (no --warn-only; used in strict CI stages)
+	@echo "→ Running strict documentation staleness check..."
+	@$(CARGO) run --bin doc-check -- status
+
+docs-lint: ## Run rustdoc with warnings-as-errors (issue #1138: strict docs quality gate)
+	@echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
+	@RUSTDOCFLAGS="-D warnings" K8S_OPENAPI_ENABLED_VERSION=1.30 \
+		$(CARGO) doc --no-deps --workspace \
+		--features "rest-api,metrics,admission-webhook,k8s-v1-30"
+	@echo "✓ rustdoc passed — no documentation warnings"
+
+docs-lint: ## Run rustdoc with warnings-as-errors (issue #1138: strict docs quality gate)
+	@echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
+	@RUSTDOCFLAGS="-D warnings" K8S_OPENAPI_ENABLED_VERSION=1.30 \
+		$(CARGO) doc --no-deps --workspace \
+		--features "rest-api,metrics,admission-webhook,k8s-v1-30"
+	@echo "✓ rustdoc passed — no documentation warnings"
 
 # ── Kubernetes ────────────────────────────────────────────────────────────────
 
@@ -251,9 +317,10 @@ install-crd: ## Install CRDs
 apply-samples: install-crd ## Apply samples
 	$(KUBECTL) apply -f config/samples/
 
-crd-gen: ## Generate CRDs
+crd-gen: ## Generate CRDs (output is sorted for deterministic diffs)
 	@echo "→ Generating CRDs..."
-	@$(CARGO) run --bin crdgen > config/crd/stellarnode-crd.yaml
+	@$(CARGO) run --bin crdgen | python3 scripts/sort-manifests.py > config/crd/stellarnode-crd.yaml
+	@echo "✓ CRD written to config/crd/stellarnode-crd.yaml (deterministic order)"
 
 regenerate: crd-gen generate-api-docs bundle ## Regenerate all derived artifacts (CRDs, API docs, OLM bundle)
 	@echo "✓ All generated artifacts are up to date"
@@ -271,6 +338,18 @@ test-shell: ## Run bats unit tests for shared shell helpers
 	@echo "→ Running shell helper bats tests..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
 	@bats scripts/tests/common.bats
+
+collect-failure-diagnostics: ## Assemble a local CI failure diagnostics bundle (#1151)
+	@echo "→ Assembling failure diagnostics bundle..."
+	@chmod +x scripts/ci/collect-failure-diagnostics.sh
+	@./scripts/ci/collect-failure-diagnostics.sh --no-cluster \
+		--bundle-dir "$${BUNDLE_DIR:-/tmp/ci-diagnostics}" \
+		--job-name "$${JOB_NAME:-local}"
+
+test-failure-diagnostics: ## Verify the unified diagnostics collector (#1151)
+	@echo "→ Testing failure diagnostics collector..."
+	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
+	@bats scripts/tests/failure-diagnostics.bats
 
 # ── Completions ────────────────────────────────────────────────────────────────
 
@@ -358,6 +437,9 @@ benchmark-upgrade: ## Run upgrade load test with k6
 
 # ── Running the Operator ──────────────────────────────────────────────────────
 
+run: build ## Run the operator (alias for run-local; matches README and CI references)
+	RUST_LOG=info ./target/release/stellar-operator run
+
 run-local: build ## Run operator locally from built release binary
 	RUST_LOG=info ./target/release/stellar-operator
 
@@ -369,10 +451,12 @@ run-dev: ## Run operator in dev mode with hot reload
 
 bundle: bundle-render bundle-generate bundle-validate ## Generate bundle manifests and metadata, then validate
 
-bundle-render: ## Render Helm chart to manifests
+bundle-render: ## Render Helm chart to manifests (sorted for deterministic pipeline diffs)
 	@echo "→ Generating manifests from Helm chart..."
 	@mkdir -p rendered
-	@helm template stellar-operator charts/stellar-operator > rendered/manifests.yaml
+	@helm template stellar-operator charts/stellar-operator \
+		| python3 scripts/sort-manifests.py > rendered/manifests.yaml
+	@echo "✓ Rendered manifests written to rendered/manifests.yaml (deterministic order)"
 
 bundle-generate: ## Generate OLM bundle from manifests
 	@echo "→ Generating bundle..."
@@ -386,6 +470,9 @@ bundle-validate: ## Validate generated bundle
 
 bundle-build: ## Build the bundle image.
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+sort-manifests: ## Sort and normalise a YAML manifest stream (reads stdin, writes stdout)
+	@python3 scripts/sort-manifests.py
 
 # ── Quickstart ────────────────────────────────────────────────────────────────
 

@@ -32,7 +32,7 @@ pub const MANAGED_BY_LABEL: &str = "app.kubernetes.io/managed-by";
 pub const MANAGED_BY_VALUE: &str = "stellar-operator";
 
 /// A single orphaned Kubernetes resource discovered during an audit.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct OrphanedResource {
     /// Kubernetes resource kind (e.g. "ConfigMap", "Service", "PersistentVolumeClaim").
     pub kind: String,
@@ -46,19 +46,6 @@ pub struct OrphanedResource {
     pub age_seconds: i64,
     /// Human-readable reason why this resource is considered orphaned.
     pub reason: String,
-}
-
-impl Default for OrphanedResource {
-    fn default() -> Self {
-        Self {
-            kind: String::new(),
-            name: String::new(),
-            namespace: String::new(),
-            labels: BTreeMap::new(),
-            age_seconds: 0,
-            reason: String::new(),
-        }
-    }
 }
 
 /// Summary statistics for an audit report.

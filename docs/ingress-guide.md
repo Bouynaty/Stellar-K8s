@@ -1,5 +1,7 @@
 # Ingress Configuration Guide
 
+<!-- chart-sync: 2026-07-27T22:40Z operator Deployment uses `run` subcommand + REST_API_PORT -->
+
 ## Overview
 
 The Stellar-K8s operator automates the creation of Kubernetes Ingress resources to expose Horizon and Soroban RPC nodes over HTTPS. Combined with **cert-manager**, it provides automatic TLS certificate provisioning and renewal using Let's Encrypt or custom Certificate Authorities.
@@ -416,3 +418,7 @@ pub struct IngressPath {
 - [cert-manager Documentation](https://cert-manager.io/docs/)
 - [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
 - [Traefik Ingress Controller](https://doc.traefik.io/traefik/providers/kubernetes-ingress/)
+
+---
+
+*Last verified: 2026-07-27 (cleanup wave #1187/#1189/#1190/#1191).*

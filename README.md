@@ -308,6 +308,8 @@ The operator exposes the following production-readiness metrics:
 
 The operator supports runtime feature flags via the `stellar-operator-config` ConfigMap. Changes are picked up **without restart**.
 
+Dead flags that no longer gated any code paths were removed. Only `enable_dr` remains.
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -315,29 +317,18 @@ metadata:
   name: stellar-operator-config
   namespace: stellar-system
 data:
-  enable_cve_scanning: "true"
-  enable_read_pool: "false"
   enable_dr: "false"
-  enable_peer_discovery: "true"
-  enable_archive_health: "true"
-  enable_soroban_metrics: "true"
 ```
 
-| Flag                     | Default | Description                         |
-| ------------------------ | ------- | ----------------------------------- |
-| `enable_cve_scanning`    | `true`  | Automatic CVE patch reconciliation  |
-| `enable_read_pool`       | `false` | Read-replica pool management        |
-| `enable_dr`              | `false` | Disaster-recovery drill scheduling  |
-| `enable_peer_discovery`  | `true`  | Automatic peer discovery            |
-| `enable_archive_health`  | `true`  | History archive health checks       |
-| `enable_soroban_metrics` | `true`  | Soroban-specific Prometheus metrics |
+| Flag        | Default | Description                                                   |
+| ----------- | ------- | ------------------------------------------------------------- |
+| `enable_dr` | `false` | Disaster-recovery / cross-region bridge resources and drills |
 
 When using the Helm chart, set flags via `values.yaml`:
 
 ```yaml
 featureFlags:
-  enableCveScanning: "true"
-  enableReadPool: "false"
+  enableDr: false
 ```
 
 ---

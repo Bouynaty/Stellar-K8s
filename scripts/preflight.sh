@@ -1,25 +1,40 @@
 #!/usr/bin/env bash
-# scripts/preflight.sh — Check required tools and (optionally) repo labels.
+# scripts/preflight.sh — Strict gate: required tools AND pinned minimum
+# versions (and, optionally, repo labels).
 #
 # Usage:
-#   ./scripts/preflight.sh              # check tools only
-#   ./scripts/preflight.sh --labels     # check tools + GitHub repo labels
+#   ./scripts/preflight.sh              # check tools + versions
+#   ./scripts/preflight.sh --labels     # also verify GitHub repo labels
 #   REPO=OtowoOrg/Stellar-K8s ./scripts/preflight.sh --labels
 #
 # Exit codes: 0 = all pass, 1 = one or more checks failed.
+#
+# Version pins live in scripts/lib/versions.sh (shared with setup-linux.sh /
+# setup-mac.sh) so there is exactly one place to bump them.
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/versions.sh
+source "${SCRIPT_DIR}/lib/versions.sh"
+
 # --------------------------------------------------------------------------- #
-# Required tools: (binary hint)
+# Tools checked for presence only — no pinned minimum version in this repo.
 # --------------------------------------------------------------------------- #
-declare -A TOOLS=(
+declare -A PRESENCE_TOOLS=(
   [docker]="Install Docker Engine: https://docs.docker.com/engine/install/"
-  [kind]="Install kind: https://kind.sigs.k8s.io/docs/user/quick-start/#installation"
-  [kubectl]="Install kubectl: https://kubernetes.io/docs/tasks/tools/"
-  [helm]="Install Helm 3: https://helm.sh/docs/intro/install/"
-  [cargo]="Install Rust via rustup: https://rustup.rs/"
   [gh]="Install GitHub CLI: https://cli.github.com/"
+)
+
+# --------------------------------------------------------------------------- #
+# Tools with a pinned minimum version — preflight fails strictly if the
+# installed version is below the pin, not just if the binary is missing.
+# --------------------------------------------------------------------------- #
+declare -A VERSIONED_TOOLS=(
+  [cargo]="${RUST_TOOLCHAIN}|Install Rust via rustup: https://rustup.rs/"
+  [kind]="${KIND_VERSION}|Install kind: https://kind.sigs.k8s.io/docs/user/quick-start/#installation"
+  [kubectl]="${KUBECTL_VERSION}|Install kubectl: https://kubernetes.io/docs/tasks/tools/"
+  [helm]="${HELM_VERSION}|Install Helm 3: https://helm.sh/docs/intro/install/"
 )
 
 # Labels that must exist in the GitHub repo before issue automation runs.
@@ -34,6 +49,12 @@ pass() { echo -e "  ${GREEN}[PASS]${NC} $*"; }
 fail() { echo -e "  ${RED}[FAIL]${NC} $*"; }
 warn() { echo -e "  ${YELLOW}[WARN]${NC} $*"; }
 
+# Pull the first x.y.z (optionally v-prefixed) version token out of arbitrary
+# `--version` output, regardless of exact tool-specific formatting.
+_extract_semver() {
+  grep -oE 'v?[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1 | sed 's/^v//'
+}
+
 # --------------------------------------------------------------------------- #
 # Tool checks
 # --------------------------------------------------------------------------- #
@@ -41,18 +62,43 @@ check_tools() {
   echo "=== Required Tools ==="
   local errors=0
 
-  for binary in "${!TOOLS[@]}"; do
+  for binary in "${!PRESENCE_TOOLS[@]}"; do
     if version=$(${binary} --version 2>&1 | head -1); then
       pass "${binary} — ${version}"
     else
       fail "${binary} not found in PATH"
-      echo "         → ${TOOLS[$binary]}"
+      echo "         → ${PRESENCE_TOOLS[$binary]}"
+      (( errors++ )) || true
+    fi
+  done
+
+  echo ""
+  echo "=== Required Tool Versions (strict — must be >= pinned) ==="
+
+  for binary in "${!VERSIONED_TOOLS[@]}"; do
+    local pinned="${VERSIONED_TOOLS[$binary]%%|*}"
+    local hint="${VERSIONED_TOOLS[$binary]#*|}"
+
+    local got=""
+    got=$(${binary} --version 2>&1 | _extract_semver) || got=""
+    [[ -z "${got}" ]] && got="missing"
+
+    if [[ "${got}" == "missing" ]]; then
+      fail "${binary} not found in PATH (requires >= ${pinned})"
+      echo "         → ${hint}"
+      (( errors++ )) || true
+    elif version_ge "${got}" "${pinned}"; then
+      pass "${binary} ${got} (>= ${pinned})"
+    else
+      fail "${binary} ${got} is below the required minimum ${pinned}"
+      echo "         → ${hint}"
       (( errors++ )) || true
     fi
   done
 
   return "${errors}"
 }
+
 
 # --------------------------------------------------------------------------- #
 # GitHub label checks (requires gh CLI)

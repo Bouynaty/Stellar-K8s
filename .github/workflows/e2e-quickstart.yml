@@ -71,7 +71,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "e2e-quickstart"
+          cache-key: "verify-quickstart"
 
       # ── Tool installs ────────────────────────────────────────────────────
       - name: Install kind
@@ -110,30 +110,17 @@ jobs:
           chmod +x scripts/quickstart-verify.sh
           bash scripts/quickstart-verify.sh
 
-      # ── Collect logs on failure ──────────────────────────────────────────
-      - name: Collect operator logs on failure
+      # ── Unified failure diagnostics bundle (issue #1151) ─────────────────
+      - name: Upload failure diagnostics bundle
         if: failure()
-        run: |
-          echo "── Operator pod logs ───────────────────────────────────────────"
-          kubectl logs -n stellar-system \
-            -l "app.kubernetes.io/name=stellar-operator" \
-            --tail=100 2>/dev/null || echo "(no logs available)"
-
-          echo "── Pod status ──────────────────────────────────────────────────"
-          kubectl get pods -n stellar-system -o wide 2>/dev/null || true
-
-          echo "── Events ──────────────────────────────────────────────────────"
-          kubectl get events -n stellar-system \
-            --sort-by='.lastTimestamp' 2>/dev/null || true
-
-      - name: Upload failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/collect-failure-diagnostics
         with:
-          name: e2e-failure-diagnostics-${{ github.run_id }}
-          path: |
-            /tmp/stellar-e2e-*.log
-          retention-days: 7
+          artifact-name: ci-diagnostics-e2e-quickstart-${{ github.run_id }}
+          operator-namespace: stellar-system
+          extra-paths: |
+            /tmp/stellar-e2e-verify.log
+            /tmp/stellar-e2e-setup.log
+          retention-days: "14"
 
   # ── README command smoke test (fast, no cluster required) ─────────────────
   readme-commands-lint:

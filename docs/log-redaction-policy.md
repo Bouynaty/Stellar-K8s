@@ -35,17 +35,17 @@ Each match is replaced with `[REDACTED:<rule_name>]` so that:
 
 ```
 tracing event
-      │
-      ▼
+    │
+    ▼
  EnvFilter (level gate)
-      │
-      ▼
+    │
+    ▼
  AnalyticsLayer (optional, operator only)
-      │
-      ▼
+    │
+    ▼
  fmt::Layer + RedactingFields   ← field values run through redact() before output
-      │
-      ▼
+    │
+    ▼
  OTLP Layer (optional)          ← exports to collector
 ```
 

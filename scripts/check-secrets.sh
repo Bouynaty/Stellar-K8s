@@ -71,8 +71,10 @@ done < <(grep -rn --include="*.rs" --include="*.sh" --include="*.yaml" --include
     || true)
 
 # AWS access key pattern: AKIA[A-Z0-9]{16}
-while IFS=: read -r file lineno _; do
+while IFS=: read -r file lineno content; do
     [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *sample* ]] && continue
+    # Allow AWS documentation placeholders (…EXAMPLE).
+    echo "$content" | grep -qiE 'EXAMPLE|PLACEHOLDER|YOUR[_-]?KEY' && continue
     finding "$file" "$lineno" "Possible AWS Access Key ID (AKIA...)"
 done < <(grep -rn --include="*.rs" --include="*.sh" --include="*.yaml" --include="*.yml" \
     -E "AKIA[A-Z0-9]{16}" . \
@@ -90,9 +92,9 @@ done < <(grep -rn --include="*.rs" --include="*.pem" --include="*.key" \
 
 # Generic password= / secret= / token= with non-placeholder values
 while IFS=: read -r file lineno content; do
-    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *sample* || "$file" == *secret_rotation* || "$file" == *secret-rotation* ]] && continue
-    # Allow obvious placeholders.
-    echo "$content" | grep -qiE "(placeholder|example|changeme|your[-_]|<[^>]+>|\\\$\{)" && continue
+    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *sample* || "$file" == *secret_rotation* || "$file" == *secret-rotation* || "$file" == *check-secrets* ]] && continue
+    # Allow obvious placeholders and Secret *resource names* (not credential values).
+    echo "$content" | grep -qiE "(placeholder|example|changeme|your[-_]|<[^>]+>|\\\$\{|test[_-]?password|stellar-core-secret)" && continue
     finding "$file" "$lineno" "Possible inline secret assignment (password=/secret=/token=)"
 done < <(grep -rni --include="*.rs" --include="*.sh" --include="*.yaml" --include="*.yml" \
     -E "(password|secret|token)\s*=\s*['\"][^'\"]{8,}" . \
@@ -122,9 +124,12 @@ done < <(grep -rn --include="*.sh" \
     --exclude-dir=.git \
     || true)
 
-# Detect `set -x` near secret variables (would leak them in CI logs).
-while IFS=: read -r file lineno _; do
-    [[ "$file" == *check-secrets.sh* ]] && continue
+# Detect live `set -x` / `set -o xtrace` (would leak secrets in CI logs).
+# Skip this checker script itself (documents the pattern in comments) and
+# comment-only mentions elsewhere.
+while IFS=: read -r file lineno content; do
+    [[ "$file" == *check-secrets.sh ]] && continue
+    echo "$content" | grep -qE '^\s*#' && continue
     finding "$file" "$lineno" "'set -x' found in script — may leak secrets to CI logs"
 done < <(grep -rn --include="*.sh" 'set -x\|set -o xtrace' scripts/ .github/ \
     --exclude-dir=.git \
