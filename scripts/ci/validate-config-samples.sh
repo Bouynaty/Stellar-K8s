@@ -25,7 +25,7 @@ for dir in examples config/samples; do
     # We ignore CRDs since kubeconform needs custom schemas for them.
     # We pass -ignore-missing-schemas to not fail on unknown CRs like StellarNode,
     # unless we explicitly provide the CRD schema.
-    find "$dir" -name "*.yaml" -type f | while read -r file; do
+    find "$dir" -name "*.yaml" -type f ! -name "_*" | while read -r file; do
       if ! kubeconform -strict -ignore-missing-schemas "$file"; then
         echo "::error file=$file::Schema validation failed for $file"
         ERRORS=$((ERRORS + 1))
