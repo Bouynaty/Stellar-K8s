@@ -66,6 +66,8 @@ exclude = [
   "^https://llvm\\.org/",
   # helm.sh intermittently resets CI connections
   "^https://helm\\.sh/",
+  # tokio.rs also resets connections from GHA IPs intermittently
+  "^https://tokio\\.rs/",
   # kubernetes.io is fronted by Cloudflare which throttles GHA IP ranges
   # with intermittent TLS/TCP failures (not just 429s). Blog, docs,
   # and related hosts flake regularly; re-verifying them on every PR
