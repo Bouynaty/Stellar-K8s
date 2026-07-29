@@ -2,7 +2,7 @@ use crate::cli::GenerateRunbookArgs;
 use crate::Error;
 use kube::api::Api;
 use kube::Client;
-use stellar_k8s::runbook::generate_runbook;
+use crate::runbook::generate_runbook;
 
 pub async fn run_generate_runbook(args: GenerateRunbookArgs) -> Result<(), Error> {
     // Create Kubernetes client
@@ -11,7 +11,7 @@ pub async fn run_generate_runbook(args: GenerateRunbookArgs) -> Result<(), Error
         .map_err(|e| Error::ConfigError(format!("Failed to create Kubernetes client: {e}")))?;
 
     // Get the StellarNode resource
-    let api: Api<stellar_k8s::crd::StellarNode> = Api::namespaced(client, &args.namespace);
+    let api: Api<crate::crd::StellarNode> = Api::namespaced(client, &args.namespace);
     let node = api
         .get(&args.node_name)
         .await
