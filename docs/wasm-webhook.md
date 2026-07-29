@@ -601,4 +601,13 @@ See the [examples/plugins](../examples/plugins/) directory for complete examples
 
 ---
 
-*Last verified: 2026-07-29 (TODO exemption hygiene for webhook runtime/server).*
+## Payload contract tests
+
+Malformed and boundary AdmissionReview payloads are covered by hermetic HTTP
+contract tests in `tests/webhook_payload_contract.rs` (issue #1152). These
+exercise empty/non-JSON/truncated bodies, missing requests, oversized payloads,
+and mutate/validate parity without a live Kubernetes API server.
+
+---
+
+*Last verified: 2026-07-29 (webhook payload contract tests #1152; TODO exemption hygiene).*
