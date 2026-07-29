@@ -23,7 +23,7 @@ See `examples/operators/` for three reference implementations:
 
 1. `metrics_exporter.rs` - ReconcileHook
 2. `log_shipper.rs` - SidecarInjector
-3. `registry_validator.rs` - Admission policy integration
+3. `registry_validator.rs` - Admission policy integration via `check_admission`
 
 ## Register a Plugin
 

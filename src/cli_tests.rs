@@ -378,7 +378,7 @@ mod tests {
         );
         assert!(matches!(
             a.format,
-            stellar_k8s::controller::diff::DiffFormat::Json
+            crate::controller::diff::DiffFormat::Json
         ));
     }
 
@@ -397,7 +397,7 @@ mod tests {
         );
         assert!(matches!(
             a.format,
-            stellar_k8s::controller::diff::DiffFormat::Unified
+            crate::controller::diff::DiffFormat::Unified
         ));
     }
 
@@ -535,13 +535,13 @@ mod tests {
 
     // ── IncidentReport ────────────────────────────────────────────────────────
 
-    fn parse_incident_report(args: &[&str]) -> stellar_k8s::incident::IncidentReportArgs {
+    fn parse_incident_report(args: &[&str]) -> crate::incident::IncidentReportArgs {
         let mut full: Vec<&str> = vec!["stellar-operator", "incident", "report"];
         full.extend_from_slice(args);
         let parsed = Args::try_parse_from(full).unwrap();
         match parsed.command {
             Commands::Incident {
-                command: stellar_k8s::incident::IncidentCommands::Report(r),
+                command: crate::incident::IncidentCommands::Report(r),
             } => r,
             _ => panic!("expected Incident Report subcommand"),
         }

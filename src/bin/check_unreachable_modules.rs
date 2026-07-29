@@ -729,8 +729,9 @@ mod tests {
         assert!(candidates
             .iter()
             .any(|p| p.ends_with("src/controller.rs") || p.ends_with("src\\controller.rs")));
-        assert!(candidates.iter().any(|p| p.ends_with("controller/mod.rs")
-            || p.ends_with("controller\\mod.rs")));
+        assert!(candidates
+            .iter()
+            .any(|p| p.ends_with("controller/mod.rs") || p.ends_with("controller\\mod.rs")));
     }
 
     #[test]
@@ -743,8 +744,7 @@ mod tests {
         let candidates = resolve_mod_file(&file, &decl);
         assert!(candidates
             .iter()
-            .any(|p| p.ends_with("controller/health.rs")
-                || p.ends_with("controller\\health.rs")));
+            .any(|p| p.ends_with("controller/health.rs") || p.ends_with("controller\\health.rs")));
     }
 
     #[test]
@@ -784,10 +784,8 @@ path = "src/other.rs"
 
     #[test]
     fn load_allowlist_ignores_comments_and_blanks() {
-        let dir = std::env::temp_dir().join(format!(
-            "unreachable-allowlist-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("unreachable-allowlist-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("allowlist.txt");

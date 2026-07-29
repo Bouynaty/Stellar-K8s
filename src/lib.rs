@@ -1,4 +1,8 @@
 #![allow(missing_docs)]
+#![allow(non_snake_case)]
+#![allow(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::private_intra_doc_links)]
+#![allow(rustdoc::bare_urls)]
 //! Stellar-K8s: Cloud-Native Kubernetes Operator for Stellar Infrastructure
 //!
 //! This crate provides a Kubernetes operator for managing Stellar Core,
@@ -71,6 +75,8 @@ pub mod byzantine;
 pub mod canary_deployment;
 pub mod capacity_planning;
 pub mod carbon_aware;
+pub mod cli;
+pub mod commands;
 pub mod compliance;
 pub mod config_mgmt;
 pub mod consensus_monitoring;

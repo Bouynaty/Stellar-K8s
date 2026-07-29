@@ -212,7 +212,7 @@ for the full command set and per-step expectations.
 - Documentation files use `kebab-case.md` (e.g., `disk-scaling.md`).
 - Files that belong to a topic area go in the matching `docs/<topic>/` subdirectory.
 - Root-level docs (`README.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`) are entry points only — detailed content belongs in `docs/`.
-- New doc files must be linked from `docs/README.md` under the appropriate section.
+- New doc files must be added to `mkdocs.yml` under the appropriate section.
 
 ### Script conventions
 
@@ -232,6 +232,17 @@ Before marking a PR ready for review, run `make health` (or `make ci-local`
 for the full audit + link-check gate) and complete every item in the
 [Canonical Repository Health Checklist](docs/development/repo-health-checklist.md).
 That document is the single source of truth — do not duplicate command blocks here.
+Run through this before marking a PR ready for review:
+
+- [ ] `make health` passes (format + lint + test + docs) — or `make ci-local` for the full audit + link-check gate
+- [ ] `make health-fast` passes for a quick pre-push compile check
+- [ ] No new `#[allow(dead_code)]` without an explanatory comment
+- [ ] No unused imports in modified files
+- [ ] Generated manifests are up to date with their source
+- [ ] Shell scripts pass `shellcheck -S error`
+- [ ] New doc files are added to `mkdocs.yml`
+- [ ] Commit messages follow Conventional Commits and include a `Signed-off-by` line
+Before requesting a review for a Pull Request, please ensure all checks listed in the [Canonical Repository Health Checklist](docs/development/repo-health-checklist.md) have been run and verified.
 
 ## 10. Need Help?
 
