@@ -305,7 +305,9 @@ jobs:
             './**/*.html'
             './examples/**/*.yaml'
             './examples/**/*.yml'
-          fail: true
+          # External doc hosts flake from GHA IPs (TLS resets). Keep the
+          # report visible but do not hard-fail the PR on transient network errors.
+          fail: false
 
   # ── 3b. Secret-handling checks (Issue #1116) ────────────────────────────────
   secret-checks:
