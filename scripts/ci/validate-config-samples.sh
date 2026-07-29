@@ -25,19 +25,27 @@ for dir in examples config/samples; do
     # We ignore CRDs since kubeconform needs custom schemas for them.
     # We pass -ignore-missing-schemas to not fail on unknown CRs like StellarNode,
     # unless we explicitly provide the CRD schema.
-    find "$dir" -name "*.yaml" -type f | while read -r file; do
+    # Use process substitution (not a pipe) so ERRORS updates in this shell.
+    while IFS= read -r file; do
+      base="$(basename "$file")"
+      # Shared YAML fragments (e.g. examples/_fragment-*.yaml) are not
+      # standalone Kubernetes resources and lack apiVersion/kind.
+      if [[ "$base" == _* ]]; then
+        echo "Skipping fragment: $file"
+        continue
+      fi
       if ! kubeconform -strict -ignore-missing-schemas "$file"; then
         echo "::error file=$file::Schema validation failed for $file"
         ERRORS=$((ERRORS + 1))
       fi
-    done
+    done < <(find "$dir" -name "*.yaml" -type f)
   fi
 done
 
 if [ "$ERRORS" -gt 0 ]; then
-  echo "❌ Found $ERRORS schema validation issue(s)."
+  echo "Found $ERRORS schema validation issue(s)."
   exit 1
 fi
 
-echo "✅ All configuration samples are valid."
+echo "All configuration samples are valid."
 exit 0
