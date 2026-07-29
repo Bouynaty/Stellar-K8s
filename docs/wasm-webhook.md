@@ -610,4 +610,4 @@ and mutate/validate parity without a live Kubernetes API server.
 
 ---
 
-*Last verified: 2026-07-29 (webhook payload contract tests #1152).*
+*Last verified: 2026-07-29 (webhook payload contract tests #1152; TODO exemption hygiene).*

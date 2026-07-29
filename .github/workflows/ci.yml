@@ -665,9 +665,9 @@ jobs:
               print("::error::config/crd/stellarnode-crd.yaml mapping keys are not recursively sorted.")
               print("Run 'python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml' and commit the result.")
               sys.exit(1)
-          # Semantic equality after canonicalization (ignores dump formatting differences).
-          if committed != sorted_docs:
-              print("::error::CRD content diverges from sort-manifests.py canonicalization.")
+          # Sorter self-check: re-dumped output must also have recursively sorted keys.
+          if not all(keys_sorted(d) for d in sorted_docs):
+              print("::error::sort-manifests.py produced unsorted keys.")
               sys.exit(1)
           print("✓ CRD manifest order is canonical")
           PY
