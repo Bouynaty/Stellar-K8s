@@ -256,25 +256,11 @@ jobs:
               2>&1 | tee /tmp/rustdoc.log
           echo "✓ rustdoc passed — no documentation warnings"
 
-  # ── 3.5. Link Check ──────────────────────────────────────────────────────────
-  link-check:
-    name: Markdown Link Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install markdown-link-check
-        run: npm install -g markdown-link-check
-
-      - name: Run link check
-        run: find . -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/target/*" -not -path "*/.kiro/*" -exec markdown-link-check -c mlc_config.json -q {} +
-
-  # ── 3.6. Repo-wide link check (lychee) ───────────────────────────────────────
-  # Repo-wide companion to the markdown-link-check job above. Lychee scans
-  # documentation files (Markdown + HTML) for broken links — anchors, redirects,
-  # and rot — plus the example manifests under examples/ (comments and string
-  # fields there often carry install/download URLs, e.g. VPA release assets).
+  # ── 3.5. Repo-wide link check (lychee) — primary PR link gate ────────────────
+  # Primary link checker for PRs/pushes. markdown-link-check and the Python
+  # docs-link-check job were removed as overlapping coverage of *.md.
+  # Lychee scans documentation files (Markdown + HTML) for broken links —
+  # anchors, redirects, and rot — plus example manifests under examples/.
   # Other source files (*.rs, *.toml, *.sh, non-example *.yaml) are still
   # intentionally NOT scanned: their URL string literals are K8s service DNS,
   # cloud metadata endpoints, and format-string fragments that lychee cannot
@@ -284,6 +270,7 @@ jobs:
   # directory. Excludes and accept-codes live in `lychee.toml`. Runs on every
   # push/PR and on a weekly schedule (see the standalone
   # .github/workflows/link-check.yml) to catch link rot.
+  # Local: `python3 scripts/check-links.py` remains available via make health.
   repo-wide-link-check:
     name: Repo-Wide Link Check (lychee)
     runs-on: ubuntu-latest
@@ -478,22 +465,10 @@ jobs:
         run: make check-third-party-licenses
 
   # ── 4.5. CRD Backward-Compatibility Gate ──────────────────────────────────────
-  # Validates that CRD changes maintain backward compatibility.
-  # Related: #1147 - Add CRD schema backward-compatibility gate for all pull requests
-  crd-compatibility-check:
-    name: CRD Backward Compatibility Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [changes]
-    if: needs.changes.outputs.helm == 'true' || needs.changes.outputs.rust_core == 'true'
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install Python dependencies
-        run: pip install pyyaml
-
-      - name: Run CRD compatibility check
-        run: bash scripts/check-crd-compatibility.sh
+  # PR CRD compatibility is enforced by the tested Python path in
+  # quickstart-validation.yml (`crd_migration_lint.py` + unit tests).
+  # scripts/check-crd-compatibility.sh remains for local/ad-hoc use only.
+  # See .github/CI_COMMANDS.md.
 
   # ── 5. Helm lint (only when helm/chart files change) ─────────────────────────
   helm-lint:
@@ -644,20 +619,8 @@ jobs:
           git checkout -- config/crd/ || true
 
   # ── 7b. Docs link check ───────────────────────────────────────────────────────
-  docs-link-check:
-    name: Docs Link Checker
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Run link checker
-        run: python3 scripts/check-links.py
+  # Removed: overlapped lychee (`repo-wide-link-check`). Keep
+  # `python3 scripts/check-links.py` for local make health / checklist use.
 
   # ── 7c. Manifest ordering check (issue #1139) ────────────────────────────────
   # Verifies that generated manifests (CRDs, Helm renders) are committed in
