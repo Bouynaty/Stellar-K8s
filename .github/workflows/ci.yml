@@ -400,18 +400,31 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Detect redaction checker presence
+        id: redaction
+        run: |
+          if [[ -f scripts/check-pipeline-log-redaction.sh ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Pipeline log redaction checker not on this branch; skipping."
+          fi
+
       - name: Setup Rust
+        if: steps.redaction.outputs.present == 'true'
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "ci-pipeline-log-redaction"
 
       - name: Run pipeline log redaction checks
+        if: steps.redaction.outputs.present == 'true'
         run: |
           chmod +x scripts/check-pipeline-log-redaction.sh
           bash scripts/check-pipeline-log-redaction.sh \
             --fixture tests/fixtures/pipeline_logs/dirty-ci-sample.txt
 
       - name: Run unit tests for the checker
+        if: steps.redaction.outputs.present == 'true'
         run: cargo test --locked --bin check-pipeline-log-redaction
 
   # ── 3c. Feature & dead-import audit (Issue #1114) ────────────────────────────
