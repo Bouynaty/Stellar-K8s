@@ -80,11 +80,20 @@ check_tools() {
     local hint="${VERSIONED_TOOLS[$binary]#*|}"
 
     local got=""
-    got=$(${binary} --version 2>&1 | _extract_semver) || got=""
+    # Prefer tool-native version commands: kubectl rejects `--version`.
+    case "${binary}" in
+      kubectl) got=$(kubectl version --client 2>&1 | _extract_semver) || got="" ;;
+      helm)    got=$(helm version --short 2>&1 | _extract_semver) || got="" ;;
+      *)       got=$(${binary} --version 2>&1 | _extract_semver) || got="" ;;
+    esac
     [[ -z "${got}" ]] && got="missing"
 
     if [[ "${got}" == "missing" ]]; then
-      fail "${binary} not found in PATH (requires >= ${pinned})"
+      if ! command -v "${binary}" &>/dev/null; then
+        fail "${binary} not found in PATH (requires >= ${pinned})"
+      else
+        fail "${binary} version could not be parsed (requires >= ${pinned})"
+      fi
       echo "         → ${hint}"
       (( errors++ )) || true
     elif version_ge "${got}" "${pinned}"; then
