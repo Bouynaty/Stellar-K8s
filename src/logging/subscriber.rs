@@ -59,20 +59,6 @@ fn env_filter_for(config: &SubscriberConfig) -> EnvFilter {
         .from_env_lossy()
 }
 
-fn analytics_engine_for(config: &SubscriberConfig) -> Option<Arc<AnalyticsEngine>> {
-    if config.analytics {
-        Some(Arc::new(AnalyticsEngine::new(
-            std::time::Duration::from_secs(3600),
-        )))
-    } else {
-        None
-    }
-}
-
-fn otel_enabled(config: &SubscriberConfig) -> bool {
-    config.otel && std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok()
-}
-
 fn init_simple(config: &SubscriberConfig) {
     let env_filter = env_filter_for(config);
     let redacting = RedactingFields::new();
@@ -107,7 +93,7 @@ fn init_operator_stack(
     *reload_handle_out = Some(reload_handle);
     let analytics_layer =
         AnalyticsLayer::new(SamplingConfig::default(), Arc::clone(analytics_engine));
-    let use_otel = otel_enabled(config);
+    let use_otel = config.otel && std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok();
     let redacting = RedactingFields::new();
 
     match config.format {
@@ -146,7 +132,13 @@ fn init_operator_stack(
 }
 
 pub fn init_subscriber(config: SubscriberConfig) -> SubscriberInit {
-    let analytics_engine = analytics_engine_for(&config);
+    let analytics_engine = if config.analytics {
+        Some(Arc::new(AnalyticsEngine::new(
+            std::time::Duration::from_secs(3600),
+        )))
+    } else {
+        None
+    };
     let mut reload_handle = None;
 
     if config.reload_handle {

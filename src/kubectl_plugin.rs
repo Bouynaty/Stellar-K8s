@@ -796,11 +796,6 @@ fn volume_snapshot_api_resource() -> kube::discovery::ApiResource {
     }
 }
 
-/// Helper to build resource name
-fn resource_name_for_node(node_name: &str, suffix: &str) -> String {
-    format!("{}-{}", node_name, suffix)
-}
-
 /// Create a VolumeSnapshot for a StellarNode
 async fn snapshot_create(
     client: &Client,
@@ -812,7 +807,7 @@ async fn snapshot_create(
     let node_api: Api<StellarNode> = Api::namespaced(client.clone(), namespace);
     let _node = node_api.get(node_name).await.map_err(Error::KubeError)?;
 
-    let pvc_name = resource_name_for_node(node_name, "data");
+    let pvc_name = format!("{}-data", node_name);
     let snapshot_name = format!(
         "{}-data-{}",
         node_name,
