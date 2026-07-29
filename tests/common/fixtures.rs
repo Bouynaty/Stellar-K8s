@@ -2,7 +2,7 @@
 ///
 /// Isolated, deterministic test fixtures for integration and unit test suites.
 ///
-/// # Design (issue #1140)
+/// # Design (issue #1140, consolidated from tests/fixtures/mod.rs per #1196)
 ///
 /// Every fixture function returns a fully-constructed value with sensible
 /// defaults. Tests can customise via builder-style overrides. No fixture
@@ -15,7 +15,47 @@
 /// - `rotation_*`     — `SecretRotationConfig`
 /// - `manifest_*`     — raw YAML strings for `kubectl apply` tests
 /// - `k8s_*`          — Kubernetes API objects (Pods, Containers, VolumeMounts)
+/// - `deterministic`  — SeededRng, fixed timestamps, deterministic name helpers
 use k8s_openapi::api::core::v1::{Container, VolumeMount};
+use rand::SeedableRng;
+
+// ---------------------------------------------------------------------------
+// Deterministic test utilities (consolidated from tests/fixtures/mod.rs)
+// ---------------------------------------------------------------------------
+
+/// Deterministic RNG for tests. Use `SeededRng::seeded(seed)` for reproducible
+/// results.
+pub struct SeededRng(rand::rngs::SmallRng);
+
+impl SeededRng {
+    pub fn seeded(seed: u64) -> Self {
+        Self(rand::rngs::SmallRng::seed_from_u64(seed))
+    }
+
+    pub fn inner(&mut self) -> &mut rand::rngs::SmallRng {
+        &mut self.0
+    }
+}
+
+/// Fixed "now" timestamp for deterministic time-sensitive tests.
+///
+/// Returns 2026-01-15T12:00:00Z. Use this instead of `Utc::now()` in tests
+/// to avoid flaky time-dependent assertions.
+pub fn fixed_now() -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc)
+}
+
+/// Generate a deterministic test namespace name from a seed.
+pub fn test_namespace(seed: &str) -> String {
+    format!("test-{}", seed)
+}
+
+/// Generate a deterministic test StellarNode name from a seed.
+pub fn test_node_name(seed: &str) -> String {
+    format!("node-{}", seed)
+}
 
 // ---------------------------------------------------------------------------
 // StellarNode fixtures
@@ -228,5 +268,46 @@ pub fn secret_rotation_full() -> stellar_k8s::backup::SecretRotationConfig {
         audit_logging_enabled: true,
         audit_log_destination: Some("https://audit.example.com".to_string()),
         notification_webhook: Some("https://webhook.example.com".to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn seeded_rng_deterministic() {
+        let mut a = SeededRng::seeded(42);
+        let mut b = SeededRng::seeded(42);
+        let va: u64 = rand::Rng::gen(a.inner());
+        let vb: u64 = rand::Rng::gen(b.inner());
+        assert_eq!(va, vb);
+    }
+
+    #[test]
+    fn seeded_rng_different_seeds() {
+        let mut a = SeededRng::seeded(1);
+        let mut b = SeededRng::seeded(2);
+        let va: u64 = rand::Rng::gen(a.inner());
+        let vb: u64 = rand::Rng::gen(b.inner());
+        assert_ne!(va, vb);
+    }
+
+    #[test]
+    fn fixed_now_is_deterministic() {
+        let t1 = fixed_now();
+        let t2 = fixed_now();
+        assert_eq!(t1, t2);
+        assert_eq!(t1.to_rfc3339(), "2026-01-15T12:00:00+00:00");
+    }
+
+    #[test]
+    fn test_namespace_format() {
+        assert_eq!(test_namespace("mytest"), "test-mytest");
+    }
+
+    #[test]
+    fn test_node_name_format() {
+        assert_eq!(test_node_name("alpha"), "node-alpha");
     }
 }
