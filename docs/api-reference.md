@@ -3181,7 +3181,3 @@ DEPRECATED: Use the conditions array instead. This field is maintained for backw
 | **Type** | `string` |
 | **Description** | Last observed Vault secret version annotation (for rotation-driven rollouts). |
 | **Nullable** | `true` |
-
----
-
-*Last verified: 2026-07-29 (CRD key-order refresh for deterministic manifests).*
