@@ -14,7 +14,17 @@ pub struct ControllerStub {
 
 /// Generate a controller reconciler stub from CRD metadata.
 pub fn generate_controller_stub(group: &str, version: &str, kind: &str) -> ControllerStub {
-    let module_name = to_snake_case(kind);
+    let mut module_name = String::new();
+    for (i, c) in kind.chars().enumerate() {
+        if c.is_uppercase() {
+            if i > 0 {
+                module_name.push('_');
+            }
+            module_name.push(c.to_ascii_lowercase());
+        } else {
+            module_name.push(c);
+        }
+    }
     let reconciler_fn = format!("reconcile_{module_name}");
     ControllerStub {
         crd_group: group.to_string(),
@@ -45,21 +55,6 @@ pub async fn {reconciler_fn}(client: &Client, resource: &{kind}) -> crate::error
         kind = stub.crd_kind,
         reconciler_fn = stub.reconciler_fn,
     )
-}
-
-fn to_snake_case(s: &str) -> String {
-    let mut out = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if c.is_uppercase() {
-            if i > 0 {
-                out.push('_');
-            }
-            out.push(c.to_ascii_lowercase());
-        } else {
-            out.push(c);
-        }
-    }
-    out
 }
 
 #[cfg(test)]

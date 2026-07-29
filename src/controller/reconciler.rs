@@ -2673,7 +2673,7 @@ pub(crate) fn apply_stellar_node(
             .await?;
         }
 
-        // Cost estimation: annotate and export metric (non-fatal).
+        // Cost estimation: annotate estimated monthly cost (non-fatal).
         {
             let cost = super::cost::estimate_monthly_cost(&node);
             if let Err(e) = super::cost::annotate_node_cost(&client, &node, cost).await {
@@ -2682,8 +2682,6 @@ pub(crate) fn apply_stellar_node(
                     namespace, name, e
                 );
             }
-            #[cfg(feature = "metrics")]
-            super::cost::report_cost_metric(&namespace, &name, &node.spec.node_type.to_string(), cost);
         }
 
         // 13. Stamp audit annotations for the permanent reconcile trail.

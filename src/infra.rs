@@ -75,7 +75,20 @@ pub async fn resolve_stellar_node_infra(
 
         let (hardware_generation, feature_labels) = match kubernetes_node.as_deref() {
             Some(node_name) => match nodes_api.get(node_name).await {
-                Ok(kube_node) => hardware_details_from_node(&kube_node),
+                Ok(kube_node) => {
+                    let labels = kube_node
+                        .metadata
+                        .labels
+                        .as_ref()
+                        .cloned()
+                        .unwrap_or_default();
+                    let feature_labels = labels
+                        .into_iter()
+                        .filter(|(key, _)| key.starts_with(FEATURE_PREFIX))
+                        .collect::<BTreeMap<_, _>>();
+                    let generation = infer_hardware_generation(&feature_labels);
+                    (generation, feature_labels)
+                }
                 Err(kube::Error::Api(err)) if err.code == 404 => {
                     ("unknown".to_string(), BTreeMap::new())
                 }
@@ -93,17 +106,6 @@ pub async fn resolve_stellar_node_infra(
     }
 
     Ok(InfraSummary { assignments })
-}
-
-pub fn hardware_details_from_node(node: &Node) -> (String, BTreeMap<String, String>) {
-    let labels = node.metadata.labels.as_ref().cloned().unwrap_or_default();
-    let feature_labels = labels
-        .into_iter()
-        .filter(|(key, _)| key.starts_with(FEATURE_PREFIX))
-        .collect::<BTreeMap<_, _>>();
-
-    let generation = infer_hardware_generation(&feature_labels);
-    (generation, feature_labels)
 }
 
 pub fn infer_hardware_generation(feature_labels: &BTreeMap<String, String>) -> String {
@@ -163,12 +165,13 @@ pub fn infer_hardware_generation(feature_labels: &BTreeMap<String, String>) -> S
         (Some("arm") | Some("0x41"), _, _) => "ARM (generation unknown)".to_string(),
         _ => match (vendor, family, model) {
             (Some(vendor), Some(family), Some(model)) => {
-                format!(
-                    "{} family {} model {}",
-                    normalize_vendor(&vendor),
-                    family,
-                    model
-                )
+                let vendor_label = match vendor.as_str() {
+                    "genuineintel" => "Intel",
+                    "authenticamd" => "AMD",
+                    "arm" | "0x41" => "ARM",
+                    other => other,
+                };
+                format!("{vendor_label} family {family} model {model}")
             }
             _ => "unknown".to_string(),
         },
@@ -186,20 +189,8 @@ fn sanitize_generation(value: &str) -> String {
         .replace("zen4", "Zen 4")
         .replace("zen3", "Zen 3");
 
-    title_case(cleaned.trim())
-}
-
-fn normalize_vendor(vendor: &str) -> &str {
-    match vendor {
-        "genuineintel" => "Intel",
-        "authenticamd" => "AMD",
-        "arm" | "0x41" => "ARM",
-        _ => vendor,
-    }
-}
-
-fn title_case(input: &str) -> String {
-    input
+    cleaned
+        .trim()
         .split_whitespace()
         .map(|word| {
             let mut chars = word.chars();
