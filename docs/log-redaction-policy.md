@@ -85,3 +85,28 @@ Unit tests for the `redact()` function and `ScrubLayer` are in
 ```sh
 cargo test log_scrub
 ```
+
+## Pipeline log checks (issue #1153)
+
+Runtime redaction alone is not enough for CI: pipeline commands (`make`,
+`cargo test`, kubectl dumps, shell helpers) can echo secrets into job logs
+and downloaded artifacts. The dedicated checker enforces that
+`log_scrub::redact` removes those patterns from representative pipeline log
+fixtures before CI goes green.
+
+```bash
+# Makefile entrypoint (same as CI)
+make check-pipeline-log-redaction
+
+# Shell wrapper
+./scripts/check-pipeline-log-redaction.sh
+
+# Include an extra captured job log
+./scripts/check-pipeline-log-redaction.sh \
+  --fixture tests/fixtures/pipeline_logs/dirty-ci-sample.txt
+
+# Scrub a captured log to stdout
+./scripts/check-pipeline-log-redaction.sh --scrub /tmp/job.log
+```
+
+CI job: `pipeline-log-redaction` in `.github/workflows/ci.yml`.

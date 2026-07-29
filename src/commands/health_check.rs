@@ -11,9 +11,9 @@
 //!   4. Release process doc present (docs/release-process.md)
 //!   5. No uncommitted changes in tracked files (optional; skip with --allow-dirty)
 
+use crate::Error;
 use std::fs;
 use std::process::Command;
-use stellar_k8s::Error;
 
 /// Arguments for the `health-check` subcommand.
 #[derive(clap::Parser, Debug)]

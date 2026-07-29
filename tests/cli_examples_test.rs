@@ -1,4 +1,3 @@
-
 //! Command-level smoke tests for documented CLI example commands.
 //!
 //! This test validates that all CLI examples from `docs/cli-commands-reference.md`
@@ -20,24 +19,33 @@ fn run_examples_parse() {
     // From docs/cli-commands-reference.md - "Development" section
     let examples = vec![
         vec!["stellar-operator", "run", "--namespace", "stellar-system"],
-        vec!["stellar-operator", "run", "--enable-mtls", "--namespace", "stellar-system"],
+        vec![
+            "stellar-operator",
+            "run",
+            "--enable-mtls",
+            "--namespace",
+            "stellar-system",
+        ],
         vec!["stellar-operator", "run", "--dry-run"],
     ];
 
     for example in examples {
         let parsed = parse_command(&example).unwrap_or_else(|e| {
-            panic!("Failed to parse documented example: {:?}\nError: {}", example, e);
+            panic!(
+                "Failed to parse documented example: {:?}\nError: {}",
+                example, e
+            );
         });
         if let Commands::Run(args) = parsed.command {
             println!("✓ Parsed: {:?}", example);
             // Validate args are sensible defaults
             match example.as_slice() {
                 ["stellar-operator", "run", "--namespace", ns] => {
-                    assert_eq!(args.namespace, ns);
+                    assert_eq!(args.namespace, *ns);
                 }
                 ["stellar-operator", "run", "--enable-mtls", "--namespace", ns] => {
                     assert!(args.enable_mtls);
-                    assert_eq!(args.namespace, ns);
+                    assert_eq!(args.namespace, *ns);
                 }
                 ["stellar-operator", "run", "--dry-run"] => {
                     assert!(args.dry_run);
@@ -126,7 +134,7 @@ fn incident_report_example_parses() {
     ];
     let parsed = parse_command(&example).unwrap();
     if let Commands::Incident { command } = parsed.command {
-        if let stellar_k8s::cli::incident::IncidentCommands::Report(_) = command {
+        if let stellar_k8s::incident::IncidentCommands::Report(_) = command {
             println!("✓ Incident report example parses correctly");
         } else {
             panic!("Expected Report subcommand");
@@ -209,7 +217,12 @@ fn install_completion_examples_parse() {
 
 #[test]
 fn benchmark_examples_parse() {
-    let example = vec!["stellar-operator", "benchmark", "--namespace", "stellar-system"];
+    let example = vec![
+        "stellar-operator",
+        "benchmark",
+        "--namespace",
+        "stellar-system",
+    ];
     let parsed = parse_command(&example).unwrap();
     if let Commands::Benchmark(args) = parsed.command {
         assert_eq!(args.namespace, "stellar-system");
@@ -245,18 +258,15 @@ fn prune_archive_example_parses() {
     let example = vec![
         "stellar-operator",
         "prune-archive",
-        "--namespace",
-        "stellar-system",
-        "--node-name",
-        "validator-1",
-        "--keep-checkpoints",
+        "--archive-url",
+        "s3://stellar-history-prod/archive",
+        "--min-checkpoints",
         "100",
     ];
     let parsed = parse_command(&example).unwrap();
     if let Commands::PruneArchive(args) = parsed.command {
-        assert_eq!(args.namespace, "stellar-system");
-        assert_eq!(args.node_name, Some("validator-1".to_string()));
-        assert_eq!(args.keep_checkpoints, 100);
+        assert_eq!(args.archive_url, "s3://stellar-history-prod/archive");
+        assert_eq!(args.min_checkpoints, 100);
         println!("✓ Prune-archive example parses correctly");
     } else {
         panic!("Expected PruneArchive subcommand");
@@ -270,13 +280,13 @@ fn diff_example_parses() {
         "diff",
         "--namespace",
         "stellar-system",
-        "--node-name",
+        "--name",
         "validator-1",
     ];
     let parsed = parse_command(&example).unwrap();
     if let Commands::Diff(args) = parsed.command {
         assert_eq!(args.namespace, "stellar-system");
-        assert_eq!(args.node_name, Some("validator-1".to_string()));
+        assert_eq!(args.name, "validator-1");
         println!("✓ Diff example parses correctly");
     } else {
         panic!("Expected Diff subcommand");
@@ -437,6 +447,8 @@ fn invalid_command_fails() {
     let result = parse_command(&["stellar-operator", "nonexistent-command"]);
     assert!(result.is_err(), "Unknown commands should fail");
     println!("✓ Invalid commands are rejected");
+}
+
 use assert_cmd::Command;
 
 #[test]

@@ -93,21 +93,3 @@ jobs:
         with:
           sarif_file: checkov-results.sarif
 
-  security-matrix:
-    name: Security Dashboard
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [trivy-fs-scan, docker-trivy, iac-checkov]
-    if: always()
-    steps:
-      - name: Security Status Summary
-        run: |
-          {
-            echo "## Security Scan Results"
-            echo ""
-            echo "| Job | Status |"
-            echo "|-----|--------|"
-            echo "| trivy-fs-scan | ${{ needs.trivy-fs-scan.result }} |"
-            echo "| docker-trivy | ${{ needs.docker-trivy.result }} |"
-            echo "| iac-checkov | ${{ needs.iac-checkov.result }} |"
-          } >> "$GITHUB_STEP_SUMMARY"

@@ -141,7 +141,8 @@ pub struct RBACConfig {
 pub enum ComplianceFramework {
     SOC2,
     GDPR,
-    PCI_DSS,
+    #[serde(rename = "PCI_DSS")]
+    PciDss,
     HIPAA,
 }
 

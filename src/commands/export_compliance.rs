@@ -11,10 +11,10 @@ use chrono::Utc;
 use kube::Client;
 
 use crate::cli::ExportComplianceArgs;
-use stellar_k8s::controller::audit_log::AuditEntry;
-use stellar_k8s::controller::compliance_export::{self, DRComplianceSummary};
-use stellar_k8s::crd::DisasterRecoveryPolicy;
-use stellar_k8s::error::{Error, Result};
+use crate::controller::audit_log::AuditEntry;
+use crate::controller::compliance_export::{self, DRComplianceSummary};
+use crate::crd::DisasterRecoveryPolicy;
+use crate::error::{Error, Result};
 
 /// Entry point for `stellar-operator export-compliance`.
 pub async fn run_export_compliance(args: ExportComplianceArgs) -> Result<()> {
