@@ -13,7 +13,7 @@
 
 use std::fs;
 use std::process::Command;
-use stellar_k8s::Error;
+use crate::Error;
 
 /// Arguments for the `health-check` subcommand.
 #[derive(clap::Parser, Debug)]

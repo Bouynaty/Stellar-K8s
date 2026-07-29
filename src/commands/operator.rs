@@ -7,11 +7,11 @@ use std::sync::Arc;
 use tracing::{info, info_span, warn, Instrument, Level};
 
 use crate::cli::{LogFormat, RunArgs};
-use stellar_k8s::logging::analytics::AnalyticsEngine;
-use stellar_k8s::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
+use crate::logging::analytics::AnalyticsEngine;
+use crate::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 #[cfg(feature = "rest-api")]
-use stellar_k8s::rest_api::metrics_store::StellarMetricsStore;
-use stellar_k8s::{controller, preflight, Error};
+use crate::rest_api::metrics_store::StellarMetricsStore;
+use crate::{controller, preflight, Error};
 
 const LEASE_NAME: &str = "stellar-operator-leader";
 const LEASE_DURATION_SECS: i32 = 15;
@@ -128,7 +128,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
             "Running in scheduler mode with name: {}",
             args.scheduler_name
         );
-        let scheduler = stellar_k8s::scheduler::core::Scheduler::new(client, args.scheduler_name);
+        let scheduler = crate::scheduler::core::Scheduler::new(client, args.scheduler_name);
         return scheduler
             .run()
             .await
@@ -259,7 +259,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
         audit_log: audit_log.clone(),
         audit_recorder: audit_recorder.clone(),
         anomaly_detector: anomaly_detector.clone(),
-        plugin_registry: Arc::new(stellar_k8s::plugin_sdk::PluginRegistry::new()),
+        plugin_registry: Arc::new(crate::plugin_sdk::PluginRegistry::new()),
         analytics_engine: analytics_engine.clone(),
         #[cfg(feature = "rest-api")]
         oidc_config,
@@ -315,7 +315,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
         let rustls_config = mtls_config
             .as_ref()
             .and_then(|cfg| {
-                stellar_k8s::rest_api::build_tls_server_config(
+                crate::rest_api::build_tls_server_config(
                     &cfg.cert_pem,
                     &cfg.key_pem,
                     &cfg.ca_pem,
@@ -327,7 +327,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
 
         tokio::spawn(
             async move {
-                if let Err(e) = stellar_k8s::rest_api::run_server(api_state, server_tls).await {
+                if let Err(e) = crate::rest_api::run_server(api_state, server_tls).await {
                     tracing::error!("REST API server error: {:?}", e);
                 }
             }
@@ -374,7 +374,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
                                         secret.data.as_ref().and_then(|d| d.get("tls.key")),
                                         secret.data.as_ref().and_then(|d| d.get("ca.crt")),
                                     ) {
-                                        match stellar_k8s::rest_api::build_tls_server_config(
+                                        match crate::rest_api::build_tls_server_config(
                                             &cert.0, &key.0, &ca.0,
                                         ) {
                                             Ok(new_config) => {
@@ -435,7 +435,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
 
     // Start the snapshot integrity checker background worker
     {
-        use stellar_k8s::controller::snapshot_integrity::{
+        use crate::controller::snapshot_integrity::{
             SnapshotIntegrityChecker, SnapshotIntegrityConfig,
         };
 
@@ -477,7 +477,7 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
         }
     };
 
-    stellar_k8s::telemetry::shutdown_telemetry();
+    crate::telemetry::shutdown_telemetry();
     result
 }
 

@@ -1,7 +1,7 @@
 use crate::cli::DoctorArgs;
 use kube::Client;
 use std::process::Command;
-use stellar_k8s::{preflight, Error};
+use crate::{preflight, Error};
 
 /// Output-friendly status used by the doctor command.
 struct CheckStatus {
@@ -142,7 +142,7 @@ async fn run_kubernetes_checks(namespace: &str) -> Vec<CheckStatus> {
         }
     };
 
-    let preflight_results: Vec<stellar_k8s::preflight::CheckResult> =
+    let preflight_results: Vec<crate::preflight::CheckResult> =
         preflight::run_preflight_checks(&client, namespace).await;
     preflight_results
         .into_iter()

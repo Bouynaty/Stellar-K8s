@@ -71,6 +71,8 @@ pub mod byzantine;
 pub mod canary_deployment;
 pub mod capacity_planning;
 pub mod carbon_aware;
+pub mod cli;
+pub mod commands;
 pub mod compliance;
 pub mod config_mgmt;
 pub mod consensus_monitoring;
