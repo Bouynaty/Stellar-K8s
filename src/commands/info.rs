@@ -1,8 +1,8 @@
 use crate::cli::InfoArgs;
-use kube::ResourceExt;
 use crate::crd::StellarNode;
 use crate::infra;
 use crate::Error;
+use kube::ResourceExt;
 
 pub async fn run_info(args: InfoArgs) -> Result<(), Error> {
     use k8s_openapi::api::apps::v1::{Deployment, StatefulSet};

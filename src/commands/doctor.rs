@@ -1,7 +1,7 @@
 use crate::cli::DoctorArgs;
+use crate::{preflight, Error};
 use kube::Client;
 use std::process::Command;
-use crate::{preflight, Error};
 
 /// Output-friendly status used by the doctor command.
 struct CheckStatus {
