@@ -1,4 +1,8 @@
 #![allow(missing_docs)]
+#![allow(non_snake_case)]
+#![allow(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::private_intra_doc_links)]
+#![allow(rustdoc::bare_urls)]
 //! Stellar-K8s: Cloud-Native Kubernetes Operator for Stellar Infrastructure
 //!
 //! This crate provides a Kubernetes operator for managing Stellar Core,

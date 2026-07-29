@@ -20,6 +20,12 @@ use stellar_k8s::{incident, Error};
 
 #[tokio::main]
 async fn main() {
+    // rustls 0.23 requires an explicit crypto provider when aws-lc-rs/ring are
+    // not auto-selected via default features (common with kube/reqwest stacks).
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("failed to install rustls ring CryptoProvider");
+
     if let Err(e) = run().await {
         eprintln!("Error: {e}");
         std::process::exit(e.exit_code());

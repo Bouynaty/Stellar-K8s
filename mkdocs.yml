@@ -134,8 +134,6 @@ nav:
   - Contributing:
     - contributing/index.md
     - Development Setup: contributing/development-setup.md
-    - Documentation Testing: contributing/testing.md
-    - Documentation Standards: contributing/code-standards.md
 
 extra:
   social:

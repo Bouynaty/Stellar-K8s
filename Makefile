@@ -34,6 +34,7 @@
 	health health-fast validate preflight test-preflight test-shell all \
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
+	check-pipeline-log-redaction \
 	clean
 
 .DEFAULT_GOAL := help
@@ -211,8 +212,7 @@ health: ## Run common repository health checks (format, lint, test, docs, links)
 health-fast: ## Fast health gate (format, lint, compile only)
 	@bash scripts/repo-health.sh --fast
 
-validate: ## Fast validation (alias for health-fast)
-	@bash scripts/repo-health.sh --fast
+validate: health-fast ## Fast validation (alias for health-fast)
 
 # ── Quality & Health ───────────────────────────────────────────────────────────
 
@@ -350,6 +350,11 @@ test-failure-diagnostics: ## Verify the unified diagnostics collector (#1151)
 	@echo "→ Testing failure diagnostics collector..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
 	@bats scripts/tests/failure-diagnostics.bats
+
+check-pipeline-log-redaction: ## Enforce secret redaction on pipeline command logs (#1153)
+	@echo "→ Checking pipeline log secret redaction..."
+	@$(CARGO) run --quiet --locked --bin check-pipeline-log-redaction -- \
+		--fixture tests/fixtures/pipeline_logs/dirty-ci-sample.txt
 
 # ── Completions ────────────────────────────────────────────────────────────────
 

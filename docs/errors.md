@@ -60,4 +60,4 @@ Look for the `[SK8S-XXX]` prefix in the logging output for rapid filtering.
 
 ---
 
-*Last verified: 2026-07-27 (cleanup wave #1187/#1189/#1190/#1191).*
+*Last verified: 2026-07-29 (pipeline log redaction + rustfmt CI wave).*

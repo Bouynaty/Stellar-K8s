@@ -8,7 +8,7 @@
 #   bash scripts/repo-health.sh --with-links # include markdown link check
 #   bash scripts/repo-health.sh --with-helm  # include helm lint
 #   make health
-#   make validate                            # alias for --fast
+#   make health-fast / make validate         # alias for --fast
 #
 # Stops at the first failing step and prints a clear summary.
 
@@ -159,7 +159,7 @@ for i in "${!STEPS[@]}"; do
       ;;
     sk8s_health_compile_check)
       if ! sk8s_health_compile_check; then
-        sk8s_fail "Compilation failed" "Fix compiler errors and re-run 'make validate'."
+        sk8s_fail "Compilation failed" "Fix compiler errors and re-run 'make health-fast'."
       fi
       ;;
     sk8s_health_cargo_audit)

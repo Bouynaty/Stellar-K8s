@@ -216,6 +216,10 @@ name = "check-unreachable-modules"
 path = "src/bin/check_unreachable_modules.rs"
 
 [[bin]]
+name = "check-pipeline-log-redaction"
+path = "src/bin/check_pipeline_log_redaction.rs"
+
+[[bin]]
 name = "stellar-sidecar"
 path = "src/sidecar.rs"
 
