@@ -619,7 +619,10 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          make crd-gen
+          # Run crdgen directly (not via `make crd-gen`) so a kube-core schema
+          # panic fails this step instead of being masked by a pipe to sort-manifests.
+          cargo run --locked --bin crdgen > /tmp/crdgen-raw.yaml
+          python3 scripts/sort-manifests.py /tmp/crdgen-raw.yaml > config/crd/stellarnode-crd.yaml
 
       - name: Fail if CRDs are out of date
         if: steps.crdgen.outcome == 'success'
@@ -636,6 +639,7 @@ jobs:
         run: |
           echo "::warning::crdgen failed (known kube-core schema hoist panic on StellarNetwork enums)."
           echo "Skipping CRD drift compare; committed CRD remains the source of truth until crdgen is fixed."
+          git checkout -- config/crd/ || true
 
   # ── 7b. Docs link check ───────────────────────────────────────────────────────
   docs-link-check:
