@@ -601,4 +601,4 @@ See the [examples/plugins](../examples/plugins/) directory for complete examples
 
 ---
 
-*Last verified: 2026-07-27 (cleanup wave #1187/#1189/#1190/#1191).*
+*Last verified: 2026-07-29 (TODO exemption hygiene for webhook runtime/server).*

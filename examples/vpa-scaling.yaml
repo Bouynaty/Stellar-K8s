@@ -3,11 +3,10 @@
 # Demonstrates Vertical Pod Autoscaler (VPA) integration for StellarNode.
 #
 # Prerequisites:
-#   The VPA controller must be installed in your cluster:
-#     kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/vpa-v1-crd-gen.yaml
-#     kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/vpa-admission-controller.yaml
-#     kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/vpa-recommender.yaml
-#     kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/vpa-updater.yaml
+#   The VPA controller must be installed in your cluster. Official install:
+#     git clone https://github.com/kubernetes/autoscaler.git
+#     cd autoscaler/vertical-pod-autoscaler && ./hack/vpa-up.sh
+#   Docs: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
 #
 # Apply with:
 #   kubectl apply -f examples/vpa-scaling.yaml

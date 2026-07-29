@@ -1,19 +1,16 @@
-mod cli;
-mod commands;
-
-use crate::cli::{Args, BackupCommands, Commands};
-use crate::commands::backup::{run_backup, run_cleanup, run_list, run_restore};
-use crate::commands::benchmark::run_benchmark_controller_cmd;
-use crate::commands::check_crd::run_check_crd;
-use crate::commands::doctor::run_doctor;
-use crate::commands::export_compliance::run_export_compliance;
-use crate::commands::health_check::run_health_check;
-use crate::commands::info::run_info;
-use crate::commands::operator::run_operator;
-use crate::commands::runbook::run_generate_runbook;
-use crate::commands::simulator::run_simulator;
-use crate::commands::webhook::run_webhook;
 use clap::Parser;
+use stellar_k8s::cli::{Args, BackupCommands, Commands};
+use stellar_k8s::commands::backup::{run_backup, run_cleanup, run_list, run_restore};
+use stellar_k8s::commands::benchmark::run_benchmark_controller_cmd;
+use stellar_k8s::commands::check_crd::run_check_crd;
+use stellar_k8s::commands::doctor::run_doctor;
+use stellar_k8s::commands::export_compliance::run_export_compliance;
+use stellar_k8s::commands::health_check::run_health_check;
+use stellar_k8s::commands::info::run_info;
+use stellar_k8s::commands::operator::run_operator;
+use stellar_k8s::commands::runbook::run_generate_runbook;
+use stellar_k8s::commands::simulator::run_simulator;
+use stellar_k8s::commands::webhook::run_webhook;
 
 use stellar_k8s::controller::archive_prune::prune_archive;
 use stellar_k8s::controller::diff::diff;
@@ -22,6 +19,12 @@ use stellar_k8s::{incident, Error};
 
 #[tokio::main]
 async fn main() {
+    // rustls 0.23 requires an explicit crypto provider when aws-lc-rs/ring are
+    // not auto-selected via default features (common with kube/reqwest stacks).
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("failed to install rustls ring CryptoProvider");
+
     if let Err(e) = run().await {
         eprintln!("Error: {e}");
         std::process::exit(e.exit_code());
