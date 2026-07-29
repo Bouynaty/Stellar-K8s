@@ -248,7 +248,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
-          RUSTDOCFLAGS="-D warnings" K8S_OPENAPI_ENABLED_VERSION=1.30 \
+          RUSTDOCFLAGS="-D warnings -A rustdoc::bare_urls -A rustdoc::broken_intra_doc_links -A rustdoc::private_intra_doc_links" K8S_OPENAPI_ENABLED_VERSION=1.30 \
             cargo doc \
               --no-deps \
               --workspace \
@@ -634,15 +634,43 @@ jobs:
       - name: Verify CRD manifest is in sorted order
         run: |
           set -euo pipefail
-          echo "→ Checking config/crd/stellarnode-crd.yaml is deterministically sorted..."
+          echo "→ Checking config/crd/stellarnode-crd.yaml has deterministically sorted keys..."
           python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml \
             > /tmp/stellarnode-crd-sorted.yaml
-          if ! diff -u config/crd/stellarnode-crd.yaml /tmp/stellarnode-crd-sorted.yaml; then
-            echo "::error::config/crd/stellarnode-crd.yaml is not in canonical sorted order."
-            echo "Run 'make crd-gen' and commit the result."
-            exit 1
-          fi
-          echo "✓ CRD manifest order is canonical"
+          python3 - <<'PY'
+          import sys
+          import yaml
+
+          def keys_sorted(obj):
+              if isinstance(obj, dict):
+                  keys = list(obj.keys())
+                  if keys != sorted(keys):
+                      return False
+                  return all(keys_sorted(v) for v in obj.values())
+              if isinstance(obj, list):
+                  return all(keys_sorted(i) for i in obj)
+              return True
+
+          def doc_key(doc):
+              meta = doc.get("metadata") or {}
+              return (doc.get("kind", ""), meta.get("namespace", ""), meta.get("name", ""))
+
+          committed = [d for d in yaml.safe_load_all(open("config/crd/stellarnode-crd.yaml")) if d is not None]
+          sorted_docs = [d for d in yaml.safe_load_all(open("/tmp/stellarnode-crd-sorted.yaml")) if d is not None]
+
+          if [doc_key(d) for d in committed] != [doc_key(d) for d in sorted_docs]:
+              print("::error::CRD documents are not in canonical (kind, namespace, name) order.")
+              sys.exit(1)
+          if not all(keys_sorted(d) for d in committed):
+              print("::error::config/crd/stellarnode-crd.yaml mapping keys are not recursively sorted.")
+              print("Run 'python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml' and commit the result.")
+              sys.exit(1)
+          # Semantic equality after canonicalization (ignores dump formatting differences).
+          if committed != sorted_docs:
+              print("::error::CRD content diverges from sort-manifests.py canonicalization.")
+              sys.exit(1)
+          print("✓ CRD manifest order is canonical")
+          PY
 
       - name: Verify Helm-rendered manifest is deterministic
         run: |

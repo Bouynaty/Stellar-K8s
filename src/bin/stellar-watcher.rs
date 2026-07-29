@@ -62,7 +62,7 @@ struct Args {
     network: String,
 
     /// HTTP endpoint of the Stellar Core node to poll.
-    /// Example: http://stellar-core.stellar-system.svc.cluster.local:11626
+    /// Example: <http://stellar-core.stellar-system.svc.cluster.local:11626>
     /// Env: WATCHER_NODE_ENDPOINT
     #[arg(
         long,

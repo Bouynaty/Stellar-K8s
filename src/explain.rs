@@ -1,5 +1,5 @@
 //! Module for explaining common Stellar error codes
-//! Reference: https://developers.stellar.org/docs/learn/glossary/errors
+//! Reference: <https://developers.stellar.org/docs/learn/glossary/errors>
 
 pub struct ErrorExplanation {
     pub summary: &'static str,
