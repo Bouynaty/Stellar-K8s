@@ -68,7 +68,7 @@ exclude = [
   "^https://helm\\.sh/",
   # kubernetes.io is fronted by Cloudflare which throttles GHA IP ranges
   # with intermittent TLS/TCP failures (not just 429s). Blog, docs,
-  and related hosts flake regularly; re-verifying them on every PR
+  # and related hosts flake regularly; re-verifying them on every PR
   # provides almost no signal.
   "^https://kubernetes\\.io/",
   # Placeholder URLs that appear in code examples and snippets
