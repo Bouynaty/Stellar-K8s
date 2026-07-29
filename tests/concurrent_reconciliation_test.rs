@@ -100,8 +100,8 @@ fn test_concurrent_reconcile_same_node_is_locked() {
     let res2 = handle2.join().unwrap();
 
     // One of them must have succeeded, and the other must have failed with ConcurrencyConflict
-    let success_count = vec![&res1, &res2].iter().filter(|r| r.is_ok()).count();
-    let conflict_count = vec![&res1, &res2]
+    let success_count = [&res1, &res2].iter().filter(|r| r.is_ok()).count();
+    let conflict_count = [&res1, &res2]
         .iter()
         .filter(|r| matches!(r, Err("ConcurrencyConflict")))
         .count();
