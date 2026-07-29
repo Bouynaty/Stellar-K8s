@@ -64,6 +64,8 @@ exclude = [
   "^https://nvd\\.nist\\.gov/",
   "^https://www\\.cisecurity\\.org/",
   "^https://llvm\\.org/",
+  # helm.sh intermittently resets CI connections
+  "^https://helm\\.sh/",
   # kubernetes.io/docs is fronted by Cloudflare which throttles GHA IP
   # ranges with intermittent connection drops (not 429s — full TCP
   # resets). Two URLs in particular were failing every CI run
