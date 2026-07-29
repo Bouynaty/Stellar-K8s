@@ -230,7 +230,7 @@ make link-check-all # Repo-wide link check via lychee (markdown + source + confi
 - Documentation files use `kebab-case.md` (e.g., `disk-scaling.md`).
 - Files that belong to a topic area go in the matching `docs/<topic>/` subdirectory.
 - Root-level docs (`README.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`) are entry points only — detailed content belongs in `docs/`.
-- New doc files must be linked from `docs/README.md` under the appropriate section.
+- New doc files must be added to `mkdocs.yml` under the appropriate section.
 
 ### Script conventions
 
@@ -254,7 +254,7 @@ Run through this before marking a PR ready for review:
 - [ ] No unused imports in modified files
 - [ ] Generated manifests are up to date with their source
 - [ ] Shell scripts pass `shellcheck -S error`
-- [ ] New doc files are linked from `docs/README.md`
+- [ ] New doc files are added to `mkdocs.yml`
 - [ ] Commit messages follow Conventional Commits and include a `Signed-off-by` line
 Before requesting a review for a Pull Request, please ensure all checks listed in the [Canonical Repository Health Checklist](docs/development/repo-health-checklist.md) have been run and verified.
 
