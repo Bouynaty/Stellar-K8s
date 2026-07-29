@@ -207,6 +207,8 @@ operations. The first stage that fails short-circuits the rest.
 | File | Purpose |
 |------|---------|
 | `tests/admission_webhook_conformance.rs` | This conformance test suite |
+| `tests/webhook_payload_contract.rs` | HTTP malformed/boundary payload contracts (#1152) |
+| `docs/webhook-payload-contract-tests.md` | Documentation for the HTTP contract suite |
 | `src/webhook/server.rs` | `WebhookServer`, `validate_spec_builtin`, HTTP handlers |
 | `src/webhook/org_validator.rs` | Organisational-standards validator |
 | `src/crd/stellar_node.rs` | `StellarNodeSpec::validate()` |

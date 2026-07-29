@@ -1,12 +1,12 @@
 use crate::cli::BenchmarkArgs;
+use crate::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 use crate::Error;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use stellar_k8s::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 use tracing::info;
 
 pub async fn run_benchmark_controller_cmd(args: BenchmarkArgs) -> Result<(), Error> {
-    use stellar_k8s::controller::run_benchmark_controller;
+    use crate::controller::run_benchmark_controller;
 
     init_subscriber(SubscriberConfig::from_level_str(
         &args.log_level,

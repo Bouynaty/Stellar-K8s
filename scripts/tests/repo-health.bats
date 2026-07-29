@@ -25,10 +25,9 @@ setup() {
   [[ "$output" == *"--fast"* ]]
 }
 
-@test "validate.sh delegates to repo-health --fast" {
-  run bash "${SCRIPT_DIR}/validate.sh" --help
+@test "make validate is an alias for health-fast" {
+  run grep -E '^validate:[[:space:]]*health-fast' "${REPO_ROOT}/Makefile"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"--fast"* ]]
 }
 
 @test "repo-health.sh rejects unknown flags" {

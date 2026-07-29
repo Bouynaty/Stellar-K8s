@@ -17,8 +17,12 @@ for file in $(find .github -name "*.yml"); do
   # Extract cache-key or shared-key
   keys=$(grep -E 'cache-key:|shared-key:' "$file" | awk -F':' '{print $2}' | tr -d ' "''' || true)
   for key in $keys; do
+    # Skip GitHub Actions expression templates (e.g. release-${{ matrix.target }})
+    if [[ "$key" == *'${{'* ]]; then
+      continue
+    fi
     # Valid prefixes
-    if [[ ! "$key" =~ ^(ci|perf|soak|release|chaos|docs|verify|image)-[a-zA-Z0-9_-]+$ ]] && [[ ! "$key" == "\${{"* ]] && [[ "$key" != "default" ]]; then
+    if [[ ! "$key" =~ ^(ci|perf|soak|release|chaos|docs|verify|image)-[a-zA-Z0-9_-]+$ ]] && [[ "$key" != "default" ]]; then
       echo "::error file=$file::Invalid cache key format: $key. Expected format: <prefix>-<name> where prefix is ci, perf, soak, release, chaos, docs, verify, or image."
       ERRORS=$((ERRORS + 1))
     fi

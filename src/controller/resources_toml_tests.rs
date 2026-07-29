@@ -4,7 +4,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::resources::{build_config_map_for_test, make_node};
+    use super::super::resources::{build_config_map, make_node};
     use crate::crd::stellar_node::NodeType;
     use crate::crd::ValidatorConfig;
     use crate::crd::SorobanConfig;
@@ -28,7 +28,7 @@ mod tests {
             hsm_config: None,
         });
 
-        let cm = build_config_map_for_test(&node, None, false);
+        let cm = build_config_map(&node, None, false);
 
         if let Some(data) = cm.data {
             if let Some(core_cfg) = data.get("stellar-core.cfg") {
@@ -60,7 +60,7 @@ mod tests {
             hsm_config: None,
         });
 
-        let cm = build_config_map_for_test(&node, None, true);  // enable_mtls = true
+        let cm = build_config_map(&node, None, true);  // enable_mtls = true
 
         if let Some(data) = cm.data {
             if let Some(core_cfg) = data.get("stellar-core.cfg") {
@@ -96,7 +96,7 @@ mod tests {
             max_events_per_request: 1000,
         });
 
-        let cm = build_config_map_for_test(&node, None, false);
+        let cm = build_config_map(&node, None, false);
 
         if let Some(data) = cm.data {
             if let Some(captive_cfg) = data.get("captive-core.cfg") {
@@ -131,7 +131,7 @@ mod tests {
             hsm_config: None,
         });
 
-        let cm = build_config_map_for_test(&node, None, false);
+        let cm = build_config_map(&node, None, false);
         // This will panic if stellar-core.cfg exists (which it will) because of malformed TOML
         if let Some(data) = cm.data {
             if let Some(cfg) = data.get("stellar-core.cfg") {
