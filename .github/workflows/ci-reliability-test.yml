@@ -67,7 +67,7 @@ jobs:
 
       - uses: ./.github/actions/setup-rust
         with:
-          cache-key: "audit-test"
+          cache-key: "ci-audit-test"
 
       - name: Test cargo audit configuration
         run: |
@@ -128,9 +128,9 @@ jobs:
             local action=$1
             echo "Checking $action versions..."
             
-            # Find all uses of this action
-            VERSIONS=$(find .github -name "*.yml" -exec grep -h "uses: $action@" {} \; | sort | uniq)
-            VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
+            # Find all uses of this action (normalize indentation so whitespace ≠ version)
+            VERSIONS=$(find .github -name "*.yml" -exec grep -h "uses: $action@" {} \; | sed 's/^[[:space:]]*//' | sort -u)
+            VERSION_COUNT=$(echo "$VERSIONS" | grep -c . || true)
             
             if [ $VERSION_COUNT -gt 1 ]; then
               echo "❌ Inconsistent versions for $action:"
@@ -166,10 +166,10 @@ jobs:
         run: |
           echo "🔍 Checking for deprecated Rust cache settings..."
           
-          # Check for deprecated cache-all-crates
-          if grep -r "cache-all-crates" .github/; then
+          # Match the YAML key only (avoid false positives from this script's comments)
+          if grep -rIn --include='*.yml' -E '^[[:space:]]*cache-all-crates:' .github/; then
             echo "❌ Found deprecated 'cache-all-crates' setting:"
-            grep -r "cache-all-crates" .github/
+            grep -rIn --include='*.yml' -E '^[[:space:]]*cache-all-crates:' .github/
             exit 1
           fi
           

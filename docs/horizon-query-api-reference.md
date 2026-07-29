@@ -219,7 +219,7 @@ kubectl get stellarnode my-horizon -n stellar -o jsonpath='{.status.phase}{"\n"}
 kubectl get stellarnode my-horizon -n stellar -o jsonpath='{.status.ledgerSequence}{"\n"}'
 ```
 
-See [QUICK_START_HEALTH_CHECKS.md](QUICK_START_HEALTH_CHECKS.md).
+See [health-checks.md](health-checks.md).
 
 ### Prometheus metrics
 
@@ -264,7 +264,7 @@ Database and ingestion tuning: [performance-tuning.md](performance-tuning.md#pos
 |------|----------|
 | `StellarNode` Horizon spec | [`config/crd/stellarnode-crd.yaml`](../config/crd/stellarnode-crd.yaml) |
 | Health check reconciler | [`src/controller/`](../src/controller/) (Horizon sync phases) |
-| Horizon cache controller | [`src/controller/horizon_cache.rs`](../src/controller/horizon_cache.rs) |
+| Horizon cache controller | [`src/controller/horizon_cache/`](../src/controller/horizon_cache/) |
 | Ingress examples | [ingress-guide.md](ingress-guide.md) |
 | Deployment pattern (RPC farm) | [deployment-patterns/horizon-rpc-farm.md](deployment-patterns/horizon-rpc-farm.md) |
 

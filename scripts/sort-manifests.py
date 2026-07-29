@@ -57,7 +57,7 @@ def _sort_keys_recursive(obj: Any) -> Any:
     container ports and environment variables); only mappings are sorted.
     """
     if isinstance(obj, dict):
-        return {k: _sort_keys_recursive(v) for k in sorted(obj)}
+        return {k: _sort_keys_recursive(obj[k]) for k in sorted(obj)}
     if isinstance(obj, list):
         return [_sort_keys_recursive(item) for item in obj]
     return obj
