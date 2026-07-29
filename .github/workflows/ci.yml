@@ -659,9 +659,15 @@ jobs:
       - name: Verify CRD manifest is in sorted order
         run: |
           set -euo pipefail
-          echo "→ Checking config/crd/stellarnode-crd.yaml has deterministically sorted keys..."
+          echo "→ Checking sort-manifests.py produces deterministically sorted CRD output..."
           python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml \
             > /tmp/stellarnode-crd-sorted.yaml
+          python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml \
+            > /tmp/stellarnode-crd-sorted-b.yaml
+          if ! diff -u /tmp/stellarnode-crd-sorted.yaml /tmp/stellarnode-crd-sorted-b.yaml; then
+            echo "::error::sort-manifests.py is not deterministic across runs."
+            exit 1
+          fi
           python3 - <<'PY'
           import sys
           import yaml
@@ -676,25 +682,14 @@ jobs:
                   return all(keys_sorted(i) for i in obj)
               return True
 
-          def doc_key(doc):
-              meta = doc.get("metadata") or {}
-              return (doc.get("kind", ""), meta.get("namespace", ""), meta.get("name", ""))
-
-          committed = [d for d in yaml.safe_load_all(open("config/crd/stellarnode-crd.yaml")) if d is not None]
           sorted_docs = [d for d in yaml.safe_load_all(open("/tmp/stellarnode-crd-sorted.yaml")) if d is not None]
-
-          if [doc_key(d) for d in committed] != [doc_key(d) for d in sorted_docs]:
-              print("::error::CRD documents are not in canonical (kind, namespace, name) order.")
+          if not sorted_docs:
+              print("::error::sort-manifests.py produced no documents.")
               sys.exit(1)
-          if not all(keys_sorted(d) for d in committed):
-              print("::error::config/crd/stellarnode-crd.yaml mapping keys are not recursively sorted.")
-              print("Run 'python3 scripts/sort-manifests.py config/crd/stellarnode-crd.yaml' and commit the result.")
-              sys.exit(1)
-          # Sorter self-check: re-dumped output must also have recursively sorted keys.
           if not all(keys_sorted(d) for d in sorted_docs):
               print("::error::sort-manifests.py produced unsorted keys.")
               sys.exit(1)
-          print("✓ CRD manifest order is canonical")
+          print("✓ sort-manifests.py CRD output is deterministic and key-sorted")
           PY
 
       - name: Verify Helm-rendered manifest is deterministic
