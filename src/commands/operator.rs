@@ -315,12 +315,8 @@ pub async fn run_operator(args: RunArgs) -> Result<(), Error> {
         let rustls_config = mtls_config
             .as_ref()
             .and_then(|cfg| {
-                crate::rest_api::build_tls_server_config(
-                    &cfg.cert_pem,
-                    &cfg.key_pem,
-                    &cfg.ca_pem,
-                )
-                .ok()
+                crate::rest_api::build_tls_server_config(&cfg.cert_pem, &cfg.key_pem, &cfg.ca_pem)
+                    .ok()
             })
             .map(axum_server::tls_rustls::RustlsConfig::from_config);
         let server_tls = rustls_config.clone();

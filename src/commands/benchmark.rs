@@ -1,8 +1,8 @@
 use crate::cli::BenchmarkArgs;
+use crate::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 use crate::Error;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use crate::logging::{init_subscriber, LogOutputFormat, SubscriberConfig};
 use tracing::info;
 
 pub async fn run_benchmark_controller_cmd(args: BenchmarkArgs) -> Result<(), Error> {

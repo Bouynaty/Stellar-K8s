@@ -1,8 +1,8 @@
 use crate::cli::GenerateRunbookArgs;
+use crate::runbook::generate_runbook;
 use crate::Error;
 use kube::api::Api;
 use kube::Client;
-use crate::runbook::generate_runbook;
 
 pub async fn run_generate_runbook(args: GenerateRunbookArgs) -> Result<(), Error> {
     // Create Kubernetes client
