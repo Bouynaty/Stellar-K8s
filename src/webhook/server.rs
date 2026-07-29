@@ -427,7 +427,7 @@ impl WebhookServer {
 
         // Check if TLS is configured
         if has_tls {
-            // TODO: Implement TLS server with rustls
+            // TODO(exempt: pending rustls server): Implement TLS server with rustls
             // For now, fall back to non-TLS
             warn!("TLS configuration provided but not yet implemented, using plain HTTP");
         }
