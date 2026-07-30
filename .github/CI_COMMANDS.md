@@ -14,7 +14,7 @@ All reusable logic lives under `.github/actions/`:
 
 | Action | Purpose |
 |--------|---------|
-| `setup-rust` | Install Rust toolchain + system deps + Swatinem cache |
+| `setup-rust` | Install Rust toolchain + system deps + Swatinem cache + optional cargo tools (with retry) |
 | `setup-kind-cluster` | Provision kind cluster, load image, install CRDs, deploy operator |
 | `collect-e2e-logs` | Dump operator logs, K8s events, StellarNode status → artifact |
 | `collect-failure-diagnostics` | Unified failing-run diagnostics bundle (issue #1151) |
@@ -24,6 +24,45 @@ All reusable logic lives under `.github/actions/`:
 See [`docs/ci-failure-diagnostics.md`](../docs/ci-failure-diagnostics.md) for the
 bundle layout and how to invoke `scripts/ci/collect-failure-diagnostics.sh`
 locally.
+
+---
+
+## Cleanup Wave: Issue #1175
+
+### #1175 — Remove redundant CI bootstrap from duplicated workflow jobs
+
+Several workflows still re-implemented the same Rust bootstrap after
+`setup-rust` already covered it:
+
+- **Double `cargo install`** — `ci.yml`, `dependency-review.yml`, and
+  `maintenance.yml` passed `extra-tools` to `setup-rust` and then ran a
+  second install loop for the same crates.
+- **Raw toolchain install** — `security-audit.yml` and `dead-code-report.yml`
+  still inlined `dtolnay/rust-toolchain` + `Swatinem/rust-cache` instead of
+  calling `setup-rust`.
+- **Leftover duplicate in `stale-docs.yml`** — after #1136 it called
+  `setup-rust` *and* still installed the toolchain again via `dtolnay`.
+
+**Fix:**
+1. `setup-rust` now owns cargo-tool install **with a 3-attempt retry**.
+2. Workflow jobs only pass `extra-tools:` — no per-job install steps.
+3. Scheduled/security/dead-code workflows delegate to `setup-rust`.
+4. `ci-reliability-test` asserts retry lives in the composite and that
+   workflows do not re-bootstrap `cargo-audit` / `cargo-tarpaulin` /
+   `cargo-deny`.
+
+**Verification:**
+```bash
+# Only release.yml (cross-compile matrix) may call rust-toolchain directly
+grep -RIn 'dtolnay/rust-toolchain' .github/ \
+  | grep -v 'setup-rust/action.yml'
+
+# No duplicated cargo-tool bootstrap in workflows
+grep -RIn -E 'cargo install (cargo-audit|cargo-tarpaulin|cargo-deny)' \
+  .github/workflows/ || echo "none"
+
+bash scripts/ci/check-cache-keys.sh
+```
 
 ---
 

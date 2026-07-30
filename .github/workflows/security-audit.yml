@@ -23,21 +23,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+    - name: Setup Rust
+      uses: ./.github/actions/setup-rust
       with:
-        toolchain: stable
-
-    - name: Cache dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        key: security-audit
-
-    - name: Install cargo-deny
-      run: cargo install --force cargo-deny --locked
-
-    - name: Install cargo-audit  
-      run: cargo install --force cargo-audit --locked
+        cache-key: "ci-security-audit"
+        extra-tools: "cargo-deny cargo-audit cargo-outdated"
 
     - name: Run cargo deny
       run: cargo deny check
@@ -52,9 +42,7 @@ jobs:
       continue-on-error: false
 
     - name: Check for outdated dependencies
-      run: |
-        cargo install --force cargo-outdated --locked
-        cargo outdated --exit-code 1 --root-deps-only
+      run: cargo outdated --exit-code 1 --root-deps-only
       continue-on-error: true
 
     - name: Generate SBOM
@@ -102,8 +90,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+    - name: Setup Rust
+      uses: ./.github/actions/setup-rust
+      with:
+        cache-key: "ci-supply-chain"
+        extra-tools: "cargo-deny"
 
     - name: Check for dependency drift vs previous day tip
       run: |
@@ -111,9 +102,7 @@ jobs:
         git log -1 --oneline Cargo.toml Cargo.lock || true
 
     - name: Validate dependency licenses
-      run: |
-        cargo install --force cargo-deny --locked
-        cargo deny check licenses
+      run: cargo deny check licenses
 
   security-scorecard:
     name: OpenSSF Scorecard
