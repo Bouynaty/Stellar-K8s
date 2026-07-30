@@ -9,8 +9,8 @@
 #
 # Exit codes: 0 = all pass, 1 = one or more checks failed.
 #
-# Version pins live in scripts/lib/versions.sh (shared with setup-linux.sh /
-# setup-mac.sh) so there is exactly one place to bump them.
+# Version pins live in scripts/lib/versions.sh so there is exactly one place
+# to bump them.
 
 set -euo pipefail
 
@@ -88,10 +88,6 @@ check_tools() {
 
     local got=""
     # Prefer tool-native version commands: kubectl rejects `--version`.
-    case "${binary}" in
-      kubectl) got=$(kubectl version --client 2>&1 | _extract_semver) || got="" ;;
-      helm)    got=$(helm version --short 2>&1 | _extract_semver) || got="" ;;
-      *)       got=$(${binary} --version 2>&1 | _extract_semver) || got="" ;;
     case "${binary}" in
       kubectl)
         # `kubectl --version` is not a valid client flag; use --client.

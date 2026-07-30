@@ -10,6 +10,7 @@
 #   Test:     make test                       # Run all tests
 #   Security: make security-all               # Audit + scan
 #   Docker:   make docker-build               # Local Docker image
+#   Cleanup:  make cleanup                    # Repo scratch + obsolete-path check
 #   Clean:    make clean                      # Remove build artifacts
 #   Health:   make health                     # Full health check
 #   Help:     make help                       # Show all targets
@@ -35,7 +36,7 @@
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
 	check-pipeline-log-redaction \
-	clean
+	cleanup clean
 
 .DEFAULT_GOAL := help
 
@@ -92,6 +93,7 @@ help: ## Show this help and the canonical command flow
 	@echo '  Security: make audit              Vulnerability scan + policy check'
 	@echo '  Security: make security-report    Generate security report'
 	@echo '  Docker:   make docker-build       Local Docker image'
+	@echo '  Cleanup:  make cleanup            Scratch artifacts + obsolete-path check'
 	@echo '  Clean:    make clean              Remove build artifacts'
 	@echo ''
 	@echo 'Workflows:'
@@ -263,6 +265,9 @@ pre-commit-install: ## Install pre-commit hooks
 	pre-commit install
 	pre-commit install --hook-type pre-push
 
+cleanup: ## Repository cleanup (scratch artifacts + obsolete archive-path guard)
+	@bash scripts/cleanup.sh $(if $(filter 1 true TRUE yes YES,$(DRY_RUN)),--dry-run,)
+
 clean: ## Clean build artifacts
 	$(CARGO) clean
 
@@ -334,10 +339,10 @@ test-preflight: ## Run bats unit tests for scripts/preflight.sh
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
 	@bats scripts/tests/preflight.bats
 
-test-shell: ## Run bats unit tests for shared shell helpers
-	@echo "→ Running shell helper bats tests..."
+test-shell: ## Run bats unit tests for the cleanup tool and shared shell helpers
+	@echo "→ Running cleanup tool bats tests..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
-	@bats scripts/tests/common.bats
+	@bats scripts/tests/cleanup.bats
 
 collect-failure-diagnostics: ## Assemble a local CI failure diagnostics bundle (#1151)
 	@echo "→ Assembling failure diagnostics bundle..."

@@ -26,9 +26,8 @@ Stellar-K8s/
 ├── policy/              CEL and OPA policies
 ├── schemas/             JSON schemas
 ├── scripts/             Operational scripts
-│   ├── dev-utils/       Development helper utilities
-│   ├── lib/             Shared script library functions
-│   └── archive/         Historical one-off scripts (not part of normal workflow)
+│   ├── ci/              CI helper scripts
+│   └── lib/             Shared script library functions
 ├── security/            Security policies and SBOM
 ├── src/                 Rust source code
 ├── tests/               Integration and E2E tests
@@ -69,9 +68,9 @@ entry points only — detailed content belongs in `docs/`.
 
 | Element | Convention | Example |
 |---|---|---|
-| File names | `kebab-case.sh` | `setup-mac.sh` |
-| Operational scripts | live in `scripts/` | `scripts/repo-health.sh` |
-| Historical / one-off | move to `scripts/archive/` | `scripts/archive/create_batch_2_issues.sh` |
+| File names | `kebab-case.sh` | `cleanup.sh` |
+| Operational scripts | live in `scripts/` | `scripts/cleanup.sh`, `scripts/repo-health.sh` |
+| One-off / historical | delete or fold into a supported tool | Prefer `scripts/cleanup.sh` over new ad-hoc helpers |
 
 Every script must pass `shellcheck -S error` before merging.
 
@@ -105,8 +104,9 @@ must not appear in filenames — use the feature name instead
 3. **Config files**: Go under `config/` with a clear subdirectory. Use `config/crd/` for CRDs,
    `config/samples/` for test resources, and `config/manifests/` for OLM bases.
 
-4. **Scripts**: Operational scripts go in `scripts/`. One-off or historical scripts go in
-   `scripts/archive/`. Scripts must not live at the repository root.
+4. **Scripts**: Operational scripts go in `scripts/`. Do not add one-off archive
+   or batch helpers — fold cleanup into `scripts/cleanup.sh` (or remove the script).
+   Scripts must not live at the repository root.
 
 5. **Generated files**: Never hand-edit generated files. Always regenerate from source.
    See the [Regenerating Manifests](DEVELOPMENT.md#regenerating-manifests) table.
