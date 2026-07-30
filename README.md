@@ -613,11 +613,19 @@ The full `StellarNode` CRD field reference — including all fields, types, defa
 
 **[docs/api-reference.md](docs/api-reference.md)**
 
-The reference is auto-generated from the CRD OpenAPI schema. To regenerate after modifying the CRD types:
+The CRD reference is auto-generated from the CRD OpenAPI schema. To regenerate after modifying the CRD types:
 
 ```bash
 make generate-api-docs
 ```
+
+Operator REST endpoints are documented in **[docs/api/openapi.yaml](docs/api/openapi.yaml)** (OpenAPI 3.0). Validate coverage with:
+
+```bash
+make check-openapi-spec
+```
+
+Interactive Swagger UI is available at `/developer` when the API gateway is enabled.
 
 ---
 
