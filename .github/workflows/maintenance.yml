@@ -1,5 +1,12 @@
 name: Maintenance
 
+# Weekly hygiene that is NOT covered by other workflows:
+#   - security-audit.yml  → scheduled cargo-audit / cargo-deny / scorecard / SBOM
+#   - link-check.yml      → scheduled lychee link rot
+#   - ci.yml              → PR/push gates
+#
+# Unique value here: stale-artifact cleanup regression coverage.
+
 on:
   schedule:
     - cron: '0 9 * * 1' # Every Monday at 09:00 UTC
@@ -20,42 +27,3 @@ jobs:
 
       - name: Run stale artifact cleanup regression tests
         run: cargo test stale_artifact_cleanup -- --nocapture
-
-  dependency-audit:
-    name: Dependency Audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache-key: "ci-audit-maintenance"
-          extra-tools: "cargo-audit"
-
-      - name: Install cargo-audit
-        run: |
-          for i in 1 2 3; do
-            cargo install cargo-audit --locked && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
-
-      - name: Run security audit
-        run: cargo audit
-
-  docs-health:
-    name: Docs Health Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
-      - name: Check documentation links
-        run: python3 scripts/check-links.py

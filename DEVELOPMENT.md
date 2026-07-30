@@ -27,6 +27,8 @@ The following one-off scripts were removed as part of repository hygiene
 | `scripts/organize_scripts.sh` | `scripts/cleanup.sh` (`make cleanup`) |
 | `scripts/archive/*` | Removed; no archive tree — use `scripts/cleanup.sh` |
 | `scripts/lib/batch.sh` | Removed with archive batch scripts |
+| `scripts/cleanup_root.sh` | Manual cleanup; no automated replacement |
+| `scripts/quickstart-verify.sh` | Golden-path quickstart verification |
 | `scripts/dev-utils/*` | `make dev-setup`, `make preflight`, `make health-fast` |
 | `benchmarks/test-webhook-local.sh` | `make benchmark-webhook` |
 | `benchmarks/run-proximity-benchmark.sh` | `make benchmark` |

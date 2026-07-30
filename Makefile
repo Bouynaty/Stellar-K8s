@@ -25,7 +25,7 @@
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint link-check link-check-all changelog \
-	generate-api-docs check-api-docs check-stale-docs update-doc-baseline docs-check-strict docs-lint \
+	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
 	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
@@ -200,14 +200,14 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 	@echo "→ Building Docker image (CI mode)..."
 	DOCKER_BUILDKIT=1 $(DOCKER) build --target runtime -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
-docker-multiarch: ## Trigger multi-arch build via the CI workflow (dispatches workflow_dispatch)
-	@echo "→ Triggering multi-arch build pipeline..."
+docker-multiarch: ## Trigger release pipeline multi-arch image build via CI (dispatches workflow_dispatch)
+	@echo "→ Triggering release pipeline (multi-arch images)..."
 	@command -v gh >/dev/null 2>&1 || { echo "✗ gh CLI not found. Install: https://cli.github.com/"; exit 1; }
-	gh workflow run multiarch-build.yml
-	@echo "✓ Multi-arch build dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
+	gh workflow run release.yml
+	@echo "✓ Release pipeline dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
 
-# Multi-arch builds are handled by CI: .github/workflows/multiarch-build.yml
-# To trigger a multi-arch build, push a tag or run: make docker-multiarch
+# Multi-arch images are built by .github/workflows/release.yml on tagged releases and main pushes.
+# To trigger manually: make docker-multiarch
 health: ## Run common repository health checks (format, lint, test, docs, links)
 	@bash scripts/repo-health.sh
 
@@ -286,6 +286,15 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--crd config/crd/stellarnode-crd.yaml \
 		--output docs/api-reference.md \
 		--check
+
+generate-openapi-spec: ## Validate operator REST OpenAPI specification
+	@echo "→ Validating OpenAPI specification..."
+	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml
+	@echo "✓ docs/api/openapi.yaml is valid"
+
+check-openapi-spec: ## Fail if OpenAPI spec is missing required operator routes
+	@echo "→ Checking OpenAPI spec coverage..."
+	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml --check
 
 check-stale-docs: ## Check for documentation that has fallen behind source code (warns; use docs-check-strict to fail)
 	@echo "→ Checking for stale documentation..."
