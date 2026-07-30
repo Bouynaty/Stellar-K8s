@@ -24,7 +24,7 @@
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint link-check link-check-all changelog \
-	generate-api-docs check-api-docs check-stale-docs update-doc-baseline docs-check-strict docs-lint \
+	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
 	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
@@ -281,6 +281,15 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--crd config/crd/stellarnode-crd.yaml \
 		--output docs/api-reference.md \
 		--check
+
+generate-openapi-spec: ## Validate operator REST OpenAPI specification
+	@echo "→ Validating OpenAPI specification..."
+	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml
+	@echo "✓ docs/api/openapi.yaml is valid"
+
+check-openapi-spec: ## Fail if OpenAPI spec is missing required operator routes
+	@echo "→ Checking OpenAPI spec coverage..."
+	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml --check
 
 check-stale-docs: ## Check for documentation that has fallen behind source code (warns; use docs-check-strict to fail)
 	@echo "→ Checking for stale documentation..."
