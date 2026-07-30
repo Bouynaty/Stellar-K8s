@@ -62,7 +62,6 @@ mod resource_optimization_handlers;
 mod scp_topology;
 mod server;
 pub mod stellar_metrics_server;
-mod sustainability;
 
 pub mod gateway;
 

@@ -1,5 +1,12 @@
 name: Maintenance
 
+# Weekly hygiene that is NOT covered by other workflows:
+#   - security-audit.yml  → scheduled cargo-audit / cargo-deny / scorecard / SBOM
+#   - link-check.yml      → scheduled lychee link rot
+#   - ci.yml              → PR/push gates
+#
+# Unique value here: stale-artifact cleanup regression coverage.
+
 on:
   schedule:
     - cron: '0 9 * * 1' # Every Monday at 09:00 UTC

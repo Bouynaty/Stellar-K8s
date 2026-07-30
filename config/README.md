@@ -131,6 +131,13 @@ and package metadata) is committed.
 kubectl apply -f config/crd/
 ```
 
+Benchmark workloads require the canonical benchmark CRDs (not bundled in the Helm chart):
+
+```bash
+kubectl apply -f config/crd/stellarbenchmark-crd.yaml
+kubectl apply -f config/crd/stellarbenchmarkreport-crd.yaml
+```
+
 ### Apply Sample Resources
 
 ```bash

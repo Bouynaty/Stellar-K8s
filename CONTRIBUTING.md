@@ -216,9 +216,12 @@ for the full command set and per-step expectations.
 
 ### Script conventions
 
-- Scripts use `kebab-case.sh` (e.g., `setup-mac.sh`).
+- Scripts use `kebab-case.sh` (e.g., `cleanup.sh`).
 - Every script must pass `shellcheck -S error`.
-- Historical or one-off scripts should be moved to `scripts/archive/` rather than left in the root of `scripts/`.
+- Do not add one-off archive or batch scripts under `scripts/`. Use
+  `scripts/cleanup.sh` (`make cleanup`) as the single cleanup entrypoint, or
+  remove obsolete helpers entirely.
+- Historical or one-off scripts should not be committed to the repository; keep only operational scripts under `scripts/`.
 
 ### Manifest and config conventions
 

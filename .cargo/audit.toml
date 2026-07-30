@@ -102,9 +102,9 @@ ignore = [
     "RUSTSEC-2026-0192",
 
     # ── Ignored advisories previously carried as inline --ignore flags ─────────
-    # These were maintained in 3 separate workflow YAML files (ci.yml,
-    # dependency-review.yml, maintenance.yml) and often drifted out of sync.
-    # Consolidated here so .cargo/audit.toml is the single source of truth.
+    # These were maintained across workflow YAML files and often drifted out of
+    # sync. Consolidated here so .cargo/audit.toml is the single source of truth.
+    # Canonical cargo-audit runners: ci.yml (PR/push) and security-audit.yml (schedule).
     #
     # time 0.3.36 – potential overflow in instant conversion (RUSTSEC-2020-0071).
     # Transitive via backoff → kube-runtime. No patched version available in our

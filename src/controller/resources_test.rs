@@ -1729,8 +1729,7 @@ mod pdb_tests {
     #[test]
     fn test_non_validator_multi_replica_default_pdb() {
         let node = node_with_replicas(NodeType::Horizon, 3);
-        let pdb =
-            build_pdb(&node).expect("PDB must be generated for multi-replica Horizon");
+        let pdb = build_pdb(&node).expect("PDB must be generated for multi-replica Horizon");
         let spec = pdb.spec.unwrap();
         assert_eq!(spec.max_unavailable, Some(IntOrString::Int(1)));
         assert!(spec.min_available.is_none());

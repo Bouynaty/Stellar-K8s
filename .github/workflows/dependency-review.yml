@@ -1,10 +1,11 @@
 name: Dependency & License Review
 
-# Automatically detects stale dependencies, license drift, and security
-# advisories on every push/PR that touches Cargo files, and on a weekly
-# schedule so that newly published advisories are caught promptly.
+# Unique dependency-review gates (stale deps, lockfile diff, license inventory,
+# cargo-deny on dep changes). cargo-audit is intentionally NOT duplicated here:
+#   - PR/push:  ci.yml `security-audit`
+#   - Schedule: security-audit.yml
 #
-# Addresses GitHub Issue #1119.
+# Addresses GitHub Issue #1119; deduplicated in #1219.
 
 on:
   push:
@@ -22,7 +23,7 @@ on:
       - "deny.toml"
       - ".cargo/audit.toml"
   schedule:
-    # Run weekly on Mondays at 08:00 UTC to catch newly published advisories.
+    # Run weekly on Mondays at 08:00 UTC for stale-deps + license inventory.
     - cron: "0 8 * * 1"
   workflow_dispatch:
     inputs:
@@ -77,6 +78,7 @@ jobs:
           retention-days: 30
 
   # ── 2. cargo deny — license + bans + advisories ─────────────────────────────
+  # ── 1. cargo deny — license + bans + advisories ─────────────────────────────
   cargo-deny:
     name: Cargo Deny (Licenses + Bans)
     runs-on: ubuntu-latest

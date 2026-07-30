@@ -2,11 +2,8 @@
 # scripts/lib/versions.sh — single source of truth for pinned toolchain
 # minimum versions.
 #
-# Sourced by scripts/preflight.sh, scripts/setup-linux.sh, and
-# scripts/setup-mac.sh so the three never drift out of sync. Previously each
-# of the setup scripts hardcoded its own copy of these values with a
-# "keep in sync" comment and nothing actually enforcing it — bump the
-# version here once and every consumer picks it up automatically.
+# Sourced by scripts/preflight.sh so version pins stay in one place.
+# Bump the version here once and every consumer picks it up automatically.
 #
 # Usage:
 #   source "${SCRIPT_DIR}/lib/versions.sh"

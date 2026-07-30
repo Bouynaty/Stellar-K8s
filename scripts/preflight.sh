@@ -9,8 +9,8 @@
 #
 # Exit codes: 0 = all pass, 1 = one or more checks failed.
 #
-# Version pins live in scripts/lib/versions.sh (shared with setup-linux.sh /
-# setup-mac.sh) so there is exactly one place to bump them.
+# Version pins live in scripts/lib/versions.sh so there is exactly one place
+# to bump them.
 
 set -euo pipefail
 
