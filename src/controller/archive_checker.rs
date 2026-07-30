@@ -19,13 +19,27 @@ pub struct ArchiveIntegrityCheckResult {
     /// Whether the integrity check passed
     pub healthy: bool,
     /// Number of checkpoints verified
-    #[allow(dead_code)]
     pub checkpoints_verified: u32,
     /// Details of the check
     pub message: String,
     /// Error message if the check failed
-    #[allow(dead_code)]
     pub error: Option<String>,
+}
+
+impl std::fmt::Display for ArchiveIntegrityCheckResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {} ({} checkpoints verified)",
+            self.url,
+            self.message,
+            self.checkpoints_verified
+        )?;
+        if let Some(ref err) = self.error {
+            write!(f, " [{err}]")?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]

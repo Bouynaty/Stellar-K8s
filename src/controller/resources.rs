@@ -1474,7 +1474,6 @@ pub async fn delete_cnpg_resources(
 /// Ensure a Kubernetes Ingress resource exists for the node.
 /// Called from the reconciler for Horizon and SorobanRpc node types when
 /// `spec.ingress` is set.
-#[allow(dead_code)] // called via reconciler ingress path; conditional on feature flag
 pub async fn ensure_ingress(client: &Client, node: &StellarNode, dry_run: bool) -> Result<()> {
     let ingress_cfg = match &node.spec.ingress {
         Some(cfg)
