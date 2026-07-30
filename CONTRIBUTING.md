@@ -218,7 +218,7 @@ for the full command set and per-step expectations.
 
 - Scripts use `kebab-case.sh` (e.g., `setup-mac.sh`).
 - Every script must pass `shellcheck -S error`.
-- Historical or one-off scripts should be moved to `scripts/archive/` rather than left in the root of `scripts/`.
+- Historical or one-off scripts should not be committed to the repository; keep only operational scripts under `scripts/`.
 
 ### Manifest and config conventions
 
