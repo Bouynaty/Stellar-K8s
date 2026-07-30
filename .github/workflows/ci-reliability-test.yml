@@ -68,12 +68,10 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           cache-key: "ci-audit-test"
+          extra-tools: "cargo-audit"
 
       - name: Test cargo audit configuration
         run: |
-          # Install cargo-audit
-          cargo install cargo-audit --locked
-          
           # Validate audit.toml syntax
           if ! cargo audit --version; then
             echo "❌ cargo-audit not working"
@@ -192,21 +190,46 @@ jobs:
       - name: Test cargo install retry patterns
         run: |
           echo "🔍 Validating retry logic patterns..."
-          
-          # Check that cargo install commands have retry logic
-          TOOLS=("cargo-audit" "cargo-tarpaulin")
-          
-          for tool in "${TOOLS[@]}"; do
-            echo "Checking $tool retry logic..."
-            
-            # Look for retry pattern in workflows
-            if ! grep -A5 -B5 "cargo install $tool" .github/workflows/ci.yml | grep -q "for i in 1 2 3"; then
-              echo "❌ Missing retry logic for $tool"
-              exit 1
-            fi
-            
-            echo "✅ $tool: retry logic found"
-          done
+
+          # Retry lives in the shared setup-rust composite (issue #1175),
+          # not inlined in every workflow job.
+          ACTION=".github/actions/setup-rust/action.yml"
+          if [[ ! -f "$ACTION" ]]; then
+            echo "❌ Missing setup-rust composite action"
+            exit 1
+          fi
+
+          if ! grep -q 'cargo install --locked' "$ACTION"; then
+            echo "❌ setup-rust does not install extra cargo tools"
+            exit 1
+          fi
+
+          if ! grep -q 'for i in 1 2 3' "$ACTION"; then
+            echo "❌ Missing retry loop in setup-rust extra-tools install"
+            exit 1
+          fi
+
+          # Workflows must not re-bootstrap tools that setup-rust already installs.
+          if grep -RIn --include='*.yml' -E 'cargo install (cargo-audit|cargo-tarpaulin|cargo-deny)' \
+               .github/workflows/ | grep -v 'ci-reliability-test.yml'; then
+            echo "❌ Found redundant cargo install bootstrap outside setup-rust"
+            grep -RIn --include='*.yml' -E 'cargo install (cargo-audit|cargo-tarpaulin|cargo-deny)' \
+              .github/workflows/ | grep -v 'ci-reliability-test.yml' || true
+            exit 1
+          fi
+
+          echo "✅ cargo tool install + retry is centralized in setup-rust"
+
+          # Only release.yml (cross-compile matrix) may call rust-toolchain directly.
+          LEAKS=$(grep -RIn --include='*.yml' -E 'uses:[[:space:]]*dtolnay/rust-toolchain' .github/ \
+            | grep -v 'setup-rust/action.yml' \
+            | grep -v 'release.yml' || true)
+          if [[ -n "$LEAKS" ]]; then
+            echo "❌ Raw dtolnay/rust-toolchain outside setup-rust/release.yml:"
+            echo "$LEAKS"
+            exit 1
+          fi
+          echo "✅ rust-toolchain usage is confined to setup-rust (+ release.yml)"
 
   # ── Validate CI Documentation ──────────────────────────────────────────────────
   validate-documentation:

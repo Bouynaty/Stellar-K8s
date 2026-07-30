@@ -44,6 +44,40 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # ── 1. cargo audit — known vulnerabilities ──────────────────────────────────
+  cargo-audit:
+    name: Cargo Audit (Vulnerabilities)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: "ci-audit"
+          extra-tools: "cargo-audit"
+
+      - name: Run cargo audit
+        run: |
+          echo "── Security advisory audit ──────────────────────────────────────"
+          cargo audit
+
+      - name: Generate audit JSON report
+        if: always()
+        run: |
+          cargo audit --json 2>/dev/null > audit-report.json || true
+          echo "Audit report saved to audit-report.json"
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-audit-report
+          path: audit-report.json
+          retention-days: 30
+
+  # ── 2. cargo deny — license + bans + advisories ─────────────────────────────
   # ── 1. cargo deny — license + bans + advisories ─────────────────────────────
   cargo-deny:
     name: Cargo Deny (Licenses + Bans)
@@ -57,13 +91,6 @@ jobs:
         with:
           cache-key: "ci-deny"
           extra-tools: "cargo-deny"
-      - name: Install cargo-deny
-        run: |
-          for i in 1 2 3; do
-            cargo install --locked cargo-deny && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
 
       - name: Run cargo deny check
         run: |
@@ -88,14 +115,6 @@ jobs:
         with:
           cache-key: "ci-stale"
           extra-tools: "cargo-outdated"
-
-      - name: Install cargo-outdated
-        run: |
-          for i in 1 2 3; do
-            cargo install --locked cargo-outdated && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
 
       - name: Check for outdated dependencies
         id: outdated
@@ -135,14 +154,6 @@ jobs:
           cache-key: "ci-diff"
           extra-tools: "cargo-lock"
 
-      - name: Install cargo-diff-tree
-        run: |
-          for i in 1 2 3; do
-            cargo install --locked cargo-lock && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
-
       - name: Summarise Cargo.lock changes
         run: |
           echo "── Cargo.lock dependency diff ───────────────────────────────────"
@@ -164,14 +175,6 @@ jobs:
         with:
           cache-key: "ci-license"
           extra-tools: "cargo-license"
-
-      - name: Install cargo-license
-        run: |
-          for i in 1 2 3; do
-            cargo install --locked cargo-license && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
 
       - name: Generate full license inventory
         run: |
