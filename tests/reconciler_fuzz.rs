@@ -214,12 +214,10 @@ fn base_soroban_spec() -> StellarNodeSpec {
         horizon_config: None,
         soroban_config: Some(SorobanConfig {
             stellar_core_url: "http://stellar-core:11626".to_string(),
-            #[allow(deprecated)]
-            captive_core_config: None,
             captive_core_structured_config: None,
-            cache_config: None,
             enable_preflight: true,
             max_events_per_request: 10000,
+            ..Default::default()
         }),
         replicas: 2,
         min_available: None,

@@ -220,12 +220,10 @@ mod tests {
                 },
                 soroban_config: Some(SorobanConfig {
                     stellar_core_url: "http://core:11626".to_string(),
-                    #[allow(deprecated)]
-                    captive_core_config: None,
                     captive_core_structured_config: Some(captive_config),
                     enable_preflight: true,
                     max_events_per_request: 10000,
-                    cache_config: None,
+                    ..Default::default()
                 }),
                 replicas: 2,
                 min_available: None,

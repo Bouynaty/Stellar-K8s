@@ -277,8 +277,6 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
                 horizon_config: None,
                 soroban_config: Some(SorobanConfig {
                     stellar_core_url: "http://stellar-core:11626".to_string(),
-                    #[allow(deprecated)]
-                    captive_core_config: None,
                     captive_core_structured_config: Some(CaptiveCoreConfig {
                         network_passphrase: None,
                         history_archive_urls: vec![
@@ -292,7 +290,7 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
                     }),
                     enable_preflight: true,
                     max_events_per_request: 10000,
-                    cache_config: None,
+                    ..Default::default()
                 }),
                 replicas: 3,
                 min_available: None,
@@ -692,15 +690,15 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
         }
     }
 
-    /// Test that soroban nodes require captive core config
+    /// Test that soroban nodes require structured captive core config
     #[test]
-    fn test_soroban_captive_core_config_required() {
+    fn test_soroban_captive_core_structured_config_required() {
         let node = create_test_soroban_node("test", "default");
 
         if let Some(soroban_config) = &node.spec.soroban_config {
             assert!(
                 soroban_config.captive_core_structured_config.is_some(),
-                "Soroban should have captive core config"
+                "Soroban should have structured captive core config"
             );
         } else {
             panic!("Soroban node should have soroban_config");

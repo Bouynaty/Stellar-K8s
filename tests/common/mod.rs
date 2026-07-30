@@ -16,7 +16,7 @@
 use std::process::{Command, Stdio};
 
 /// Re-export the fixtures module so integration tests can write
-/// `use common::fixtures::testnet_validator_manifest;`
+/// `use common::fixtures::init_container;` (and other live helpers).
 pub mod fixtures;
 
 // ---------------------------------------------------------------------------
