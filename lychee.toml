@@ -64,14 +64,21 @@ exclude = [
   "^https://nvd\\.nist\\.gov/",
   "^https://www\\.cisecurity\\.org/",
   "^https://llvm\\.org/",
-  # kubernetes.io/docs is fronted by Cloudflare which throttles GHA IP
-  # ranges with intermittent connection drops (not 429s — full TCP
-  # resets). Two URLs in particular were failing every CI run
-  # (custom-resource-definition-versioning, kubernetes-basics/update).
-  # k8s docs are canonical, hyper-stable, and link changes get
-  # announced in their release notes — re-verifying them on every PR
-  # provides almost no signal and costs every contributor a CI flake.
-  "^https://kubernetes\\.io/docs/",
+  # helm.sh intermittently resets CI connections
+  "^https://helm\\.sh/",
+  # tokio.rs also resets connections from GHA IPs intermittently
+  "^https://tokio\\.rs/",
+  # istio.io docs flake with connection failures from GHA
+  "^https://istio\\.io/",
+  # kyverno.io also resets connections from GHA IPs
+  "^https://kyverno\\.io/",
+  # slsa.dev flakes with connection failures from GHA
+  "^https://slsa\\.dev/",
+  # kubernetes.io is fronted by Cloudflare which throttles GHA IP ranges
+  # with intermittent TLS/TCP failures (not just 429s). Blog, docs,
+  # and related hosts flake regularly; re-verifying them on every PR
+  # provides almost no signal.
+  "^https://kubernetes\\.io/",
   # Placeholder URLs that appear in code examples and snippets
   "^https://host/path/backup\\.tar\\.gz",
   "example\\.com",

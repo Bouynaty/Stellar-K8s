@@ -269,6 +269,32 @@ cargo audit  # Uses .cargo/audit.toml config
 
 ---
 
+## Deduplicated Pipeline Gates (#1202)
+
+### Link checking
+- **Primary CI gate:** `repo-wide-link-check` (lychee) in `ci.yml`.
+- Removed overlapping PR jobs: `markdown-link-check` and `docs-link-check`.
+- Local/checklist: `python3 scripts/check-links.py` (via `make health`) still works.
+- Scheduled link rot: standalone `.github/workflows/link-check.yml`.
+
+### CRD backward-compatibility (choose one PR path)
+- **Canonical PR gate:** Python `crd_migration_lint` in
+  `quickstart-validation.yml` (`scripts/crd_migration_lint.py --against origin/main`
+  plus `scripts/tests/test_crd_migration_lint.py`).
+- **Local/ad-hoc only:** `scripts/check-crd-compatibility.sh` (no longer a `ci.yml` job).
+
+### cargo audit on PRs
+- **PR/push path:** `ci.yml` `security-audit` (runs when dependency files change).
+- **Schedule / SBOM / cargo-deny / scorecard:** `.github/workflows/security-audit.yml`
+  (schedule + `workflow_dispatch` only — no duplicate PR trigger).
+
+### Release gate vs release.yml
+- `release.yml` `validate` owns semver + Cargo.toml matching; helm job owns helm lint.
+- `release-gate.yml` / `scripts/release-gate.sh` keep unique value only:
+  CHANGELOG entry + helm unittest.
+
+---
+
 ## Monitoring & Success Metrics
 
 ### Target Reliability Metrics

@@ -375,7 +375,9 @@ fn check_entry(
     let doc_key = entry.doc.to_string_lossy().to_string();
     if let Some(bl) = baseline.entries.get(&doc_key) {
         if let Some(ref current_doc_sha) = doc_sha {
-            if is_newer_commit(&bl.last_src_sha, current_doc_sha) {
+            if current_doc_sha != &bl.last_doc_sha
+                && is_newer_commit(&bl.last_src_sha, current_doc_sha)
+            {
                 // A source commit recorded in the baseline is newer than the
                 // current doc commit — the doc regressed.
                 offending.push(PathBuf::from("<baseline record>"));

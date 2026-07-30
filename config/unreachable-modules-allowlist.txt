@@ -22,7 +22,6 @@ src/chaos/mod.rs
 src/chaos/scheduler.rs
 src/controller/federation_controller.rs
 src/controller/geo_load_balancer.rs
-src/controller/resources_toml_tests.rs
 src/controller/stellar_secret_controller.rs
 src/controller/upgrade_orchestrator.rs
 src/cost_optimization/allocation.rs

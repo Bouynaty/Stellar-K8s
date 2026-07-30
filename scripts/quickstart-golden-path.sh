@@ -15,7 +15,7 @@ step() { echo; echo "==> $1"; }
 fail() { echo "FAIL: $1" >&2; FAILURES=$((FAILURES + 1)); }
 
 step "Quickstart entry points exist"
-for f in scripts/quickstart-verify.sh README.md Makefile; do
+for f in scripts/archive/quickstart-verify.sh README.md Makefile; do
   if [[ -e "${REPO_ROOT}/${f}" ]]; then
     echo "ok: ${f}"
   else
@@ -24,7 +24,7 @@ for f in scripts/quickstart-verify.sh README.md Makefile; do
 done
 
 step "Quickstart scripts parse (bash -n)"
-for f in scripts/quickstart-verify.sh scripts/preflight.sh scripts/secret-rotation-check.sh; do
+for f in scripts/archive/quickstart-verify.sh scripts/preflight.sh scripts/secret-rotation-check.sh; do
   if [[ -e "${REPO_ROOT}/${f}" ]]; then
     if bash -n "${REPO_ROOT}/${f}"; then
       echo "ok: ${f}"

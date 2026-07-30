@@ -9,12 +9,8 @@ pub struct DocEntry {
 
 pub const SEARCH_INDEX_JSON: &str = include_str!(concat!(env!("OUT_DIR"), "/search_index.json"));
 
-pub fn get_all_docs() -> Vec<DocEntry> {
-    serde_json::from_str(SEARCH_INDEX_JSON).unwrap_or_default()
-}
-
 pub fn search(query: &str) -> Vec<(DocEntry, Vec<String>)> {
-    let docs = get_all_docs();
+    let docs: Vec<DocEntry> = serde_json::from_str(SEARCH_INDEX_JSON).unwrap_or_default();
     let query = query.to_lowercase();
     let mut results = Vec::new();
 

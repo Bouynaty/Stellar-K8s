@@ -276,8 +276,6 @@ async fn conformance_none_object_is_admitted_with_no_plugins() {
     let result = server
         .validate(make_input(Operation::Create, None))
         .await;
-    let server = WebhookServer::new(WasmRuntime::new().unwrap());
-    let result = server.validate(make_input(Operation::Create, None)).await;
     // With no plugins and no object the server allows through
     assert!(
         result.allowed,

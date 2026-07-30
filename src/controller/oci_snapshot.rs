@@ -72,21 +72,6 @@ pub fn pull_image_ref(cfg: &OciSnapshotConfig, ledger_seq: u64) -> String {
         .unwrap_or_else(|| push_image_ref(cfg, ledger_seq))
 }
 
-// ─── Job name helpers ─────────────────────────────────────────────────────────
-
-/// Kubernetes Job name for a push snapshot Job.
-pub fn push_job_name(node: &StellarNode, ledger_seq: u64) -> String {
-    // Keep the name within K8s 63-char limit by taking the first 40 chars of the node name.
-    let node_name = &node.name_any()[..node.name_any().len().min(40)];
-    format!("{node_name}-snap-push-{ledger_seq}")
-}
-
-/// Kubernetes Job name for a pull snapshot Job.
-pub fn pull_job_name(node: &StellarNode) -> String {
-    let node_name = &node.name_any()[..node.name_any().len().min(48)];
-    format!("{node_name}-snap-pull")
-}
-
 // ─── Volume helpers ───────────────────────────────────────────────────────────
 
 /// Build the credential secret projected volume.
@@ -172,7 +157,9 @@ pub fn build_snapshot_push_job(
     ledger_seq: u64,
 ) -> Job {
     let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
-    let job_name = push_job_name(node, ledger_seq);
+    // Keep the name within K8s 63-char limit by taking the first 40 chars of the node name.
+    let node_name = &node.name_any()[..node.name_any().len().min(40)];
+    let job_name = format!("{node_name}-snap-push-{ledger_seq}");
     let image_ref = push_image_ref(cfg, ledger_seq);
     let pvc_name = format!("{}-data", node.name_any());
 
@@ -269,7 +256,8 @@ pub fn build_snapshot_pull_job(
     ledger_seq: u64,
 ) -> Job {
     let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
-    let job_name = pull_job_name(node);
+    let node_name = &node.name_any()[..node.name_any().len().min(48)];
+    let job_name = format!("{node_name}-snap-pull");
     let image_ref = pull_image_ref(cfg, ledger_seq);
     let pvc_name = format!("{}-data", node.name_any());
 

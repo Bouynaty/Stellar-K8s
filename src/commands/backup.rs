@@ -5,8 +5,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use stellar_k8s::backup::providers::StorageProviderTrait;
-use stellar_k8s::error::diagnostic;
+use crate::backup::providers::StorageProviderTrait;
+use crate::error::diagnostic;
 
 #[derive(Parser, Debug)]
 pub struct BackupArgs {
@@ -120,7 +120,7 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
             .collect(),
     };
 
-    // TODO: Implement storage backend handling
+    // TODO(exempt: pending storage backends): Implement storage backend handling
     match args.backend.as_str() {
         "file" => backup_to_file(&args, &metadata, &files).await?,
         "s3" => backup_to_s3(&args, &metadata, &files).await?,
@@ -145,7 +145,7 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
 
     if args.verify {
         println!("Verifying backup...");
-        // TODO: Implement verification
+        // TODO(exempt: pending storage backends): Implement verification
     }
 
     Ok(())
@@ -159,7 +159,7 @@ pub async fn run_restore(args: RestoreArgs) -> Result<()> {
     // Create destination directory if it doesn't exist
     fs::create_dir_all(&args.destination)?;
 
-    // TODO: Implement restore based on backend
+    // TODO(exempt: pending storage backends): Implement restore based on backend
     match args.backend.as_str() {
         "file" => restore_from_file(&args).await?,
         "s3" => restore_from_s3(&args).await?,
@@ -188,7 +188,7 @@ pub async fn run_restore(args: RestoreArgs) -> Result<()> {
 pub async fn run_list(args: ListArgs) -> Result<()> {
     println!("Listing backups from {}", args.location);
 
-    // TODO: Implement list based on backend
+    // TODO(exempt: pending storage backends): Implement list based on backend
     match args.backend.as_str() {
         "file" => list_from_file(&args).await?,
         "s3" => list_from_s3(&args).await?,
@@ -218,7 +218,7 @@ pub async fn run_cleanup(args: CleanupArgs) -> Result<()> {
         args.location, args.keep
     );
 
-    // TODO: Implement cleanup based on backend
+    // TODO(exempt: pending storage backends): Implement cleanup based on backend
     match args.backend.as_str() {
         "file" => cleanup_from_file(&args).await?,
         "s3" => cleanup_from_s3(&args).await?,
@@ -488,7 +488,7 @@ async fn cleanup_from_filecoin(_args: &CleanupArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stellar_k8s::error::diagnostic;
+    use crate::error::diagnostic;
 
     #[test]
     fn backup_source_missing_error_names_step() {

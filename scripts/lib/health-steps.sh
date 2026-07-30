@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/lib/health-steps.sh
-# Shared repository health check steps used by repo-health.sh and validate.sh.
+# Shared repository health check steps used by repo-health.sh.
 
 : "${REPO_ROOT:?REPO_ROOT must be set before sourcing health-steps.sh}"
 
@@ -85,3 +85,8 @@ sk8s_health_cargo_audit() {
 sk8s_health_helm_lint() {
   helm lint charts/stellar-operator
 }
+
+sk8s_health_issue_templates() {
+  python3 scripts/issue_template_lint.py
+}
+

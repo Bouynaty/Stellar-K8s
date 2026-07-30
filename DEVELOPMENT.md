@@ -24,7 +24,7 @@ The following one-off scripts were removed as part of repository hygiene (#1002)
 |---------|-------------|
 | `scripts/cleanup_root.sh` | Manual cleanup; no automated replacement |
 | `scripts/organize_scripts.sh` | Batch scripts live under `scripts/archive/` |
-| `scripts/dev-utils/*` | `make dev-setup`, `make preflight`, `make validate` |
+| `scripts/dev-utils/*` | `make dev-setup`, `make preflight`, `make health-fast` |
 | `benchmarks/test-webhook-local.sh` | `make benchmark-webhook` |
 | `benchmarks/run-proximity-benchmark.sh` | `make benchmark` |
 | `config/samples/benchmark-compare-example.sh` | `benchmarks/run-regression-test.sh` |
@@ -367,12 +367,21 @@ make help          # Show all available targets and canonical flow
 
 ### Canonical Command Flow
 
+This is the single recommended command sequence for day-to-day work. Prefer
+these `make` targets over ad-hoc `cargo` invocations so local results match CI
+feature flags. Full checklist and rationale:
+[docs/development/repo-health-checklist.md](docs/development/repo-health-checklist.md).
+
 ```bash
+make preflight     # Validate required tools are installed (run first after setup)
 make dev-setup     # One-time environment setup (Rust toolchain, tools, pre-commit hooks)
 make quick         # Fast pre-commit check (fmt-check + cargo check)
+make health-fast   # Fast compile path: format + lint + compile check (no tests)
+make health        # Full contributor health gate (format + lint + tests + docs)
 make ci-local      # Full CI pipeline locally (fmt-check + lint + audit + test + build + link-check)
-make health        # Full contributor health gate
 ```
+
+`make validate` is kept as a back-compat alias for `make health-fast`.
 
 ### Development Commands
 
@@ -394,7 +403,7 @@ make clean         # Remove build artifacts
 make preflight     # Validate all required tools are installed (run this first)
 make health        # Recommended: format + lint + tests + docs (+ shellcheck)
 make quick         # Fast pre-commit check (format + compile)
-make validate      # Fast compile path: format + lint + compile check (no tests)
+make health-fast  # Fast compile path: format + lint + compile check (no tests)
 make ci-local      # Full CI pipeline locally (fmt-check + lint + audit + test + build + link-check)
 ```
 
@@ -678,17 +687,22 @@ kubectl stellar --help
 
 ## Quick Reference
 
-### Essential Commands
+Health and validation commands are listed once under
+[Canonical Command Flow](#canonical-command-flow) and in the
+[Canonical Repository Health Checklist](docs/development/repo-health-checklist.md).
+Use `make help` for the full target list.
 
+### Other useful commands
 ```bash
 # Setup
 make dev-setup                    # One-time setup
 make preflight                    # Validate required tools are installed
 make health                       # Common health gate (format, lint, test, docs)
 make quick                        # Fast pre-commit check
-make validate                     # Format + lint + compile check (no tests)
+make health-fast                 # Format + lint + compile check (no tests)
 make ci-local                     # Full CI validation
 
+```bash
 # Development (canonical — prefer make targets to match CI feature flags)
 make build                        # Build release (wraps `cargo build --release --locked`)
 make test                         # Run tests (wraps `cargo test` with project features)

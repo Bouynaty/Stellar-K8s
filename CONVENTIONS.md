@@ -20,7 +20,7 @@ Stellar-K8s/
 │   ├── samples/         Example resources for testing
 │   ├── manifests/       OLM CSV bases and Gatekeeper policies
 │   └── dev/             Local dev kubeconfigs (not for production)
-├── docs/                All project documentation (see docs/README.md)
+├── docs/                All project documentation (see mkdocs.yml)
 ├── examples/            Ready-to-use StellarNode manifests
 ├── monitoring/          Grafana dashboards and Prometheus alert rules
 ├── policy/              CEL and OPA policies
@@ -70,7 +70,7 @@ entry points only — detailed content belongs in `docs/`.
 | Element | Convention | Example |
 |---|---|---|
 | File names | `kebab-case.sh` | `setup-mac.sh` |
-| Operational scripts | live in `scripts/` | `scripts/validate.sh` |
+| Operational scripts | live in `scripts/` | `scripts/repo-health.sh` |
 | Historical / one-off | move to `scripts/archive/` | `scripts/archive/create_batch_2_issues.sh` |
 
 Every script must pass `shellcheck -S error` before merging.
@@ -100,7 +100,7 @@ must not appear in filenames — use the feature name instead
    `error.rs`, `cli.rs`).
 
 2. **Documentation files**: Go in the matching `docs/<topic>/` subdirectory. New files must be
-   linked from `docs/README.md` under the appropriate section.
+   added to `mkdocs.yml` under the appropriate section.
 
 3. **Config files**: Go under `config/` with a clear subdirectory. Use `config/crd/` for CRDs,
    `config/samples/` for test resources, and `config/manifests/` for OLM bases.

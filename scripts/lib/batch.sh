@@ -11,11 +11,14 @@
 # shellcheck source=common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-# batch_show_help [description]
-#   Print standard usage text. Set BATCH_HELP_DESC before calling batch_parse_help.
-batch_show_help() {
-  local description="${1:-${BATCH_HELP_DESC:-Creates GitHub issues for Stellar-K8s.}}"
-  cat <<EOF
+# batch_parse_help "$@"
+#   Exit 0 after printing help when -h/--help is passed.
+batch_parse_help() {
+  for arg in "$@"; do
+    case "$arg" in
+      -h | --help)
+        local description="${BATCH_HELP_DESC:-Creates GitHub issues for Stellar-K8s.}"
+        cat <<EOF
 Usage: $(basename "$0") [-h|--help]
 
 ${description}
@@ -33,15 +36,6 @@ Optional environment variables:
 Example:
   REPO=myorg/my-fork DRY_RUN=1 $(basename "$0")
 EOF
-}
-
-# batch_parse_help "$@"
-#   Exit 0 after printing help when -h/--help is passed.
-batch_parse_help() {
-  for arg in "$@"; do
-    case "$arg" in
-      -h | --help)
-        batch_show_help "${BATCH_HELP_DESC:-Creates GitHub issues for Stellar-K8s.}"
         exit 0
         ;;
     esac

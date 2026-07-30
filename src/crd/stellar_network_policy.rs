@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 //! Networking Policy CRDs for microsegmentation and zero-trust networking
 //!
 //! This module defines the Custom Resource Definitions for advanced networking policies
