@@ -71,7 +71,7 @@ entry points only — detailed content belongs in `docs/`.
 |---|---|---|
 | File names | `kebab-case.sh` | `setup-mac.sh` |
 | Operational scripts | live in `scripts/` | `scripts/repo-health.sh` |
-| Historical / one-off | move to `scripts/archive/` | `scripts/archive/create_batch_2_issues.sh` |
+| Historical / one-off | do not commit; use issue-specific branches | — |
 
 Every script must pass `shellcheck -S error` before merging.
 
@@ -105,8 +105,8 @@ must not appear in filenames — use the feature name instead
 3. **Config files**: Go under `config/` with a clear subdirectory. Use `config/crd/` for CRDs,
    `config/samples/` for test resources, and `config/manifests/` for OLM bases.
 
-4. **Scripts**: Operational scripts go in `scripts/`. One-off or historical scripts go in
-   `scripts/archive/`. Scripts must not live at the repository root.
+4. **Scripts**: Operational scripts go in `scripts/`. One-off or historical scripts should not
+   be committed to the repository. Scripts must not live at the repository root.
 
 5. **Generated files**: Never hand-edit generated files. Always regenerate from source.
    See the [Regenerating Manifests](DEVELOPMENT.md#regenerating-manifests) table.

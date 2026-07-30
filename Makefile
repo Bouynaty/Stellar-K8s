@@ -198,14 +198,14 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 	@echo "→ Building Docker image (CI mode)..."
 	DOCKER_BUILDKIT=1 $(DOCKER) build --target runtime -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
-docker-multiarch: ## Trigger multi-arch build via the CI workflow (dispatches workflow_dispatch)
-	@echo "→ Triggering multi-arch build pipeline..."
+docker-multiarch: ## Trigger release pipeline multi-arch image build via CI (dispatches workflow_dispatch)
+	@echo "→ Triggering release pipeline (multi-arch images)..."
 	@command -v gh >/dev/null 2>&1 || { echo "✗ gh CLI not found. Install: https://cli.github.com/"; exit 1; }
-	gh workflow run multiarch-build.yml
-	@echo "✓ Multi-arch build dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
+	gh workflow run release.yml
+	@echo "✓ Release pipeline dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
 
-# Multi-arch builds are handled by CI: .github/workflows/multiarch-build.yml
-# To trigger a multi-arch build, push a tag or run: make docker-multiarch
+# Multi-arch images are built by .github/workflows/release.yml on tagged releases and main pushes.
+# To trigger manually: make docker-multiarch
 health: ## Run common repository health checks (format, lint, test, docs, links)
 	@bash scripts/repo-health.sh
 
