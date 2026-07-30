@@ -18,10 +18,15 @@ This guide walks you through setting up a local development environment for Stel
 
 ### Removed maintenance scripts
 
-The following one-off scripts were removed as part of repository hygiene (#1002). Use the supported replacements instead:
+The following one-off scripts were removed as part of repository hygiene
+(#1002, #1217). Use the supported replacements instead:
 
 | Removed | Replacement |
 |---------|-------------|
+| `scripts/cleanup_root.sh` | `scripts/cleanup.sh` (`make cleanup`) |
+| `scripts/organize_scripts.sh` | `scripts/cleanup.sh` (`make cleanup`) |
+| `scripts/archive/*` | Removed; no archive tree — use `scripts/cleanup.sh` |
+| `scripts/lib/batch.sh` | Removed with archive batch scripts |
 | `scripts/cleanup_root.sh` | Manual cleanup; no automated replacement |
 | `scripts/quickstart-verify.sh` | Golden-path quickstart verification |
 | `scripts/dev-utils/*` | `make dev-setup`, `make preflight`, `make health-fast` |
@@ -30,6 +35,18 @@ The following one-off scripts were removed as part of repository hygiene (#1002)
 | `config/samples/benchmark-compare-example.sh` | `benchmarks/run-regression-test.sh` |
 | `src/update_check.rs` | `src/version_check.rs` (used by the operator binary) |
 | `src/kubectl_plugin/interactive.rs` | Standard kubectl-stellar subcommands |
+
+#### Repository cleanup
+
+Use the single supported cleanup tool:
+
+```bash
+make cleanup              # remove root scratch artifacts; guard obsolete paths
+make cleanup DRY_RUN=1    # report only
+# or
+./scripts/cleanup.sh
+./scripts/cleanup.sh --dry-run
+```
 
 ---
 

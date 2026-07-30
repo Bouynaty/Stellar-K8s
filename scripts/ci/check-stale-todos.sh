@@ -15,7 +15,7 @@ CRITICAL_PATHS=(
 
 # Paths that document the TODO policy itself (or generate issues) and would
 # otherwise self-match on the words TODO/FIXME.
-EXCLUDE_REGEX='(^scripts/ci/check-stale-todos\.sh$|^scripts/archive/)'
+EXCLUDE_REGEX='(^scripts/ci/check-stale-todos\.sh$)'
 
 ERRORS=0
 
