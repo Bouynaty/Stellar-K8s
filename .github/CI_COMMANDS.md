@@ -287,6 +287,20 @@ cargo audit  # Uses .cargo/audit.toml config
 - **PR/push path:** `ci.yml` `security-audit` (runs when dependency files change).
 - **Schedule / SBOM / cargo-deny / scorecard:** `.github/workflows/security-audit.yml`
   (schedule + `workflow_dispatch` only — no duplicate PR trigger).
+- **Not duplicated in:** `dependency-review.yml` or `maintenance.yml`.
+
+### Security scanning (Trivy / Checkov)
+- **Canonical workflow:** `.github/workflows/security-scan.yml` (push to `main`,
+  schedule, `workflow_dispatch`). Uses `.github/actions/security-scan` for image scans.
+- **CI image scan after publish:** `ci.yml` `security-scan` job (same composite action).
+
+### Maintenance workflow
+- **Unique job only:** `maintenance.yml` → stale-artifact regression tests.
+- Scheduled cargo-audit / docs link checks live in `security-audit.yml` / `link-check.yml`.
+
+### Issue templates
+- **Single maintenance/chore template:** `.github/ISSUE_TEMPLATE/maintenance.yml`
+  (covers dependency updates, CI hygiene, docs, refactors).
 
 ### Release gate vs release.yml
 - `release.yml` `validate` owns semver + Cargo.toml matching; helm job owns helm lint.

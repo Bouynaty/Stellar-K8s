@@ -182,13 +182,7 @@ impl DataQualityEngine {
                     .metadata
                     .get("date_partition")
                     .map(|s| s.to_string())
-                    .unwrap_or_else(|| {
-                        r.pipeline_ts
-                            .split('T')
-                            .next()
-                            .unwrap_or("")
-                            .to_string()
-                    });
+                    .unwrap_or_else(|| r.pipeline_ts.split('T').next().unwrap_or("").to_string());
                 let valid = date_partition.len() == 10
                     && date_partition.chars().nth(4) == Some('-')
                     && date_partition.chars().nth(7) == Some('-');
