@@ -1355,8 +1355,6 @@ mod stellar_node_spec_validation {
 
         let config = SorobanConfig {
             stellar_core_url: "http://core:11626".to_string(),
-            #[allow(deprecated)]
-            captive_core_config: None,
             captive_core_structured_config: Some(CaptiveCoreConfig {
                 network_passphrase: Some("Test SDF Network ; September 2015".to_string()),
                 history_archive_urls: vec![
@@ -1370,7 +1368,7 @@ mod stellar_node_spec_validation {
             }),
             enable_preflight: true,
             max_events_per_request: 10000,
-            cache_config: None,
+            ..Default::default()
         };
 
         // Test JSON serialization
