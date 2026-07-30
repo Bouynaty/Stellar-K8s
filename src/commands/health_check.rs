@@ -168,7 +168,7 @@ fn check_issue_template_metadata() -> Check {
                 .filter(|e| {
                     let path = e.path();
                     path.extension()
-                        .map_or(false, |ext| ext == "yml" || ext == "yaml")
+                        .is_some_and(|ext| ext == "yml" || ext == "yaml")
                 })
                 .count();
 

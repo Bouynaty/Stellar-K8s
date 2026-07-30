@@ -190,7 +190,6 @@ fn sanitize_generation(value: &str) -> String {
         .replace("zen3", "Zen 3");
 
     cleaned
-        .trim()
         .split_whitespace()
         .map(|word| {
             let mut chars = word.chars();
