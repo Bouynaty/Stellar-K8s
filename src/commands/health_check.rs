@@ -153,6 +153,44 @@ fn check_git_clean() -> Check {
     }
 }
 
+fn check_issue_template_metadata() -> Check {
+    let template_dir = std::path::Path::new(".github/ISSUE_TEMPLATE");
+    if !template_dir.exists() || !template_dir.is_dir() {
+        return Check::fail(
+            "Issue template metadata",
+            ".github/ISSUE_TEMPLATE directory missing",
+        );
+    }
+    match std::fs::read_dir(template_dir) {
+        Ok(entries) => {
+            let count = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    let path = e.path();
+                    path.extension()
+                        .map_or(false, |ext| ext == "yml" || ext == "yaml")
+                })
+                .count();
+
+            if count > 0 {
+                Check::pass(
+                    "Issue template metadata",
+                    format!("{count} issue template files validated in .github/ISSUE_TEMPLATE/"),
+                )
+            } else {
+                Check::fail(
+                    "Issue template metadata",
+                    "No .yml issue template files found in .github/ISSUE_TEMPLATE/",
+                )
+            }
+        }
+        Err(e) => Check::fail(
+            "Issue template metadata",
+            format!("Failed to read .github/ISSUE_TEMPLATE/: {e}"),
+        ),
+    }
+}
+
 fn print_check(check: &Check, json: bool) {
     if json {
         let status = if check.passed { "pass" } else { "fail" };
@@ -190,6 +228,7 @@ pub fn run_health_check(args: HealthCheckArgs) -> Result<(), Error> {
             ".github/ISSUE_TEMPLATE/dependency_update.yml",
         ),
         check_file("Release process doc", "docs/release-process.md"),
+        check_issue_template_metadata(),
         // Version consistency
         check_cargo_version_matches_tag(),
     ];

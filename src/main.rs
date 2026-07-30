@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::process;
 use stellar_k8s::cli::{Args, BackupCommands, Commands};
 use stellar_k8s::commands::backup::{run_backup, run_cleanup, run_list, run_restore};
 use stellar_k8s::commands::benchmark::run_benchmark_controller_cmd;

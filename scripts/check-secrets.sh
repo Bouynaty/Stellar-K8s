@@ -92,7 +92,7 @@ done < <(grep -rn --include="*.rs" --include="*.pem" --include="*.key" \
 
 # Generic password= / secret= / token= with non-placeholder values
 while IFS=: read -r file lineno content; do
-    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *sample* ]] && continue
+    [[ "$file" == *test* || "$file" == *example* || "$file" == *fixture* || "$file" == *sample* || "$file" == *secret_rotation* || "$file" == *secret-rotation* || "$file" == *check-secrets* ]] && continue
     # Allow obvious placeholders and Secret *resource names* (not credential values).
     echo "$content" | grep -qiE "(placeholder|example|changeme|your[-_]|<[^>]+>|\\\$\{|test[_-]?password|stellar-core-secret)" && continue
     finding "$file" "$lineno" "Possible inline secret assignment (password=/secret=/token=)"

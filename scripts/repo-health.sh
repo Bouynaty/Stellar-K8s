@@ -74,6 +74,7 @@ if [[ "${MODE}" == "fast" ]]; then
 else
   add_step sk8s_health_test "Tests (cargo test)"
   add_step sk8s_health_api_docs "API docs drift check"
+  add_step sk8s_health_issue_templates "Issue template & metadata lint"
   add_step sk8s_health_stale_docs "Stale documentation check"
   add_step sk8s_health_link_check "Markdown link check"
   add_step sk8s_health_shellcheck "Shell script lint (shellcheck)"
@@ -116,6 +117,15 @@ for i in "${!STEPS[@]}"; do
       fi
       if ! sk8s_health_api_docs; then
         sk8s_fail "API docs drift detected" "Run 'make generate-api-docs' after CRD changes."
+      fi
+      ;;
+    sk8s_health_issue_templates)
+      if ! command -v python3 >/dev/null 2>&1; then
+        sk8s_warn "python3 not found — skipping issue template lint"
+        continue
+      fi
+      if ! sk8s_health_issue_templates; then
+        sk8s_fail "Issue template linting failed" "Fix syntax/metadata in .github/ISSUE_TEMPLATE/*.yml."
       fi
       ;;
     sk8s_health_stale_docs)
