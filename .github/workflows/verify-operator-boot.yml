@@ -90,6 +90,8 @@ jobs:
       # ── Run operator and verify log line (AC #2 + AC #3) ─────────────────
       - name: Run operator and verify cluster connection
         if: steps.scope.outputs.run == 'true'
+        env:
+          GITHUB_REPOSITORY: ""
         run: |
           ./target/release/stellar-operator run \
             --namespace ${{ env.OPERATOR_NAMESPACE }} \
