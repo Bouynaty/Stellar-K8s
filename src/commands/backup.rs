@@ -120,7 +120,6 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
             .collect(),
     };
 
-    // TODO(exempt: pending): Implement storage backend handling
     // TODO(exempt: pending storage backends): Implement storage backend handling
     match args.backend.as_str() {
         "file" => backup_to_file(&args, &metadata, &files).await?,
@@ -146,7 +145,6 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
 
     if args.verify {
         println!("Verifying backup...");
-        // TODO(exempt: pending): Implement verification
         // TODO(exempt: pending storage backends): Implement verification
     }
 
@@ -161,7 +159,6 @@ pub async fn run_restore(args: RestoreArgs) -> Result<()> {
     // Create destination directory if it doesn't exist
     fs::create_dir_all(&args.destination)?;
 
-    // TODO(exempt: pending): Implement restore based on backend
     // TODO(exempt: pending storage backends): Implement restore based on backend
     match args.backend.as_str() {
         "file" => restore_from_file(&args).await?,
@@ -191,7 +188,6 @@ pub async fn run_restore(args: RestoreArgs) -> Result<()> {
 pub async fn run_list(args: ListArgs) -> Result<()> {
     println!("Listing backups from {}", args.location);
 
-    // TODO(exempt: pending): Implement list based on backend
     // TODO(exempt: pending storage backends): Implement list based on backend
     match args.backend.as_str() {
         "file" => list_from_file(&args).await?,
@@ -222,7 +218,6 @@ pub async fn run_cleanup(args: CleanupArgs) -> Result<()> {
         args.location, args.keep
     );
 
-    // TODO(exempt: pending): Implement cleanup based on backend
     // TODO(exempt: pending storage backends): Implement cleanup based on backend
     match args.backend.as_str() {
         "file" => cleanup_from_file(&args).await?,

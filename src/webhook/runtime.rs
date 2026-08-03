@@ -197,7 +197,6 @@ impl WasmRuntime {
             plugin_name: plugin_name.to_string(),
             output,
             execution_time_ms: execution_time.as_millis() as u64,
-            memory_used_bytes: 0, // TODO(exempt: pending)
             memory_used_bytes: 0, // TODO(exempt: pending wasmtime memory API)
             fuel_consumed,
         })

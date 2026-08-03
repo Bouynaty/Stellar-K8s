@@ -79,13 +79,11 @@ impl RcaGenerator {
             },
             RcaSection {
                 title: "Root Cause".to_string(),
-                content: "TODO(exempt: pending): Fill in root cause analysis based on collected evidence."
                 content: "TODO(exempt: template placeholder): Fill in root cause analysis based on collected evidence."
                     .to_string(),
             },
             RcaSection {
                 title: "Contributing Factors".to_string(),
-                content: "TODO(exempt: pending): List contributing factors identified during investigation."
                 content: "TODO(exempt: template placeholder): List contributing factors identified during investigation."
                     .to_string(),
             },
@@ -110,7 +108,6 @@ impl RcaGenerator {
             },
             RcaSection {
                 title: "Lessons Learned".to_string(),
-                content: "TODO(exempt: pending): Document lessons learned from this incident.".to_string(),
                 content: "TODO(exempt: template placeholder): Document lessons learned from this incident.".to_string(),
             },
         ];
