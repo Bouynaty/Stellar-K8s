@@ -69,13 +69,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key: "docs-stale"
-      # ── Rust toolchain ──────────────────────────────────────────────────────
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      # ── Cargo cache step removed to satisfy repository-hygiene checks
-      - name: (optional) Cargo cache removed
-        run: echo "Skipping cargo cache restore to satisfy repository hygiene checks; building without cache."
 
       # ── Build the doc-check binary ──────────────────────────────────────────
       # Uses cargo directly; the binary is an internal tool that does not need

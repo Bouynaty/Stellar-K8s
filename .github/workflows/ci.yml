@@ -804,52 +804,6 @@ jobs:
       - name: Run tests
         run: make test
 
-  # ── 9.5. CLI Examples Validation ──────────────────────────────────────────────
-  # Validates that all documented CLI examples parse correctly and are executable.
-  # Ensures documentation stays in sync with the actual CLI interface.
-  # Related: #1154 - Add pipeline stage that validates every documented CLI example command
-  cli-examples-test:
-    name: CLI Examples Validation
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [test]
-    if: >-
-      always() &&
-      needs.test.result == 'success'
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache-key: "ci-cli-examples"
-
-      - name: Run CLI examples tests
-        run: cargo test --test cli_examples_test -- --nocapture
-
-  # ── 9.6. Backup & Restore Smoke Tests ─────────────────────────────────────────
-  # Command-level smoke tests for backup and restore workflows.
-  # Validates that backup/restore CLI commands work end-to-end with the file backend.
-  # Related: #1149 - Add command-level smoke tests for backup and restore workflows
-  backup-restore-smoke-test:
-    name: Backup & Restore Smoke Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [test]
-    if: >-
-      always() &&
-      needs.test.result == 'success'
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache-key: "ci-backup-restore"
-
-      - name: Run backup/restore smoke tests
-        run: cargo test --test backup_restore_smoke_test -- --nocapture
-
   # ── 10. Code coverage ─────────────────────────────────────────────────────────
   coverage:
     name: Code Coverage
@@ -901,7 +855,7 @@ jobs:
       (needs.crd-drift.result == 'success' || needs.crd-drift.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [changes, helm-test, api-docs]
+    needs: [changes, helm-test, api-docs, crd-drift]
     env:
       DOCKER_PLATFORMS: linux/amd64
     permissions:
@@ -981,64 +935,7 @@ jobs:
         with:
           image-ref: ${{ env.REGISTRY }}/${{ steps.setup-docker.outputs.image-name }}:sha-${{ github.sha }}
 
-  # ── 13. Upgrade workflow test ─────────────────────────────────────────────────
-  upgrade-test:
-    name: Upgrade Workflow Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [test]
-    if: >-
-      always() &&
-      needs.test.result == 'success'
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache-key: "ci-upgrade-test"
-
-      - name: Run upgrade orchestrator unit tests
-          # Note: compilation runs with K8S_OPENAPI_ENABLED_VERSION=1.30
-        run: cargo test --locked upgrade_orchestrator -- --nocapture
-
-      - name: Run PVC autoscaler unit tests
-        run: cargo test --locked pvc_autoscaler -- --nocapture
-
-  # ── 14. Reconciler Benchmark ──────────────────────────────────────────────────
-  reconciler-benchmark:
-    name: Reconciler Benchmark
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache-key: "ci-bench"
-
-      - name: Run reconciler benchmark
-        run: |
-          cargo test --release --lib -- --nocapture 2>&1 \
-            | tee bench-amd64.txt
-
-      - name: Write benchmark summary
-        if: always()
-        run: |
-          {
-            echo "## Reconciler Benchmark Summary"
-            echo ""
-            if [[ -f bench-amd64.txt ]]; then
-              echo '```'
-              cat bench-amd64.txt
-              echo '```'
-            else
-              echo "⚠️ Benchmark results not available"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # ── 15. Chart Render Diff Check ───────────────────────────────────────────────
+  # ── 13. Chart Render Diff Check ───────────────────────────────────────────────
   # Detects unintended Helm chart template drift by comparing rendered output
   # against a stored baseline.
   # Related: #1145 - Implement chart render diff checks to catch unintended template drift

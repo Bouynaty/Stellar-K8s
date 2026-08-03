@@ -74,21 +74,20 @@ jobs:
 
       # Shared build-operator composite action consolidates Rust + Docker
       # bootstrap that was previously duplicated across workflows (issue #1136).
+      # upload-artifact: "true" exports operator-image.tar.gz as an artifact.
       - name: Build operator binary and Docker image
         uses: ./.github/actions/build-operator
         with:
           image-tag: ${{ steps.version.outputs.version }}
           artifact-name: perf-operator-image-${{ steps.version.outputs.version }}
           cache-key: "perf-build"
-          upload-artifact: "false"   # we upload together with the binary below
+          upload-artifact: "true"
 
-      - name: Upload artifacts
+      - name: Upload operator binary
         uses: actions/upload-artifact@v7
         with:
           name: perf-artifacts-${{ steps.version.outputs.version }}
-          path: |
-            target/release/stellar-operator
-            operator-image.tar.gz
+          path: target/release/stellar-operator
           retention-days: 7
 
   benchmark:
@@ -103,16 +102,22 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Download artifacts
+      - name: Download operator binary
         uses: actions/download-artifact@v8
         with:
           name: perf-artifacts-${{ needs.build.outputs.version }}
 
+      - name: Download operator image tarball
+        if: matrix.suite != 'webhook'
+        uses: actions/download-artifact@v8
+        with:
+          name: perf-operator-image-${{ needs.build.outputs.version }}
+
       - name: Load Docker image
         if: matrix.suite != 'webhook'
         run: |
-          gunzip stellar-operator-image.tar.gz
-          docker load < stellar-operator-image.tar
+          gunzip operator-image.tar.gz
+          docker load < operator-image.tar
 
       - name: Setup performance environment
         if: matrix.suite != 'webhook'

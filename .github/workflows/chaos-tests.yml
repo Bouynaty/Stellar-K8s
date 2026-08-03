@@ -83,7 +83,7 @@ jobs:
           name: chaos-operator-image
 
       - name: Load Docker image
-        run: gunzip -c stellar-operator-chaos.tar.gz | docker load
+        run: gunzip -c operator-image.tar.gz | docker load
 
       - name: Setup kind cluster
         uses: ./.github/actions/setup-kind-cluster
@@ -243,7 +243,7 @@ jobs:
           name: chaos-operator-image
 
       - name: Load Docker image
-        run: gunzip -c stellar-operator-chaos.tar.gz | docker load
+        run: gunzip -c operator-image.tar.gz | docker load
 
       - name: Setup kind cluster
         uses: ./.github/actions/setup-kind-cluster
@@ -415,7 +415,7 @@ jobs:
           name: chaos-operator-image
 
       - name: Load Docker image
-        run: gunzip -c stellar-operator-chaos.tar.gz | docker load
+        run: gunzip -c operator-image.tar.gz | docker load
 
       - name: Setup kind cluster
         uses: ./.github/actions/setup-kind-cluster

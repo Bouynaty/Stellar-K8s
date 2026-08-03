@@ -6,6 +6,8 @@ echo "Running Cache Key Consistency Checks..."
 echo "========================================"
 
 ERRORS=0
+KEY_REGEX='^(ci|perf|soak|release|chaos|docs|verify|image|dep)-[a-zA-Z0-9_-]+$'
+SCOPE_REGEX='^(stellar-k8s-docker|image-build-[a-zA-Z0-9_-]+|perf-docker)$'
 
 # Ensure raw actions/cache is avoided unless specific dimensions are included
 while IFS= read -r -d '' file; do
@@ -14,26 +16,14 @@ while IFS= read -r -d '' file; do
     ERRORS=$((ERRORS + 1))
   fi
 
-  # Extract cache-key or shared-key values (skip GitHub expressions).
+  # Validate cache-key / shared-key values (skip GitHub expressions).
   while IFS= read -r line; do
     key=$(echo "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/["'\'']//g; s/[[:space:]]*$//')
-    [[ -z "$key" || "$key" == default ]] && continue
-    # Allow GitHub Actions expressions (${{ ... }}) unchanged.
-    if [[ "$key" == *'${{'* ]]; then
-      continue
-    fi
-    if [[ ! "$key" =~ ^(ci|perf|soak|release|chaos|docs|verify|image|dep)-[a-zA-Z0-9_-]+$ ]]; then
+    [[ -z "$key" || "$key" == "default" ]] && continue
+    # Allow GitHub Actions expressions (${{ ... }) unchanged.
+    [[ "$key" == *'${{'* ]] && continue
+    if [[ ! "$key" =~ $KEY_REGEX ]]; then
       echo "::error file=$file::Invalid cache key format: $key. Expected format: <prefix>-<name> where prefix is ci, perf, soak, release, chaos, docs, verify, image, or dep."
-  # Extract cache-key or shared-key
-  keys=$(grep -E 'cache-key:|shared-key:' "$file" | awk -F':' '{print $2}' | tr -d ' "''' || true)
-  for key in $keys; do
-    # Skip GitHub Actions expression templates (e.g. release-${{ matrix.target }})
-    if [[ "$key" == *'${{'* ]]; then
-      continue
-    fi
-    # Valid prefixes
-    if [[ ! "$key" =~ ^(ci|perf|soak|release|chaos|docs|verify|image)-[a-zA-Z0-9_-]+$ ]] && [[ "$key" != "default" ]]; then
-      echo "::error file=$file::Invalid cache key format: $key. Expected format: <prefix>-<name> where prefix is ci, perf, soak, release, chaos, docs, verify, or image."
       ERRORS=$((ERRORS + 1))
     fi
   done < <(grep -E '^\s*(cache-key|shared-key):' "$file" || true)
@@ -41,7 +31,7 @@ while IFS= read -r -d '' file; do
   # Check Docker cache scopes
   while IFS= read -r scope; do
     [[ -z "$scope" ]] && continue
-    if [[ ! "$scope" =~ ^(stellar-k8s-docker|image-build-[a-zA-Z0-9_-]+|perf-docker)$ ]]; then
+    if [[ ! "$scope" =~ $SCOPE_REGEX ]]; then
       echo "::error file=$file::Invalid Docker cache scope: $scope"
       ERRORS=$((ERRORS + 1))
     fi

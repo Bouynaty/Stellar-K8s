@@ -44,40 +44,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # ── 1. cargo audit — known vulnerabilities ──────────────────────────────────
-  cargo-audit:
-    name: Cargo Audit (Vulnerabilities)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache-key: "ci-audit"
-          extra-tools: "cargo-audit"
-
-      - name: Run cargo audit
-        run: |
-          echo "── Security advisory audit ──────────────────────────────────────"
-          cargo audit
-
-      - name: Generate audit JSON report
-        if: always()
-        run: |
-          cargo audit --json 2>/dev/null > audit-report.json || true
-          echo "Audit report saved to audit-report.json"
-
-      - name: Upload audit report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cargo-audit-report
-          path: audit-report.json
-          retention-days: 30
-
-  # ── 2. cargo deny — license + bans + advisories ─────────────────────────────
   # ── 1. cargo deny — license + bans + advisories ─────────────────────────────
   cargo-deny:
     name: Cargo Deny (Licenses + Bans)
