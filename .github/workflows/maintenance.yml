@@ -1,5 +1,12 @@
 name: Maintenance
 
+# Weekly hygiene that is NOT covered by other workflows:
+#   - security-audit.yml  → scheduled cargo-audit / cargo-deny / scorecard / SBOM
+#   - link-check.yml      → scheduled lychee link rot
+#   - ci.yml              → PR/push gates
+#
+# Unique value here: stale-artifact cleanup regression coverage.
+
 on:
   schedule:
     - cron: '0 9 * * 1' # Every Monday at 09:00 UTC
@@ -34,14 +41,7 @@ jobs:
           cache-key: "ci-maintenance-audit"
           extra-tools: "cargo-audit"
           cache-key: "ci-audit-maintenance"
-
-      - name: Install cargo-audit
-        run: |
-          for i in 1 2 3; do
-            cargo install cargo-audit --locked && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
+          extra-tools: "cargo-audit"
 
       - name: Run security audit
         run: cargo audit

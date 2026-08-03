@@ -104,6 +104,7 @@ def main() -> None:
         allow_unicode=True,
         sort_keys=True,   # belt-and-suspenders: also sorts at the YAML emitter level
         explicit_start=True,
+        width=10**9,      # avoid spurious wrapping diffs vs committed manifests
     )
     sys.stdout.write(output)
 

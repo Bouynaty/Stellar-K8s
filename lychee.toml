@@ -82,6 +82,21 @@ exclude = [
   # GitHub "latest/download" assets for kubernetes autoscaler are redirect-only and
   # intermittently fail DNS/TLS from GHA; pin checks provide no PR signal.
   "^https://github\\.com/kubernetes/autoscaler/releases/latest/download/",
+  # helm.sh intermittently resets CI connections
+  "^https://helm\\.sh/",
+  # tokio.rs also resets connections from GHA IPs intermittently
+  "^https://tokio\\.rs/",
+  # istio.io docs flake with connection failures from GHA
+  "^https://istio\\.io/",
+  # kyverno.io also resets connections from GHA IPs
+  "^https://kyverno\\.io/",
+  # slsa.dev flakes with connection failures from GHA
+  "^https://slsa\\.dev/",
+  # kubernetes.io is fronted by Cloudflare which throttles GHA IP ranges
+  # with intermittent TLS/TCP failures (not just 429s). Blog, docs,
+  # and related hosts flake regularly; re-verifying them on every PR
+  # provides almost no signal.
+  "^https://kubernetes\\.io/",
   # Placeholder URLs that appear in code examples and snippets
   "^https://host/path/backup\\.tar\\.gz",
   "example\\.com",

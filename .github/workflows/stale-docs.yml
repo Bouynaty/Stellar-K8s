@@ -64,8 +64,7 @@ jobs:
           # Fetch full history so git-log can compare commit timestamps.
           fetch-depth: 0
 
-      # ── Rust toolchain (shared composite action, issue #1136) ──────────────
-      # ── Rust toolchain & cache ─────────────────────────────────────────────
+      # ── Rust toolchain (shared composite action — issues #1136 / #1175) ───
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:

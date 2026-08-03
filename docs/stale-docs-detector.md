@@ -3,6 +3,8 @@
 > **TL;DR** — When you change a source file that is linked to a doc, the doc
 > is flagged as _stale_.  CI will fail.  Update the doc (or suppress the false
 > positive), then push.
+>
+> Last refreshed: 2026-07-30 (Makefile cleanup target / CONTRIBUTING script conventions).
 
 ---
 

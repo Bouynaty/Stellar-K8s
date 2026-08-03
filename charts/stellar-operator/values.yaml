@@ -484,6 +484,8 @@ byzantineWatcher:
 
 # OpenTelemetry configuration
 # Controls OTLP trace export from the operator and the bundled OTel Collector.
+# The operator sets service.name and sampling in code (AlwaysOn); only the OTLP
+# endpoint is injected via OTEL_EXPORTER_OTLP_ENDPOINT when enabled.
 otel:
   # Set to true to enable OTLP trace export from the operator.
   # When enabled, OTEL_EXPORTER_OTLP_ENDPOINT is injected into the operator pod.
@@ -493,9 +495,6 @@ otel:
   # Typically points to the in-cluster OTel Collector service.
   # Example: "http://stellar-operator-otel-collector:4317"
   endpoint: "http://stellar-operator-otel-collector:4317"
-
-  # Sampling ratio (0.0–1.0). 1.0 = always sample, 0.1 = 10% of traces.
-  samplingRatio: "1.0"
 
   # OTel Collector sidecar/deployment bundled with the Helm chart.
   collector:

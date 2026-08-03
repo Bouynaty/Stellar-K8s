@@ -160,25 +160,24 @@ The default regression threshold is **10%**. This means:
 
 ### GitHub Actions Workflow
 
-The `benchmark.yml` workflow runs automatically on:
-- Pull requests to `main`
-- Pushes to `main` and `develop`
-- Release tags (`v*`)
+The unified `performance.yml` workflow is the single supported benchmark entry
+point (it replaces the former `benchmark.yml`, `performance-regression.yml`, and
+`webhook-benchmark.yml` templates). It runs on:
+
+- Pushes to `main` (path-filtered)
+- Manual `workflow_dispatch`
 
 ### Workflow Jobs
 
-1. **Build**: Compile operator and build Docker image
-2. **Benchmark**: Run k6 tests in Kind cluster
-3. **Report**: Post results as PR comment
-4. **Update Baseline**: Create new baseline on release tags
+1. **resolve-matrix / build**: Compile operator and build Docker image once
+2. **benchmark** (matrix): operator, regression, and webhook suites
+3. **report**: Publish a combined summary artifact
 
 ### Manual Trigger
 
 ```bash
-# Trigger benchmark with custom baseline
-gh workflow run benchmark.yml \
-  -f baseline_version=v1.0.0 \
-  -f regression_threshold=15
+# Trigger the unified performance pipeline
+gh workflow run performance.yml
 ```
 
 ## Creating Baselines

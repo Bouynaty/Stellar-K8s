@@ -399,14 +399,13 @@ impl WebhookServer {
         }
     }
 
-    /// Start the webhook server
-    pub async fn start(self, addr: SocketAddr) -> Result<()> {
-        // Check TLS config before moving self into Arc
-        let has_tls = self.tls_config.is_some();
-
+    /// Build the HTTP router used by [`Self::start`].
+    ///
+    /// Exposed for hermetic HTTP contract tests (issue #1152) so malformed and
+    /// boundary payloads can be exercised without binding a TCP listener.
+    pub fn into_router(self) -> Router {
         let state = Arc::new(self);
-
-        let app = Router::new()
+        Router::new()
             .route("/health", get(health_handler))
             .route("/healthz", get(health_handler))
             .route("/ready", get(ready_handler))
@@ -421,13 +420,21 @@ impl WebhookServer {
                 "/plugins/{name}",
                 axum::routing::delete(remove_plugin_handler),
             )
-            .with_state(state);
+            .with_state(state)
+    }
+
+    /// Start the webhook server
+    pub async fn start(self, addr: SocketAddr) -> Result<()> {
+        // Check TLS config before moving self into the router
+        let has_tls = self.tls_config.is_some();
+        let app = self.into_router();
 
         info!("Starting webhook server on {}", addr);
 
         // Check if TLS is configured
         if has_tls {
             // TODO(exempt: pending): Implement TLS server with rustls
+            // TODO(exempt: pending rustls server): Implement TLS server with rustls
             // For now, fall back to non-TLS
             warn!("TLS configuration provided but not yet implemented, using plain HTTP");
         }

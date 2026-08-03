@@ -2,7 +2,7 @@
 ///
 /// Isolated, deterministic test fixtures for integration and unit test suites.
 ///
-/// # Design (issue #1140)
+/// # Design (issue #1140, consolidated from tests/fixtures/mod.rs per #1196)
 ///
 /// Every fixture function returns a fully-constructed value with sensible
 /// defaults. Tests can customise via builder-style overrides. No fixture
@@ -10,106 +10,14 @@
 /// test guards in `common/mod.rs`.
 ///
 /// Fixture categories:
-/// - `stellarnode_*`  — `StellarNodeSpec` and related CRD types
 /// - `backup_*`       — `BackupVerificationConfig` and `BackupSource`
 /// - `rotation_*`     — `SecretRotationConfig`
-/// - `manifest_*`     — raw YAML strings for `kubectl apply` tests
 /// - `k8s_*`          — Kubernetes API objects (Pods, Containers, VolumeMounts)
+///
+/// Obsolete StellarNode YAML / deterministic helpers for deprecated
+/// reconciliation integration paths were removed in issue #1218 (unused after
+/// reconciler tests moved to typed `create_test_*` constructors).
 use k8s_openapi::api::core::v1::{Container, VolumeMount};
-
-// ---------------------------------------------------------------------------
-// StellarNode fixtures
-// ---------------------------------------------------------------------------
-
-/// Unique namespace name for an integration test.
-///
-/// Includes a short random suffix so parallel tests do not collide even when
-/// the same test binary runs more than once against the same cluster.
-///
-/// # Example
-/// ```
-/// use tests::common::fixtures::unique_namespace;
-/// let ns = unique_namespace("backup-test");
-/// // "stellar-it-backup-test-a1b2c3d4"
-/// ```
-pub fn unique_namespace(label: &str) -> String {
-    // Use thread ID + timestamp for a lightweight unique suffix that works
-    // without pulling in uuid or rand at the test level.
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.subsec_nanos())
-        .unwrap_or(0);
-    format!("stellar-it-{label}-{ts:08x}")
-}
-
-/// Minimal valid `StellarNode` YAML for a Testnet Validator.
-///
-/// Uses `retentionPolicy: Delete` so PVCs are cleaned up automatically and
-/// tests do not leave orphaned storage in the cluster.
-pub fn testnet_validator_manifest(name: &str, namespace: &str) -> String {
-    format!(
-        r#"apiVersion: stellar.org/v1alpha1
-kind: StellarNode
-metadata:
-  name: {name}
-  namespace: {namespace}
-  labels:
-    app.kubernetes.io/managed-by: stellar-k8s-integration-test
-spec:
-  nodeType: Validator
-  network: Testnet
-  version: "v21.0.0"
-  storage:
-    storageClass: standard
-    size: 10Gi
-    retentionPolicy: Delete
-"#
-    )
-}
-
-/// Minimal valid `StellarNode` YAML for a Testnet Horizon node.
-pub fn testnet_horizon_manifest(name: &str, namespace: &str) -> String {
-    format!(
-        r#"apiVersion: stellar.org/v1alpha1
-kind: StellarNode
-metadata:
-  name: {name}
-  namespace: {namespace}
-  labels:
-    app.kubernetes.io/managed-by: stellar-k8s-integration-test
-spec:
-  nodeType: Horizon
-  network: Testnet
-  version: "v2.28.0"
-  storage:
-    storageClass: standard
-    size: 50Gi
-    retentionPolicy: Delete
-"#
-    )
-}
-
-/// Minimal valid `StellarNode` YAML for a Testnet Soroban RPC node.
-pub fn testnet_soroban_manifest(name: &str, namespace: &str) -> String {
-    format!(
-        r#"apiVersion: stellar.org/v1alpha1
-kind: StellarNode
-metadata:
-  name: {name}
-  namespace: {namespace}
-  labels:
-    app.kubernetes.io/managed-by: stellar-k8s-integration-test
-spec:
-  nodeType: SorobanRpc
-  network: Testnet
-  version: "v0.0.5"
-  storage:
-    storageClass: standard
-    size: 20Gi
-    retentionPolicy: Delete
-"#
-    )
-}
 
 // ---------------------------------------------------------------------------
 // Kubernetes API object fixtures

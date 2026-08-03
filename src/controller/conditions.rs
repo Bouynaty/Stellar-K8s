@@ -105,18 +105,6 @@ pub fn progressing_condition(reason: &str, message: &str) -> Condition {
     }
 }
 
-/// Create a Progressing=False condition
-pub fn not_progressing_condition(reason: &str, message: &str) -> Condition {
-    Condition {
-        type_: CONDITION_TYPE_PROGRESSING.to_string(),
-        status: CONDITION_STATUS_FALSE.to_string(),
-        last_transition_time: Utc::now().to_rfc3339(),
-        reason: reason.to_string(),
-        message: message.to_string(),
-        observed_generation: None,
-    }
-}
-
 /// Create a Degraded=True condition
 pub fn degraded_condition(reason: &str, message: &str) -> Condition {
     Condition {
@@ -125,18 +113,6 @@ pub fn degraded_condition(reason: &str, message: &str) -> Condition {
         last_transition_time: Utc::now().to_rfc3339(),
         reason: reason.to_string(),
         message: message.to_string(),
-        observed_generation: None,
-    }
-}
-
-/// Create a Degraded=False condition
-pub fn not_degraded_condition() -> Condition {
-    Condition {
-        type_: CONDITION_TYPE_DEGRADED.to_string(),
-        status: CONDITION_STATUS_FALSE.to_string(),
-        last_transition_time: Utc::now().to_rfc3339(),
-        reason: "NoIssues".to_string(),
-        message: "No degradation detected".to_string(),
         observed_generation: None,
     }
 }
@@ -640,16 +616,6 @@ mod tests {
     }
 
     #[test]
-    fn test_not_progressing_condition_constructor() {
-        let condition = not_progressing_condition("Idle", "No active sync");
-
-        assert_eq!(condition.type_, CONDITION_TYPE_PROGRESSING);
-        assert_eq!(condition.status, CONDITION_STATUS_FALSE);
-        assert_eq!(condition.reason, "Idle");
-        assert_eq!(condition.message, "No active sync");
-    }
-
-    #[test]
     fn test_degraded_condition_constructor() {
         let condition = degraded_condition("HighLatency", "Network latency detected");
 
@@ -657,16 +623,6 @@ mod tests {
         assert_eq!(condition.status, CONDITION_STATUS_TRUE);
         assert_eq!(condition.reason, "HighLatency");
         assert_eq!(condition.message, "Network latency detected");
-    }
-
-    #[test]
-    fn test_not_degraded_condition_constructor() {
-        let condition = not_degraded_condition();
-
-        assert_eq!(condition.type_, CONDITION_TYPE_DEGRADED);
-        assert_eq!(condition.status, CONDITION_STATUS_FALSE);
-        assert_eq!(condition.reason, "NoIssues");
-        assert_eq!(condition.message, "No degradation detected");
     }
 
     // ── complex scenarios ─────────────────────────────────────────────────────

@@ -4,10 +4,10 @@
 //! subcommands, arguments, and environment variable mappings.
 
 use crate::commands::backup::{BackupArgs, CleanupArgs, ListArgs, RestoreArgs};
+use crate::controller::archive_prune::PruneArchiveArgs;
+use crate::controller::diff::DiffArgs;
+use crate::incident;
 use clap::{Parser, Subcommand};
-use stellar_k8s::controller::archive_prune::PruneArchiveArgs;
-use stellar_k8s::controller::diff::DiffArgs;
-use stellar_k8s::incident;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -93,7 +93,7 @@ pub enum Commands {
         command: incident::IncidentCommands,
     },
     /// Compare performance metrics between two clusters
-    BenchmarkCompare(stellar_k8s::benchmark_compare::BenchmarkCompareArgs),
+    BenchmarkCompare(crate::benchmark_compare::BenchmarkCompareArgs),
     /// Export operator audit log and config as a signed compliance report
     ExportCompliance(ExportComplianceArgs),
     /// Backup commands for Stellar node data

@@ -10,6 +10,7 @@
 #   Test:     make test                       # Run all tests
 #   Security: make security-all               # Audit + scan
 #   Docker:   make docker-build               # Local Docker image
+#   Cleanup:  make cleanup                    # Repo scratch + obsolete-path check
 #   Clean:    make clean                      # Remove build artifacts
 #   Health:   make health                     # Full health check
 #   Help:     make help                       # Show all targets
@@ -24,7 +25,7 @@
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint link-check link-check-all changelog \
-	generate-api-docs check-api-docs check-stale-docs update-doc-baseline docs-check-strict docs-lint \
+	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
 	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
@@ -34,7 +35,8 @@
 	health health-fast validate preflight test-preflight test-shell all \
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
-	clean
+	check-pipeline-log-redaction \
+	cleanup clean
 
 .DEFAULT_GOAL := help
 
@@ -91,6 +93,7 @@ help: ## Show this help and the canonical command flow
 	@echo '  Security: make audit              Vulnerability scan + policy check'
 	@echo '  Security: make security-report    Generate security report'
 	@echo '  Docker:   make docker-build       Local Docker image'
+	@echo '  Cleanup:  make cleanup            Scratch artifacts + obsolete-path check'
 	@echo '  Clean:    make clean              Remove build artifacts'
 	@echo ''
 	@echo 'Workflows:'
@@ -197,22 +200,21 @@ docker-build-ci: ## Reproducible CI Docker build (builds binaries in container)
 	@echo "→ Building Docker image (CI mode)..."
 	DOCKER_BUILDKIT=1 $(DOCKER) build --target runtime -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
-docker-multiarch: ## Trigger multi-arch build via the CI workflow (dispatches workflow_dispatch)
-	@echo "→ Triggering multi-arch build pipeline..."
+docker-multiarch: ## Trigger release pipeline multi-arch image build via CI (dispatches workflow_dispatch)
+	@echo "→ Triggering release pipeline (multi-arch images)..."
 	@command -v gh >/dev/null 2>&1 || { echo "✗ gh CLI not found. Install: https://cli.github.com/"; exit 1; }
-	gh workflow run multiarch-build.yml
-	@echo "✓ Multi-arch build dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
+	gh workflow run release.yml
+	@echo "✓ Release pipeline dispatched. Monitor at: https://github.com/OtowoOrg/Stellar-K8s/actions"
 
-# Multi-arch builds are handled by CI: .github/workflows/multiarch-build.yml
-# To trigger a multi-arch build, push a tag or run: make docker-multiarch
+# Multi-arch images are built by .github/workflows/release.yml on tagged releases and main pushes.
+# To trigger manually: make docker-multiarch
 health: ## Run common repository health checks (format, lint, test, docs, links)
 	@bash scripts/repo-health.sh
 
 health-fast: ## Fast health gate (format, lint, compile only)
 	@bash scripts/repo-health.sh --fast
 
-validate: ## Fast validation (alias for health-fast)
-	@bash scripts/repo-health.sh --fast
+validate: health-fast ## Fast validation (alias for health-fast)
 
 # ── Quality & Health ───────────────────────────────────────────────────────────
 
@@ -263,6 +265,9 @@ pre-commit-install: ## Install pre-commit hooks
 	pre-commit install
 	pre-commit install --hook-type pre-push
 
+cleanup: ## Repository cleanup (scratch artifacts + obsolete archive-path guard)
+	@bash scripts/cleanup.sh $(if $(filter 1 true TRUE yes YES,$(DRY_RUN)),--dry-run,)
+
 clean: ## Clean build artifacts
 	$(CARGO) clean
 
@@ -281,6 +286,15 @@ check-api-docs: ## Check API docs are up to date (used in CI)
 		--crd config/crd/stellarnode-crd.yaml \
 		--output docs/api-reference.md \
 		--check
+
+generate-openapi-spec: ## Validate operator REST OpenAPI specification
+	@echo "→ Validating OpenAPI specification..."
+	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml
+	@echo "✓ docs/api/openapi.yaml is valid"
+
+check-openapi-spec: ## Fail if OpenAPI spec is missing required operator routes
+	@echo "→ Checking OpenAPI spec coverage..."
+	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml --check
 
 check-stale-docs: ## Check for documentation that has fallen behind source code (warns; use docs-check-strict to fail)
 	@echo "→ Checking for stale documentation..."
@@ -334,10 +348,10 @@ test-preflight: ## Run bats unit tests for scripts/preflight.sh
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
 	@bats scripts/tests/preflight.bats
 
-test-shell: ## Run bats unit tests for shared shell helpers
-	@echo "→ Running shell helper bats tests..."
+test-shell: ## Run bats unit tests for the cleanup tool and shared shell helpers
+	@echo "→ Running cleanup tool bats tests..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
-	@bats scripts/tests/common.bats
+	@bats scripts/tests/cleanup.bats
 
 collect-failure-diagnostics: ## Assemble a local CI failure diagnostics bundle (#1151)
 	@echo "→ Assembling failure diagnostics bundle..."
@@ -350,6 +364,11 @@ test-failure-diagnostics: ## Verify the unified diagnostics collector (#1151)
 	@echo "→ Testing failure diagnostics collector..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
 	@bats scripts/tests/failure-diagnostics.bats
+
+check-pipeline-log-redaction: ## Enforce secret redaction on pipeline command logs (#1153)
+	@echo "→ Checking pipeline log secret redaction..."
+	@$(CARGO) run --quiet --locked --bin check-pipeline-log-redaction -- \
+		--fixture tests/fixtures/pipeline_logs/dirty-ci-sample.txt
 
 # ── Completions ────────────────────────────────────────────────────────────────
 

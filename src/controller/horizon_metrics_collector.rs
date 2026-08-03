@@ -229,6 +229,7 @@ impl HorizonMetricsCollector {
             }
             .to_string();
             let hardware_generation = "unknown".to_string(); // TODO(exempt: pending): resolve from infra
+            let hardware_generation = "unknown".to_string(); // TODO(exempt: pending infra lookup): resolve from infra
 
             endpoints.push(HorizonEndpoint {
                 namespace,

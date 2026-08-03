@@ -7,13 +7,13 @@
 //! Checks performed:
 //!   1. Required files present (README, LICENSE, CONTRIBUTING, CHANGELOG, Makefile)
 //!   2. Cargo.toml version matches git tag (when HEAD is a tag)
-//!   3. Dependency update template present (.github/ISSUE_TEMPLATE/dependency_update.yml)
+//!   3. Maintenance/chore issue template present (.github/ISSUE_TEMPLATE/maintenance.yml)
 //!   4. Release process doc present (docs/release-process.md)
 //!   5. No uncommitted changes in tracked files (optional; skip with --allow-dirty)
 
+use crate::Error;
 use std::fs;
 use std::process::Command;
-use stellar_k8s::Error;
 
 /// Arguments for the `health-check` subcommand.
 #[derive(clap::Parser, Debug)]
@@ -153,6 +153,44 @@ fn check_git_clean() -> Check {
     }
 }
 
+fn check_issue_template_metadata() -> Check {
+    let template_dir = std::path::Path::new(".github/ISSUE_TEMPLATE");
+    if !template_dir.exists() || !template_dir.is_dir() {
+        return Check::fail(
+            "Issue template metadata",
+            ".github/ISSUE_TEMPLATE directory missing",
+        );
+    }
+    match std::fs::read_dir(template_dir) {
+        Ok(entries) => {
+            let count = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    let path = e.path();
+                    path.extension()
+                        .is_some_and(|ext| ext == "yml" || ext == "yaml")
+                })
+                .count();
+
+            if count > 0 {
+                Check::pass(
+                    "Issue template metadata",
+                    format!("{count} issue template files validated in .github/ISSUE_TEMPLATE/"),
+                )
+            } else {
+                Check::fail(
+                    "Issue template metadata",
+                    "No .yml issue template files found in .github/ISSUE_TEMPLATE/",
+                )
+            }
+        }
+        Err(e) => Check::fail(
+            "Issue template metadata",
+            format!("Failed to read .github/ISSUE_TEMPLATE/: {e}"),
+        ),
+    }
+}
+
 fn print_check(check: &Check, json: bool) {
     if json {
         let status = if check.passed { "pass" } else { "fail" };
@@ -186,10 +224,11 @@ pub fn run_health_check(args: HealthCheckArgs) -> Result<(), Error> {
         check_file("Makefile", "Makefile"),
         // Hygiene files added by the repo-hygiene wave
         check_file(
-            "Dependency update template",
-            ".github/ISSUE_TEMPLATE/dependency_update.yml",
+            "Maintenance / chore issue template",
+            ".github/ISSUE_TEMPLATE/maintenance.yml",
         ),
         check_file("Release process doc", "docs/release-process.md"),
+        check_issue_template_metadata(),
         // Version consistency
         check_cargo_version_matches_tag(),
     ];

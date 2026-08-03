@@ -199,7 +199,8 @@ If the automated release pipeline fails partway through:
 |---|---|---|
 | Main CI (incl. multi-arch Docker) | `.github/workflows/ci.yml` | Push / PR to `main` |
 | Release | `.github/workflows/release.yml` | Push `v*.*.*` tag |
-| Security scan | `.github/workflows/security-scan.yml` | Push to `main`, schedule |
+| Security scan (Trivy/Checkov) | `.github/workflows/security-scan.yml` | Push to `main`, schedule |
+| Security audit (cargo-audit/deny) | `.github/workflows/security-audit.yml` | Schedule, manual |
 | Performance | `.github/workflows/performance.yml` | Push to `main`, schedule |
 | Chaos tests | `.github/workflows/chaos-tests.yml` | Schedule |
 | Docs deploy | `.github/workflows/docs-deploy.yml` | Push to `main` |

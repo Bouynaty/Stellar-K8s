@@ -8,7 +8,7 @@
 #   bash scripts/repo-health.sh --with-links # include markdown link check
 #   bash scripts/repo-health.sh --with-helm  # include helm lint
 #   make health
-#   make validate                            # alias for --fast
+#   make health-fast / make validate         # alias for --fast
 #
 # Stops at the first failing step and prints a clear summary.
 
@@ -74,6 +74,7 @@ if [[ "${MODE}" == "fast" ]]; then
 else
   add_step sk8s_health_test "Tests (cargo test)"
   add_step sk8s_health_api_docs "API docs drift check"
+  add_step sk8s_health_issue_templates "Issue template & metadata lint"
   add_step sk8s_health_stale_docs "Stale documentation check"
   add_step sk8s_health_link_check "Markdown link check"
   add_step sk8s_health_shellcheck "Shell script lint (shellcheck)"
@@ -118,6 +119,15 @@ for i in "${!STEPS[@]}"; do
         sk8s_fail "API docs drift detected" "Run 'make generate-api-docs' after CRD changes."
       fi
       ;;
+    sk8s_health_issue_templates)
+      if ! command -v python3 >/dev/null 2>&1; then
+        sk8s_warn "python3 not found — skipping issue template lint"
+        continue
+      fi
+      if ! sk8s_health_issue_templates; then
+        sk8s_fail "Issue template linting failed" "Fix syntax/metadata in .github/ISSUE_TEMPLATE/*.yml."
+      fi
+      ;;
     sk8s_health_stale_docs)
       if ! sk8s_health_stale_docs; then
         sk8s_fail "Stale docs detected" "Run 'make check-stale-docs' for details."
@@ -149,7 +159,7 @@ for i in "${!STEPS[@]}"; do
       ;;
     sk8s_health_compile_check)
       if ! sk8s_health_compile_check; then
-        sk8s_fail "Compilation failed" "Fix compiler errors and re-run 'make validate'."
+        sk8s_fail "Compilation failed" "Fix compiler errors and re-run 'make health-fast'."
       fi
       ;;
     sk8s_health_cargo_audit)

@@ -499,6 +499,7 @@ impl ObservabilityPipeline {
                             percent_change,
                             absolute_change: *value - baseline.mean,
                             rate_of_change: 0.0, // TODO(exempt: pending): Calculate from time series
+                            rate_of_change: 0.0, // TODO(exempt: pending time-series calc): Calculate from time series
                         },
                         anomaly_type,
                         explanation: format!(

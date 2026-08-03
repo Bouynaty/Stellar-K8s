@@ -257,6 +257,7 @@ async fn scan_s3_checkpoints(location: &ArchiveLocation) -> Result<Vec<Checkpoin
     // {prefix}/.well-known/stellar-history.json
 
     // TODO(exempt: pending): Implement actual S3 scanning with aws-sdk-s3
+    // TODO(exempt: pending aws-sdk-s3 integration): Implement actual S3 scanning
     warn!("S3 scanning not yet implemented - returning empty checkpoint list");
     Ok(vec![])
 }
@@ -265,6 +266,7 @@ async fn scan_s3_checkpoints(location: &ArchiveLocation) -> Result<Vec<Checkpoin
 async fn scan_gcs_checkpoints(location: &ArchiveLocation) -> Result<Vec<Checkpoint>, Error> {
     debug!("Scanning GCS bucket: {}", location.bucket);
     // TODO(exempt: pending): Implement GCS scanning
+    // TODO(exempt: pending GCS client): Implement GCS scanning
     warn!("GCS scanning not yet implemented - returning empty checkpoint list");
     Ok(vec![])
 }
@@ -568,6 +570,7 @@ async fn delete_s3_checkpoint(
     _location: &ArchiveLocation,
 ) -> Result<(), Error> {
     // TODO(exempt: pending): Implement S3 deletion
+    // TODO(exempt: pending aws-sdk-s3 integration): Implement S3 deletion
     warn!("S3 deletion not yet implemented");
     Ok(())
 }
@@ -578,6 +581,7 @@ async fn delete_gcs_checkpoint(
     _location: &ArchiveLocation,
 ) -> Result<(), Error> {
     // TODO(exempt: pending): Implement GCS deletion
+    // TODO(exempt: pending GCS client): Implement GCS deletion
     warn!("GCS deletion not yet implemented");
     Ok(())
 }

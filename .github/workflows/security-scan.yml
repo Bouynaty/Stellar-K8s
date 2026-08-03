@@ -1,8 +1,14 @@
 name: Security Scanning
 
+# Canonical Trivy / Checkov security scanning workflow.
+# Image Trivy on the published CI image also runs via the
+# `.github/actions/security-scan` composite from `ci.yml` (push to main).
+# This workflow covers filesystem + IaC scans and a standalone image build scan
+# on schedule / main pushes / manual dispatch.
+
 on:
   push:
-    branches: [develop]
+    branches: [main]
     paths:
       - "**.rs"
       - "**.yaml"
@@ -10,6 +16,8 @@ on:
       - "charts/**"
       - "Dockerfile*"
       - "Makefile"
+      - ".github/workflows/security-scan.yml"
+      - ".github/actions/security-scan/**"
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
@@ -55,19 +63,10 @@ jobs:
       - name: Build Docker image
         run: docker build -t stellar-operator:scan .
 
-      - name: Run Trivy on Docker image
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Security Scan
+        uses: ./.github/actions/security-scan
         with:
           image-ref: stellar-operator:scan
-          format: sarif
-          output: trivy-docker.sarif
-          severity: CRITICAL,HIGH
-
-      - name: Upload Trivy Docker scan
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: trivy-docker.sarif
 
   iac-checkov:
     name: IaC Security Scan (Helm/K8s manifests)
@@ -82,7 +81,7 @@ jobs:
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: charts/
-          framework: kubernetes
+          framework: helm
           output_format: sarif
           output_file_path: checkov-results.sarif
         continue-on-error: true
@@ -92,22 +91,3 @@ jobs:
         if: always()
         with:
           sarif_file: checkov-results.sarif
-
-  security-matrix:
-    name: Security Dashboard
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [trivy-fs-scan, docker-trivy, iac-checkov]
-    if: always()
-    steps:
-      - name: Security Status Summary
-        run: |
-          {
-            echo "## Security Scan Results"
-            echo ""
-            echo "| Job | Status |"
-            echo "|-----|--------|"
-            echo "| trivy-fs-scan | ${{ needs.trivy-fs-scan.result }} |"
-            echo "| docker-trivy | ${{ needs.docker-trivy.result }} |"
-            echo "| iac-checkov | ${{ needs.iac-checkov.result }} |"
-          } >> "$GITHUB_STEP_SUMMARY"

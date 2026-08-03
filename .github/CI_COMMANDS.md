@@ -14,7 +14,7 @@ All reusable logic lives under `.github/actions/`:
 
 | Action | Purpose |
 |--------|---------|
-| `setup-rust` | Install Rust toolchain + system deps + Swatinem cache |
+| `setup-rust` | Install Rust toolchain + system deps + Swatinem cache + optional cargo tools (with retry) |
 | `setup-kind-cluster` | Provision kind cluster, load image, install CRDs, deploy operator |
 | `collect-e2e-logs` | Dump operator logs, K8s events, StellarNode status → artifact |
 | `collect-failure-diagnostics` | Unified failing-run diagnostics bundle (issue #1151) |
@@ -24,6 +24,45 @@ All reusable logic lives under `.github/actions/`:
 See [`docs/ci-failure-diagnostics.md`](../docs/ci-failure-diagnostics.md) for the
 bundle layout and how to invoke `scripts/ci/collect-failure-diagnostics.sh`
 locally.
+
+---
+
+## Cleanup Wave: Issue #1175
+
+### #1175 — Remove redundant CI bootstrap from duplicated workflow jobs
+
+Several workflows still re-implemented the same Rust bootstrap after
+`setup-rust` already covered it:
+
+- **Double `cargo install`** — `ci.yml`, `dependency-review.yml`, and
+  `maintenance.yml` passed `extra-tools` to `setup-rust` and then ran a
+  second install loop for the same crates.
+- **Raw toolchain install** — `security-audit.yml` and `dead-code-report.yml`
+  still inlined `dtolnay/rust-toolchain` + `Swatinem/rust-cache` instead of
+  calling `setup-rust`.
+- **Leftover duplicate in `stale-docs.yml`** — after #1136 it called
+  `setup-rust` *and* still installed the toolchain again via `dtolnay`.
+
+**Fix:**
+1. `setup-rust` now owns cargo-tool install **with a 3-attempt retry**.
+2. Workflow jobs only pass `extra-tools:` — no per-job install steps.
+3. Scheduled/security/dead-code workflows delegate to `setup-rust`.
+4. `ci-reliability-test` asserts retry lives in the composite and that
+   workflows do not re-bootstrap `cargo-audit` / `cargo-tarpaulin` /
+   `cargo-deny`.
+
+**Verification:**
+```bash
+# Only release.yml (cross-compile matrix) may call rust-toolchain directly
+grep -RIn 'dtolnay/rust-toolchain' .github/ \
+  | grep -v 'setup-rust/action.yml'
+
+# No duplicated cargo-tool bootstrap in workflows
+grep -RIn -E 'cargo install (cargo-audit|cargo-tarpaulin|cargo-deny)' \
+  .github/workflows/ || echo "none"
+
+bash scripts/ci/check-cache-keys.sh
+```
 
 ---
 
@@ -266,6 +305,46 @@ docker build --target runtime --platform linux/amd64 .
 cargo test --all-features --workspace
 cargo audit  # Uses .cargo/audit.toml config
 ```
+
+---
+
+## Deduplicated Pipeline Gates (#1202)
+
+### Link checking
+- **Primary CI gate:** `repo-wide-link-check` (lychee) in `ci.yml`.
+- Removed overlapping PR jobs: `markdown-link-check` and `docs-link-check`.
+- Local/checklist: `python3 scripts/check-links.py` (via `make health`) still works.
+- Scheduled link rot: standalone `.github/workflows/link-check.yml`.
+
+### CRD backward-compatibility (choose one PR path)
+- **Canonical PR gate:** Python `crd_migration_lint` in
+  `quickstart-validation.yml` (`scripts/crd_migration_lint.py --against origin/main`
+  plus `scripts/tests/test_crd_migration_lint.py`).
+- **Local/ad-hoc only:** `scripts/check-crd-compatibility.sh` (no longer a `ci.yml` job).
+
+### cargo audit on PRs
+- **PR/push path:** `ci.yml` `security-audit` (runs when dependency files change).
+- **Schedule / SBOM / cargo-deny / scorecard:** `.github/workflows/security-audit.yml`
+  (schedule + `workflow_dispatch` only — no duplicate PR trigger).
+- **Not duplicated in:** `dependency-review.yml` or `maintenance.yml`.
+
+### Security scanning (Trivy / Checkov)
+- **Canonical workflow:** `.github/workflows/security-scan.yml` (push to `main`,
+  schedule, `workflow_dispatch`). Uses `.github/actions/security-scan` for image scans.
+- **CI image scan after publish:** `ci.yml` `security-scan` job (same composite action).
+
+### Maintenance workflow
+- **Unique job only:** `maintenance.yml` → stale-artifact regression tests.
+- Scheduled cargo-audit / docs link checks live in `security-audit.yml` / `link-check.yml`.
+
+### Issue templates
+- **Single maintenance/chore template:** `.github/ISSUE_TEMPLATE/maintenance.yml`
+  (covers dependency updates, CI hygiene, docs, refactors).
+
+### Release gate vs release.yml
+- `release.yml` `validate` owns semver + Cargo.toml matching; helm job owns helm lint.
+- `release-gate.yml` / `scripts/release-gate.sh` keep unique value only:
+  CHANGELOG entry + helm unittest.
 
 ---
 

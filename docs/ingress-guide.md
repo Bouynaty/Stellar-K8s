@@ -247,6 +247,19 @@ kubectl logs -n cert-manager -l app.kubernetes.io/name=cert-manager
 kubectl get secret horizon-tls -n stellar-nodes -o yaml
 ```
 
+### Prometheus Alerting Rules
+
+When `monitoring.prometheusRules.enabled: true` is set in the Helm chart (`charts/stellar-operator/templates/prometheusrule.yaml`), the operator deploys a `PrometheusRule` resource defining automated alert conditions:
+
+| Alert Name | Severity | Component | Description & Operator Intent |
+| --- | --- | --- | --- |
+| **StellarNodeSyncLag** | `warning` | `stellar-node` | Triggers when a node's ledger sequence falls behind consensus by more than `syncLag.lagThreshold` ledgers (default 100). Indicates sync lag or peer issues. |
+| **StellarNodeMemoryPressure** | `critical` | `stellar-node` | Triggers when container RSS memory usage exceeds `memoryPressure.percentageThreshold` (default > 90%). Signals risk of pod eviction or OOM crash. |
+| **StellarOperatorReconcileErrors** | `warning` | `operator` | Triggers when operator reconciliation error rate exceeds `reconcileErrors.errorRateThreshold` over a 5-minute window. Points to RBAC, API, or reconciliation failures. |
+| **StellarHistoryArchiveUnresponsive** | `warning` | `history-archive` | Triggers when history archive queries encounter HTTP 404/500 errors or timeouts within 5 minutes. Indicates misconfigured archive URLs or storage downtime. |
+| **StellarOperatorReconciliationStalled** | `critical` | `operator` | Triggers when no reconciliations occur (`stellar_reconcile_duration_seconds_count` rate is 0) over `reconciliationStalled.stalledDuration`. Signals operator deadlock or process crash. |
+| **StellarOperatorHighReconciliationLatency** | `warning` | `operator` | Triggers when 99th percentile reconciliation duration exceeds `reconciliationLatency.latencyThreshold` seconds over 5 minutes. Indicates API server latency or high resource load. |
+
 ### Common Issues
 
 #### Certificate Not Provisioning
