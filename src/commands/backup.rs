@@ -301,7 +301,29 @@ async fn backup_to_file(
 }
 
 async fn restore_from_file(args: &RestoreArgs) -> Result<()> {
-    let backup_path = PathBuf::from(&args.backup);
+    let mut backup_path = PathBuf::from(&args.backup);
+
+    // Accept a directory containing backups: restore the most recent archive.
+    if backup_path.is_dir() {
+        let mut archives: Vec<PathBuf> = fs::read_dir(&backup_path)?
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("tar.gz"))
+            .collect();
+        if archives.is_empty() {
+            return Err(anyhow::anyhow!(
+                "{}",
+                diagnostic(
+                    "open backup archive",
+                    format!("no backup archives found in {}", backup_path.display())
+                )
+            ));
+        }
+        archives.sort();
+        backup_path = archives
+            .pop()
+            .expect("archives is non-empty, checked above");
+    }
 
     if !backup_path.exists() {
         return Err(anyhow::anyhow!(
