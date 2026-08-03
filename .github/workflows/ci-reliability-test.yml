@@ -168,12 +168,6 @@ jobs:
         run: |
           echo "🔍 Checking for deprecated Rust cache settings..."
           
-          # Check for deprecated cache-all-crates (ignore this workflow's own docs)
-          if grep -r --include='*.yml' --include='*.yaml' -n 'cache-all-crates:' .github/ \
-               | grep -v 'ci-reliability-test.yml'; then
-            echo "❌ Found deprecated 'cache-all-crates' setting:"
-            grep -r --include='*.yml' --include='*.yaml' -n 'cache-all-crates:' .github/ \
-              | grep -v 'ci-reliability-test.yml' || true
           # Match the YAML key only (avoid false positives from this script's comments)
           if grep -rIn --include='*.yml' -E '^[[:space:]]*cache-all-crates:' .github/; then
             echo "❌ Found deprecated 'cache-all-crates' setting:"

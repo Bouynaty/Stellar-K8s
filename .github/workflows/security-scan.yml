@@ -54,7 +54,7 @@ jobs:
   docker-trivy:
     name: Trivy Container Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       security-events: write
     steps:
