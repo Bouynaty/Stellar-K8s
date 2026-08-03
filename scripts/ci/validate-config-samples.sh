@@ -26,7 +26,6 @@ for dir in examples config/samples; do
     # We ignore CRDs since kubeconform needs custom schemas for them.
     # We pass -ignore-missing-schemas to not fail on unknown CRs like StellarNode,
     # unless we explicitly provide the CRD schema.
-    find "$dir" -name "*.yaml" -type f ! -name "_*" | while read -r file; do
     # Use process substitution (not a pipe) so counters update in this shell.
     while IFS= read -r file; do
       base="$(basename "$file")"
