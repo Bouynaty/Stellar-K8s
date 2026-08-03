@@ -308,7 +308,12 @@ async fn restore_from_file(args: &RestoreArgs) -> Result<()> {
         let mut archives: Vec<PathBuf> = fs::read_dir(&backup_path)?
             .filter_map(|entry| entry.ok())
             .map(|entry| entry.path())
-            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("tar.gz"))
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name.ends_with(".tar.gz"))
+                    .unwrap_or(false)
+            })
             .collect();
         if archives.is_empty() {
             return Err(anyhow::anyhow!(
@@ -362,7 +367,14 @@ async fn list_from_file(args: &ListArgs) -> Result<()> {
 
     let backups: Vec<_> = fs::read_dir(location)?
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().extension().and_then(|ext| ext.to_str()) == Some("tar.gz"))
+        .filter(|entry| {
+            entry
+                .path()
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| name.ends_with(".tar.gz"))
+                .unwrap_or(false)
+        })
         .collect();
 
     println!("Found {} backups", backups.len());
@@ -387,7 +399,14 @@ async fn cleanup_from_file(args: &CleanupArgs) -> Result<()> {
 
     let mut backups: Vec<_> = fs::read_dir(location)?
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().extension().and_then(|ext| ext.to_str()) == Some("tar.gz"))
+        .filter(|entry| {
+            entry
+                .path()
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| name.ends_with(".tar.gz"))
+                .unwrap_or(false)
+        })
         .collect();
 
     backups.sort_by_key(|entry| entry.metadata().unwrap().modified().unwrap());
