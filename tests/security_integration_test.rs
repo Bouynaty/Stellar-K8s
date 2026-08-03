@@ -157,6 +157,15 @@ mod tests {
     fn test_current_dependency_versions() {
         let cargo_toml = std::fs::read_to_string("Cargo.toml").expect("Could not read Cargo.toml");
 
+        // Verify security-critical dependencies are updated
+        // These should be the versions we updated for security patches
+        assert!(
+            cargo_toml.contains("anyhow = \"1.0.103\""),
+            "anyhow should be pinned to a published secure version"
+        );
+        assert!(
+            cargo_toml.contains("bytes = \"1.11.1\""),
+            "bytes should be pinned to a published secure version"
         // Verify security-critical dependency pins match Cargo.toml / Cargo.lock.
         // 1.0.108 was never published on crates.io; keep the locked secure pin.
         assert!(

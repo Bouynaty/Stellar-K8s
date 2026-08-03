@@ -126,12 +126,17 @@ jobs:
           set -euo pipefail
           # shellcheck source=scripts/lib/versions.sh
           source scripts/lib/versions.sh
+          echo "Installing pins: kubectl=${KUBECTL_VERSION} helm=${HELM_VERSION} kind=${KIND_VERSION}"
           curl -fsSL -o kubectl "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
           chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
           curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" | tar xz
           sudo mv linux-amd64/helm /usr/local/bin/helm
           curl -fsSL -o kind "https://kind.sigs.k8s.io/dl/v${KIND_VERSION}/kind-linux-amd64"
           chmod +x kind && sudo mv kind /usr/local/bin/kind
+          command -v kubectl helm kind
+          kubectl version --client
+          helm version --short
+          kind version
 
       - name: Run preflight tool/version gate
         run: make preflight

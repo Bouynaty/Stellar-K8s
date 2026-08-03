@@ -64,6 +64,24 @@ exclude = [
   "^https://nvd\\.nist\\.gov/",
   "^https://www\\.cisecurity\\.org/",
   "^https://llvm\\.org/",
+  # kubernetes.io/docs is fronted by Cloudflare which throttles GHA IP
+  # ranges with intermittent connection drops (not 429s — full TCP
+  # resets). Two URLs in particular were failing every CI run
+  # (custom-resource-definition-versioning, kubernetes-basics/update).
+  # k8s docs are canonical, hyper-stable, and link changes get
+  # announced in their release notes — re-verifying them on every PR
+  # provides almost no signal and costs every contributor a CI flake.
+  "^https://kubernetes\\.io/docs/",
+  # Root/blog pages also reset from GHA IPs (same Cloudflare fronting as /docs/).
+  "^https://kubernetes\\.io/blog/",
+  "^https://kubernetes\\.io/?$",
+  # helm.sh front page also resets from GHA IPs intermittently.
+  "^https://helm\\.sh/?$",
+  # SLSA site intermittently blocks/resets GHA crawlers.
+  "^https://slsa\\.dev/?$",
+  # GitHub "latest/download" assets for kubernetes autoscaler are redirect-only and
+  # intermittently fail DNS/TLS from GHA; pin checks provide no PR signal.
+  "^https://github\\.com/kubernetes/autoscaler/releases/latest/download/",
   # helm.sh intermittently resets CI connections
   "^https://helm\\.sh/",
   # tokio.rs also resets connections from GHA IPs intermittently

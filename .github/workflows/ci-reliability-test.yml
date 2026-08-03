@@ -126,6 +126,10 @@ jobs:
             local action=$1
             echo "Checking $action versions..."
             
+            # Find all uses of this action
+            VERSIONS=$(find .github \( -name "*.yml" -o -name "*.yaml" \) -exec grep -h "uses: $action@" {} \; \
+              | sed 's/^[[:space:]]*//' | sort -u)
+            VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
             # Find all uses of this action (normalize indentation so whitespace ≠ version)
             VERSIONS=$(find .github -name "*.yml" -exec grep -h "uses: $action@" {} \; | sed 's/^[[:space:]]*//' | sort -u)
             VERSION_COUNT=$(echo "$VERSIONS" | grep -c . || true)
@@ -164,6 +168,12 @@ jobs:
         run: |
           echo "🔍 Checking for deprecated Rust cache settings..."
           
+          # Check for deprecated cache-all-crates (ignore this workflow's own docs)
+          if grep -r --include='*.yml' --include='*.yaml' -n 'cache-all-crates:' .github/ \
+               | grep -v 'ci-reliability-test.yml'; then
+            echo "❌ Found deprecated 'cache-all-crates' setting:"
+            grep -r --include='*.yml' --include='*.yaml' -n 'cache-all-crates:' .github/ \
+              | grep -v 'ci-reliability-test.yml' || true
           # Match the YAML key only (avoid false positives from this script's comments)
           if grep -rIn --include='*.yml' -E '^[[:space:]]*cache-all-crates:' .github/; then
             echo "❌ Found deprecated 'cache-all-crates' setting:"

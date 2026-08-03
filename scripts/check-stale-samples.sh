@@ -6,6 +6,7 @@
 # 2. Conform to the current CRD schema
 # 3. Not missing required fields
 #
+# Related: #1146 - Create automated stale sample manifest detector and fixe
 # Related: #1146 - Create automated stale sample manifest detector and fixer
 
 set -euo pipefail
@@ -19,7 +20,8 @@ CRD_FILE="$PROJECT_ROOT/config/crd/stellarnode-crd.yaml"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m' # No Colo
+
 
 ERRORS=0
 WARNINGS=0

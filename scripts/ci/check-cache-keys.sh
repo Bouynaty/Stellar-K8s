@@ -8,12 +8,22 @@ echo "========================================"
 ERRORS=0
 
 # Ensure raw actions/cache is avoided unless specific dimensions are included
-for file in $(find .github -name "*.yml"); do
+while IFS= read -r -d '' file; do
   if grep -q -E 'uses: actions/cache' "$file"; then
     echo "::error file=$file::Raw actions/cache usage detected. Use setup-rust or other wrappers to ensure OS/Arch/Lockfile dimensions are inherently included."
     ERRORS=$((ERRORS + 1))
   fi
 
+  # Extract cache-key or shared-key values (skip GitHub expressions).
+  while IFS= read -r line; do
+    key=$(echo "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/["'\'']//g; s/[[:space:]]*$//')
+    [[ -z "$key" || "$key" == default ]] && continue
+    # Allow GitHub Actions expressions (${{ ... }}) unchanged.
+    if [[ "$key" == *'${{'* ]]; then
+      continue
+    fi
+    if [[ ! "$key" =~ ^(ci|perf|soak|release|chaos|docs|verify|image|dep)-[a-zA-Z0-9_-]+$ ]]; then
+      echo "::error file=$file::Invalid cache key format: $key. Expected format: <prefix>-<name> where prefix is ci, perf, soak, release, chaos, docs, verify, image, or dep."
   # Extract cache-key or shared-key
   keys=$(grep -E 'cache-key:|shared-key:' "$file" | awk -F':' '{print $2}' | tr -d ' "''' || true)
   for key in $keys; do
@@ -26,19 +36,17 @@ for file in $(find .github -name "*.yml"); do
       echo "::error file=$file::Invalid cache key format: $key. Expected format: <prefix>-<name> where prefix is ci, perf, soak, release, chaos, docs, verify, or image."
       ERRORS=$((ERRORS + 1))
     fi
-  done
+  done < <(grep -E '^\s*(cache-key|shared-key):' "$file" || true)
 
   # Check Docker cache scopes
-  scopes=$(grep -E 'scope=' "$file" | sed -n 's/.*scope=\([^, \"]*\).*/\1/p' | tr -d '\"\''' || true)
-  for scope in $scopes; do
-    # Remove trailing quotes/whitespace
-    scope=$(echo "$scope" | sed 's/["'\'']//g')
+  while IFS= read -r scope; do
+    [[ -z "$scope" ]] && continue
     if [[ ! "$scope" =~ ^(stellar-k8s-docker|image-build-[a-zA-Z0-9_-]+|perf-docker)$ ]]; then
       echo "::error file=$file::Invalid Docker cache scope: $scope"
       ERRORS=$((ERRORS + 1))
     fi
-  done
-done
+  done < <(grep -E 'scope=' "$file" | sed -n 's/.*scope=\([^, \"'\'']*\).*/\1/p' || true)
+done < <(find .github \( -name "*.yml" -o -name "*.yaml" \) -print0)
 
 if [ "$ERRORS" -gt 0 ]; then
   echo "❌ Found $ERRORS cache key inconsistency issue(s)."
