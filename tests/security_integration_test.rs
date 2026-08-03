@@ -166,6 +166,7 @@ mod tests {
         assert!(
             cargo_toml.contains("bytes = \"1.11.1\""),
             "bytes should be pinned to a published secure version"
+        );
         // Verify security-critical dependency pins match Cargo.toml / Cargo.lock.
         // 1.0.108 was never published on crates.io; keep the locked secure pin.
         assert!(
