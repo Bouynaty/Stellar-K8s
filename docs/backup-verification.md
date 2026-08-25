@@ -109,6 +109,9 @@ spec:
 
     strategy: standard
     timeoutMinutes: 60
+    rpoTargetMinutes: 60
+    retentionDays: 30
+    pointInTimeRestore: true
 ```
 
 ### Advanced Configuration
@@ -134,6 +137,11 @@ backupVerification:
   # Timeout for verification process (in minutes)
   timeoutMinutes: 120
 
+  # Recovery objectives and retention policy
+  rpoTargetMinutes: 60
+  retentionDays: 30
+  pointInTimeRestore: true
+
   # Enable performance benchmarking
   benchmarkEnabled: true
 
@@ -152,6 +160,18 @@ backupVerification:
     memoryLimit: "8Gi"
     storageSize: "200Gi"
 ```
+
+  ## Recovery objectives and retention
+
+  `rpoTargetMinutes` is the maximum age of the backup accepted by verification.
+  `retentionDays` documents the minimum retention period required by the backup
+  policy. Both values must be greater than zero. Set `pointInTimeRestore` to
+  `true` when the scheduled verification must exercise a point-in-time restore
+  path in addition to restoring the latest backup.
+
+  The verification schedule should run frequently enough to prove the configured
+  RPO. A monthly schedule is appropriate for a monthly compliance exercise, but
+  it does not prove a shorter operational RPO by itself.
 
 ## Backup Sources
 
