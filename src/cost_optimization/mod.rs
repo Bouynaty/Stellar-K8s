@@ -10,6 +10,7 @@ pub mod dashboard;
 pub mod forecast;
 pub mod model;
 pub mod recommender;
+pub mod spot;
 
 pub use allocation::{CostAllocation, NamespaceCost};
 pub use anomaly::{AnomalyDetector, CostAnomaly};
@@ -18,3 +19,4 @@ pub use dashboard::CostDashboard;
 pub use forecast::{CostForecast, CostForecaster};
 pub use model::{CloudProvider, CostRecord, ResourceType};
 pub use recommender::{OptimizationRecommendation, RecommendationEngine};
+pub use spot::{SpotConfig, SpotManager, SpotCostAnalysis, SpotRequest};
