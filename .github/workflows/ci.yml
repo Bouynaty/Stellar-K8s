@@ -199,6 +199,24 @@ jobs:
       - name: Validate Config Samples
         run: bash scripts/ci/validate-config-samples.sh
 
+      # ── Issue #1044: repository-wide YAML schema validation ────────────────
+      # Broader than the kubeconform pass above: covers every YAML file, hard
+      # fails on syntax/structure problems, and validates custom resources
+      # against this repo's own CRDs rather than skipping them.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install YAML tooling
+        run: pip install --quiet pyyaml jsonschema
+
+      - name: Validate all YAML manifests
+        run: python3 scripts/validate-yaml-manifests.py
+
+      - name: Run YAML validator unit tests
+        run: python3 -m unittest scripts.tests.test_validate_yaml_manifests
+
       - name: Check Stale TODOs
         run: bash scripts/ci/check-stale-todos.sh
 
@@ -231,6 +249,25 @@ jobs:
           shellcheck_cmd=(shellcheck -S error)
           [[ -n "${SHELLCHECK_EXCLUDES}" ]] && shellcheck_cmd+=(-e "${SHELLCHECK_EXCLUDES}")
           "${shellcheck_cmd[@]}" "${shell_files[@]}"
+
+      # ── Issue #1049: static analysis gate for unsafe shell patterns ────────
+      # shellcheck -S error deliberately ignores patterns that are stylistic to
+      # a linter but operational here (unguarded rm -rf paths, eval on
+      # interpolated data, curl | bash, missing strict mode). This gate covers
+      # those; see docs/development/static-analysis-gates.md.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install YAML tooling
+        run: pip install --quiet pyyaml jsonschema
+
+      - name: Run shell safety gate
+        run: python3 scripts/check-shell-safety.py
+
+      - name: Run shell safety gate unit tests
+        run: python3 -m unittest scripts.tests.test_check_shell_safety
 
       - name: Check formatting
         if: needs.changes.outputs.rust_core == 'true'
@@ -575,6 +612,9 @@ jobs:
 
       - name: Check API docs are up to date
         run: make check-api-docs
+
+      - name: Check OpenAPI specification coverage
+        run: make check-openapi-spec
 
   # ── 7a. CRD drift check ─────────────────────────────────────────────────────────
   crd-drift:
@@ -979,10 +1019,13 @@ jobs:
 
   # ── 13. Chart Render Diff Check ───────────────────────────────────────────────
   # Detects unintended Helm chart template drift by comparing rendered output
-  # against a stored baseline.
-  # Related: #1145 - Implement chart render diff checks to catch unintended template drift
+  # against the render goldens committed under charts/stellar-operator/rendered/.
+  # Related: #1045 - Add automated drift detection between Helm templates and
+  # rendered manifests. Supersedes the previous chart-diff check, whose baseline
+  # lived in gitignored .cache/ and was therefore recreated (never compared) on
+  # every CI run.
   chart-diff-check:
-    name: Chart Render Diff Check
+    name: Helm Template Drift Detection
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [changes]
@@ -995,8 +1038,22 @@ jobs:
         with:
           version: "3.14.0"
 
-      - name: Run chart render diff check
-        run: bash scripts/check-chart-diff.sh
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install YAML tooling
+        run: pip install --quiet pyyaml
+
+      - name: Detect Helm template drift
+        run: bash scripts/check-helm-drift.sh
+
+      - name: Install bats
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Run drift gate unit tests
+        run: bats scripts/tests/helm-drift.bats
 
   # ── 16. Benchmark Sanity Check ────────────────────────────────────────────────
   # Runs quick benchmark sanity checks in PR pipelines to catch regressions.

@@ -139,9 +139,8 @@ nav:
   - Development:
     - Regeneration Guide: development/regeneration-guide.md
     - Repo Health Checklist: development/repo-health-checklist.md
-    - Load Testing & Performance Budgets: load-testing.md
-    - Feature Flag Rollouts: feature-flag-rollouts.md
-    - Distributed Rate Limiting: distributed-rate-limiting.md
+    - Static Analysis Gates: development/static-analysis-gates.md
+    - Reconciler Phases: reconciler-phases.md
   - Contributing:
     - contributing/index.md
     - Development Setup: contributing/development-setup.md

@@ -2,6 +2,7 @@
 //!
 //! Provides automated scanning, runtime monitoring, and automated remediation.
 
+pub mod cert_manager;
 pub mod compliance;
 pub mod kms;
 pub mod policy;
@@ -12,6 +13,8 @@ pub mod secret_metrics;
 pub mod secret_rotation;
 pub mod secret_sync;
 pub mod vulnerability;
+
+pub use cert_manager::{CertManager, CertificateInfo, CertStatus, CertMetrics, RenewalConfig};
 
 use serde::{Deserialize, Serialize};
 

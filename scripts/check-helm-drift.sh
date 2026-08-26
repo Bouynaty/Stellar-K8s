@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# check-helm-drift.sh — Automated drift detection between Helm templates and
+# rendered manifests (issue #1045).
+#
+# Why this exists
+# ---------------
+# scripts/check-chart-diff.sh compares a render against a baseline kept in
+# .cache/, which is gitignored. In CI that directory is always empty, so the
+# baseline is (re)created on every run and the comparison never actually
+# happens — drift detection that structurally cannot fail.
+#
+# This script stores the baseline in git instead: charts/stellar-operator/
+# rendered/<profile>.yaml is committed, reviewed like any other file, and
+# diffed on every run. A template change that alters rendered output shows up
+# as a concrete manifest diff in the pull request.
+#
+# Renders are normalised through scripts/sort-manifests.py, which sorts
+# documents and recursively sorts mapping keys, so the goldens are stable
+# regardless of Helm's map iteration order.
+#
+# Usage:
+#   scripts/check-helm-drift.sh              # verify; non-zero on drift
+#   scripts/check-helm-drift.sh --update     # regenerate the golden files
+#   scripts/check-helm-drift.sh --profile ha # restrict to one profile
+#   scripts/check-helm-drift.sh --list       # show the configured profiles
+#
+# Exit codes: 0 = no drift, 1 = drift or render failure, 2 = bad invocation.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+CHART_DIR="${PROJECT_ROOT}/charts/stellar-operator"
+GOLDEN_DIR="${CHART_DIR}/rendered"
+SORTER="${SCRIPT_DIR}/sort-manifests.py"
+RELEASE_NAME="stellar-operator"
+RELEASE_NAMESPACE="stellar-system"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# ── Render profiles ───────────────────────────────────────────────────────────
+# Each entry is "<name>|<extra helm args>". Keep the list in sync with the
+# documented values files; a profile with no golden file is treated as drift
+# so that adding a values file cannot silently escape coverage.
+PROFILES=(
+  "default|"
+  "ha|-f ${CHART_DIR}/values-ha.yaml"
+  "production|-f ${CHART_DIR}/examples/values-production.yaml"
+  "development|-f ${CHART_DIR}/examples/values-development.yaml"
+  "dr-cross-region|--set featureFlags.enableDr=true --set crossRegion.enabled=true --set crossRegion.peerClusters[0].clusterId=us-west-2 --set crossRegion.peerClusters[0].enabled=true --set crossRegion.peerClusters[0].endpoint=api.us-west-2.example.com --set crossRegion.peerClusters[0].region=us-west-2"
+)
+
+UPDATE=0
+ONLY_PROFILE=""
+DRIFTED=0
+FAILED=0
+
+usage() {
+  sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --update) UPDATE=1; shift ;;
+    --profile) ONLY_PROFILE="${2:?--profile needs a name}"; shift 2 ;;
+    --list)
+      for entry in "${PROFILES[@]}"; do echo "${entry%%|*}"; done
+      exit 0 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+command -v helm >/dev/null 2>&1 || { echo "ERROR: helm is not installed" >&2; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 is not installed" >&2; exit 1; }
+[[ -d "${CHART_DIR}" ]] || { echo "ERROR: chart directory not found: ${CHART_DIR}" >&2; exit 1; }
+
+TEMP_DIR="$(mktemp -d)"
+cleanup() { rm -rf "${TEMP_DIR}"; }
+trap cleanup EXIT
+
+mkdir -p "${GOLDEN_DIR}"
+
+echo "→ Helm template drift detection"
+echo "  chart:    ${CHART_DIR#"${PROJECT_ROOT}"/}"
+echo "  goldens:  ${GOLDEN_DIR#"${PROJECT_ROOT}"/}"
+echo ""
+
+render_profile() {
+  # render_profile <name> <extra-args> <destination>
+  local name="$1" extra="$2" dest="$3"
+  local stderr_file="${TEMP_DIR}/${name}.stderr"
+
+  # shellcheck disable=SC2086 # $extra intentionally word-splits into helm flags
+  if ! helm template "${RELEASE_NAME}" "${CHART_DIR}" \
+        --namespace "${RELEASE_NAMESPACE}" \
+        ${extra} 2>"${stderr_file}" \
+      | python3 "${SORTER}" > "${dest}" 2>>"${stderr_file}"; then
+    echo -e "  ${RED}✗${NC} ${name}: render failed"
+    sed 's/^/      /' "${stderr_file}"
+    return 1
+  fi
+
+  if [[ ! -s "${dest}" ]]; then
+    echo -e "  ${RED}✗${NC} ${name}: render produced no output"
+    return 1
+  fi
+  return 0
+}
+
+for entry in "${PROFILES[@]}"; do
+  name="${entry%%|*}"
+  extra="${entry#*|}"
+
+  if [[ -n "${ONLY_PROFILE}" && "${name}" != "${ONLY_PROFILE}" ]]; then
+    continue
+  fi
+
+  golden="${GOLDEN_DIR}/${name}.yaml"
+  actual="${TEMP_DIR}/${name}.yaml"
+
+  if ! render_profile "${name}" "${extra}" "${actual}"; then
+    FAILED=$((FAILED + 1))
+    continue
+  fi
+
+  docs="$(grep -c '^---$' "${actual}" || true)"
+
+  if [[ "${UPDATE}" -eq 1 ]]; then
+    cp "${actual}" "${golden}"
+    echo -e "  ${GREEN}✓${NC} ${name}: golden updated (${docs} documents)"
+    continue
+  fi
+
+  if [[ ! -f "${golden}" ]]; then
+    echo -e "  ${RED}✗${NC} ${name}: no golden file at ${golden#"${PROJECT_ROOT}"/}"
+    echo "      run: scripts/check-helm-drift.sh --update"
+    DRIFTED=$((DRIFTED + 1))
+    continue
+  fi
+
+  if diff -u "${golden}" "${actual}" > "${TEMP_DIR}/${name}.diff" 2>&1; then
+    echo -e "  ${GREEN}✓${NC} ${name}: no drift (${docs} documents)"
+  else
+    changed="$(grep -c '^[+-]' "${TEMP_DIR}/${name}.diff" || true)"
+    echo -e "  ${RED}✗${NC} ${name}: rendered output drifted from the golden file (${changed} changed lines)"
+    echo ""
+    head -80 "${TEMP_DIR}/${name}.diff" | sed 's/^/      /'
+    if [[ "${changed}" -gt 80 ]]; then
+      echo "      … diff truncated; run 'diff -u ${golden#"${PROJECT_ROOT}"/} <(helm template …)' for the rest"
+    fi
+    echo ""
+    DRIFTED=$((DRIFTED + 1))
+  fi
+done
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+if [[ "${UPDATE}" -eq 1 ]]; then
+  echo "Helm Drift: goldens regenerated"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Review the diff with 'git diff ${GOLDEN_DIR#"${PROJECT_ROOT}"/}' before committing."
+  exit 0
+fi
+
+echo -e "Helm Drift Summary:  drifted: ${DRIFTED}   render failures: ${FAILED}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if [[ "${DRIFTED}" -gt 0 || "${FAILED}" -gt 0 ]]; then
+  echo ""
+  echo -e "${RED}❌ Helm template drift detected${NC}"
+  echo ""
+  echo "   If the change is intentional, regenerate and commit the goldens:"
+  echo "     make helm-drift-update"
+  echo "     git add ${GOLDEN_DIR#"${PROJECT_ROOT}"/}"
+  exit 1
+fi
+
+echo ""
+echo -e "${GREEN}✅ Rendered manifests match the committed goldens${NC}"
+exit 0

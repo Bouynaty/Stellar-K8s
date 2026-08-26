@@ -330,19 +330,18 @@ featureFlags:
   # Gates Helm-rendered DR / cross-region bridge resources and runtime DR drills.
   enableDr: false
 
-  # Gradual-rollout flags evaluated by src/feature_flags.rs (issue #1337).
-  # Each entry renders a `flag.<name>` key in the stellar-operator-config
-  # ConfigMap. Toggle a rollout by editing that ConfigMap — no redeploy.
-  rollouts: {}
-  #  new_archive_pruner:
+# Cross-region state synchronization. Only rendered when
+# featureFlags.enableDr is also true (see templates/cross-region-bridge.yaml).
+crossRegion:
+  enabled: false
+  # Peer clusters this operator bridges to. Each entry renders an
+  # ExternalName Service plus a NetworkPolicy egress rule.
+  peerClusters: []
+  #  - clusterId: us-west-2
   #    enabled: true
-  #    rollout_percentage: 25          # 0-100, deterministic per subject
-  #    segments:                       # all must match to be eligible
-  #      - key: env
-  #        op: in                      # in | notIn | contains | prefix
-  #        values: [staging, canary]
-  #    allow_subjects: [tenant-alpha]  # always on, bypasses the percentage
-  #    deny_subjects: [tenant-critical]  # always off, wins over everything
+  #    endpoint: api.us-west-2.example.com   # becomes Service.spec.externalName
+  #    region: us-west-2
+  #    port: 11625
 
 security:
   audit:
