@@ -7,9 +7,84 @@ This document describes the automated performance benchmarking suite for the Ste
 The benchmarking suite consists of:
 
 - **k6 Load Tests**: Comprehensive load testing scripts measuring API endpoints, CRD operations, and reconciliation loops
-- **Baseline Management**: Version-taggeds performance baselines for regression comparison
-- **Regression Detection**: Automated comparison tool that fails builds when performance degrades
+- **Criterion CRD Benchmarks**: Rust-native micro-benchmarks for CRD create/update/delete operations with concurrent load testing
+- **Baseline Management**: Version-tagged performance baselines for regression comparison
+- **Regression Detection**: Automated comparison tool that fails builds when performance degrades by >10%
 - **CI/CD Integration**: GitHub Actions workflow for automated benchmarking on every PR and release
+
+## CRD Operation Benchmarks (Issue #1287)
+
+Criterion-based benchmarks for CRD create, update, and delete operations:
+
+```bash
+# Build benchmarks (compile check)
+make crd-benchmark
+
+# Run full CRD benchmarks
+cargo bench --bench crd_operations
+
+# Run specific benchmark groups
+cargo bench --bench crd_operations -- crd_create
+cargo bench --bench crd_operations -- crd_update
+cargo bench --bench crd_operations -- crd_delete
+cargo bench --bench crd_operations -- crd_concurrent
+```
+
+### Benchmark Groups
+
+| Group | Description |
+|-------|-------------|
+| `crd_create` | Create latency for minimal, standard, autoscaling, and full-config StellarNodes |
+| `crd_update` | Update latency for replica scaling and label changes |
+| `crd_delete` | Single and batch namespace deletion |
+| `crd_concurrent` | Concurrent operations at 1, 5, 10, 25, and 50 workers |
+
+### Regression Detection
+
+```bash
+# Check current results against baseline
+python3 scripts/check-crd-performance.py \
+    --current results/crd-benchmark.json \
+    --baseline benchmarks/baselines/crd-performance-v0.1.0.json \
+    --threshold 10
+```
+
+**Regression policy**: FAIL/ALERT when any metric regresses by more than 10%.
+
+### Baseline Format
+
+Baselines are stored in `benchmarks/baselines/crd-performance-v0.1.0.json`:
+
+```json
+{
+  "version": "crd-v0.1.0",
+  "metrics": {
+    "crd_create_minimal_ms": 45.0,
+    "crd_create_standard_ms": 65.0,
+    ...
+  },
+  "thresholds": {
+    "regression_percent": 10
+  }
+}
+```
+
+### Updating Baselines
+
+After an intentional performance improvement:
+
+1. Run the benchmarks to generate new results
+2. Compare against the current baseline
+3. If results are consistently better, update the baseline:
+
+```bash
+python3 scripts/check-crd-performance.py \
+    --current results/crd-benchmark.json \
+    --baseline benchmarks/baselines/crd-performance-v0.1.0.json \
+    --output results/crd-regression-report.json
+```
+
+Then update `benchmarks/baselines/crd-performance-v0.1.0.json` with the new values.
 
 ## Quick Start
 
