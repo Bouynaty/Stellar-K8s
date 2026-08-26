@@ -76,8 +76,8 @@ cargo audit
 # Check for outdated dependencies
 cargo outdated
 
-# Generate security report
-./scripts/security-check.sh
+# Run secret scanning
+./scripts/check-secrets.sh
 ```
 
 ### Manual Security Reviews
@@ -127,7 +127,7 @@ securityContext:
 ### Documentation
 
 - [Dependency Security Audit](./DEPENDENCY_SECURITY_AUDIT.md)
-- [Security Check Script](./scripts/security-check.sh)
+- [Secret Scanning Script](./scripts/check-secrets.sh)
 - [Deny Configuration](./deny.toml)
 
 ### Tools

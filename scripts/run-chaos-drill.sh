@@ -183,7 +183,7 @@ calculate_results() {
     esac
     
     local pass=false
-    if [ ${rto} -le ${target_rto} ]; then
+    if [ "${rto}" -le "${target_rto}" ]; then
         pass=true
     fi
     

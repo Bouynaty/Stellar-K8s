@@ -2,74 +2,16 @@
 # audit (issue #1150). Paths are relative to the repository root and use
 # forward slashes. Blank lines and comments (#) are ignored.
 #
+# This list is intentionally EMPTY.
+#
+# The cleanup wave ("remove unnecessary files, redundant checks, dead code,
+# and overly crowded paths") deleted every allowlisted orphan file, declared
+# the two load-bearing src/bin binaries (crdgen, stellar-log-shipper) in
+# Cargo.toml, and fixed the audit to resolve `mod` declarations in declared
+# `[[bin]]` crate roots as siblings (matching rustc), which un-orphaned
+# src/explain.rs, src/audit_report.rs, and src/sql.rs (live code of the
+# kubectl-stellar binary).
+#
 # Adding a path here silences the orphan-file hard failure for that file.
 # Prefer wiring the module into lib.rs / a [[bin]] entry, or deleting it,
 # over growing this list. CI fails when a NEW orphan appears that is not listed.
-
-src/audit_report.rs
-src/bin/crdgen.rs
-src/bin/stellar-log-shipper.rs
-src/bin/stellar-logs.rs
-src/caching/cache.rs
-src/caching/distributed.rs
-src/caching/invalidation.rs
-src/caching/metrics.rs
-src/caching/mod.rs
-src/caching/warming.rs
-src/chaos/analytics.rs
-src/chaos/fault_injection.rs
-src/chaos/mod.rs
-src/chaos/scheduler.rs
-src/controller/federation_controller.rs
-src/controller/geo_load_balancer.rs
-src/controller/stellar_secret_controller.rs
-src/controller/upgrade_orchestrator.rs
-src/cost_optimization/allocation.rs
-src/cost_optimization/anomaly.rs
-src/cost_optimization/calculator.rs
-src/cost_optimization/dashboard.rs
-src/cost_optimization/forecast.rs
-src/cost_optimization/mod.rs
-src/cost_optimization/model.rs
-src/cost_optimization/recommender.rs
-src/crd/chaos_experiment.rs
-src/crd/stellar_secret.rs
-src/event_sourcing/bus.rs
-src/event_sourcing/command.rs
-src/event_sourcing/event.rs
-src/event_sourcing/event_store.rs
-src/event_sourcing/mod.rs
-src/event_sourcing/projection.rs
-src/event_sourcing/replay.rs
-src/event_sourcing/snapshot.rs
-src/explain.rs
-src/identity/access_control.rs
-src/identity/audit.rs
-src/identity/federation.rs
-src/identity/mfa.rs
-src/identity/mod.rs
-src/identity/provider.rs
-src/identity/session.rs
-src/identity/store.rs
-src/identity/types.rs
-src/metrics/stellar_metrics.rs
-src/service_discovery/catalog.rs
-src/service_discovery/graph.rs
-src/service_discovery/health.rs
-src/service_discovery/load_balancer.rs
-src/service_discovery/mesh.rs
-src/service_discovery/metrics.rs
-src/service_discovery/mod.rs
-src/service_discovery/registry.rs
-src/service_discovery/version.rs
-src/sql.rs
-src/workflow/audit.rs
-src/workflow/crd.rs
-src/workflow/dag.rs
-src/workflow/dependency.rs
-src/workflow/executor.rs
-src/workflow/mod.rs
-src/workflow/monitoring.rs
-src/workflow/task.rs
-src/workflow/templates.rs
-src/workflow/visualization.rs

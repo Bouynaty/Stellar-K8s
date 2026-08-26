@@ -343,7 +343,7 @@ cargo audit  # Uses .cargo/audit.toml config
 
 ### Release gate vs release.yml
 - `release.yml` `validate` owns semver + Cargo.toml matching; helm job owns helm lint.
-- `release-gate.yml` / `scripts/release-gate.sh` keep unique value only:
+- `release-gate.yml` keeps unique value only:
   CHANGELOG entry + helm unittest.
 
 ---
