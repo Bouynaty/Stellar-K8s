@@ -42,6 +42,40 @@ This project implements comprehensive dependency security monitoring:
 - **License Compliance**: Strict allowlist of permitted licenses
 - **Vulnerability Tracking**: All security advisories reviewed and documented
 - **Supply Chain Security**: Dependency provenance verification
+- **Secret Scanning**: Gitleaks + custom pattern-based secret detection
+
+### Secret Scanning
+
+Multi-layered secret detection:
+
+1. **Gitleaks** — Pattern-based scanning for AWS keys, GitHub tokens, PEM keys, Stellar seeds, connection strings
+2. **Custom scanner** (`scripts/check-secrets.sh`) — Stellar-specific patterns, shell echo hygiene, GitHub Actions secret safety, Dockerfile hygiene, Rust source literals
+3. **Pre-commit hooks** — Local scanning before commit
+
+Configuration: `.gitleaks.toml`
+Custom scanner: `scripts/check-secrets.sh`
+
+### License Compliance
+
+- **cargo-deny**: Enforces approved license allowlist (MIT, Apache-2.0, BSD-2/3, ISC, MPL-2.0, etc.)
+- **License headers**: Automated enforcement of Apache-2.0 headers on Rust, Shell, and YAML files
+- **Third-party tracking**: `THIRD_PARTY_LICENSES.md` verified in CI
+
+Denied licenses: Any license not in the explicit allowlist in `deny.toml`.
+
+### Security Scanning
+
+```bash
+# Run all security checks
+make security-all
+
+# Individual checks
+cargo audit                    # Vulnerability scan
+cargo deny check               # License + bans + advisories
+gitleaks detect --config .gitleaks.toml  # Secret scanning
+bash scripts/check-secrets.sh  # Custom secret patterns
+make check-license-headers     # License header enforcement
+```
 
 ### Build Security
 
