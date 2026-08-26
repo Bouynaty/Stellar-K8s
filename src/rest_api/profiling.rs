@@ -307,21 +307,136 @@ use handlers::{cpu_profile, heap_profile};
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, AtomicU64};
+    use std::sync::{Arc, Mutex, MutexGuard};
 
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
-    use axum::middleware::{self, Next};
-    use axum::response::Response;
+    use axum::middleware;
     use axum::routing::get;
-    use axum::{Extension, Router};
+    use axum::Router;
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    use kube::Client;
     use tower::ServiceExt;
+    use tracing_subscriber::{EnvFilter, Registry};
 
-    use crate::rest_api::auth::{api_admin, RequestIdentity};
-    use crate::rest_api::oidc::ApiRole;
-    use crate::rest_api::versioning::{self, VersionPolicy};
+    use crate::controller::ControllerState;
+    use crate::rest_api::auth::{api_admin, api_reader};
+    use crate::rest_api::oidc::{ApiRole, OidcConfig};
 
     use super::*;
+
+    /// Serialize env mutations for profiling route-registration tests.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn lock_env() -> MutexGuard<'static, ()> {
+        ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn make_reload_handle() -> tracing_subscriber::reload::Handle<EnvFilter, Registry> {
+        let env_filter = EnvFilter::new("info");
+        let (_layer, handle): (
+            tracing_subscriber::reload::Layer<EnvFilter, Registry>,
+            tracing_subscriber::reload::Handle<EnvFilter, Registry>,
+        ) = tracing_subscriber::reload::Layer::new(env_filter);
+        handle
+    }
+
+    /// Dummy kube client (never used when oidc_config is set; OIDC path skips TokenReview).
+    fn dummy_client() -> Client {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let config = kube::Config::new("http://127.0.0.1:1".parse().unwrap());
+        Client::try_from(config).expect("dummy kube client")
+    }
+
+    fn test_oidc_config() -> OidcConfig {
+        OidcConfig {
+            issuer: "https://accounts.example.test".into(),
+            audience: "stellar-operator".into(),
+            jwks_uri: "https://accounts.example.test/.well-known/jwks.json".into(),
+            roles_claim: "roles".into(),
+        }
+    }
+
+    fn test_state() -> Arc<ControllerState> {
+        let audit_log = Arc::new(crate::controller::audit_log::AuditLog::new());
+        Arc::new(ControllerState {
+            client: dummy_client(),
+            enable_mtls: false,
+            operator_namespace: "stellar-operator".into(),
+            watch_namespace: None,
+            mtls_config: None,
+            dry_run: true,
+            retry_budget_retriable_secs: 5,
+            retry_budget_nonretriable_secs: 60,
+            retry_budget_max_attempts: 3,
+            is_leader: Arc::new(AtomicBool::new(true)),
+            event_reporter: kube::runtime::events::Reporter {
+                controller: "stellar-operator".into(),
+                instance: None,
+            },
+            operator_config: Arc::new(Default::default()),
+            reconcile_id_counter: AtomicU64::new(0),
+            last_reconcile_success: Arc::new(AtomicU64::new(0)),
+            log_reload_handle: make_reload_handle(),
+            log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
+            last_event_received: Arc::new(AtomicU64::new(0)),
+            job_registry: Arc::new(crate::controller::background_jobs::JobRegistry::new()),
+            audit_log: audit_log.clone(),
+            audit_recorder: Arc::new(crate::controller::audit_recorder::AuditRecorder::new(
+                audit_log,
+                vec![],
+                None,
+            )),
+            anomaly_detector: Arc::new(crate::controller::anomaly_detection::AnomalyDetector::new(
+                Default::default(),
+            )),
+            plugin_registry: Arc::new(crate::plugin_sdk::PluginRegistry::new()),
+            analytics_engine: Arc::new(crate::logging::analytics::AnalyticsEngine::new(
+                std::time::Duration::from_secs(3600),
+            )),
+            oidc_config: Some(test_oidc_config()),
+            metrics_store: Arc::new(crate::rest_api::metrics_store::StellarMetricsStore::new()),
+        })
+    }
+
+    /// Unsigned JWT accepted by structural OIDC validation (signature not verified yet).
+    fn oidc_token(roles: &[&str]) -> String {
+        let exp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 3600;
+        let header = URL_SAFE_NO_PAD.encode(r#"{"alg":"RS256","typ":"JWT"}"#);
+        let payload = serde_json::json!({
+            "iss": "https://accounts.example.test",
+            "aud": "stellar-operator",
+            "exp": exp,
+            "sub": "test-user",
+            "roles": roles,
+        });
+        let payload_enc = URL_SAFE_NO_PAD.encode(serde_json::to_string(&payload).unwrap());
+        format!("{header}.{payload_enc}.fakesig")
+    }
+
+    async fn stub_ok() -> &'static str {
+        "profile-ok"
+    }
+
+    /// Real production middleware stack for profiling routes: `api_reader` then `api_admin`.
+    fn profiling_auth_app(state: Arc<ControllerState>) -> Router {
+        Router::new()
+            .route(
+                "/api/v1/debug/pprof/profile",
+                get(stub_ok).route_layer(middleware::from_fn(api_admin)),
+            )
+            .route(
+                "/api/v1/debug/pprof/heap",
+                get(stub_ok).route_layer(middleware::from_fn(api_admin)),
+            )
+            .layer(middleware::from_fn_with_state(state.clone(), api_reader))
+            .with_state(state)
+    }
 
     #[test]
     fn runtime_flag_parser_truthy_values() {
@@ -363,112 +478,91 @@ mod tests {
         );
     }
 
-    async fn inject_admin(mut request: Request<Body>, next: Next) -> Response {
-        request.extensions_mut().insert(RequestIdentity {
-            subject: "test-admin".into(),
-            roles: vec![ApiRole::Admin],
-            auth_type: "test".into(),
-            groups: vec![],
-        });
-        next.run(request).await
+    #[tokio::test]
+    async fn missing_authorization_returns_401_via_api_reader() {
+        let app = profiling_auth_app(test_state());
+        for uri in [
+            "/api/v1/debug/pprof/profile?seconds=1",
+            "/api/v1/debug/pprof/heap",
+        ] {
+            let response = app
+                .clone()
+                .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                StatusCode::UNAUTHORIZED,
+                "expected 401 from real api_reader for {uri}"
+            );
+        }
     }
 
-    async fn inject_reader(mut request: Request<Body>, next: Next) -> Response {
-        request.extensions_mut().insert(RequestIdentity {
-            subject: "test-reader".into(),
-            roles: vec![ApiRole::Reader],
-            auth_type: "test".into(),
-            groups: vec![],
-        });
-        next.run(request).await
+    #[tokio::test]
+    async fn reader_role_returns_403_via_api_admin() {
+        let app = profiling_auth_app(test_state());
+        let token = oidc_token(&["Reader"]);
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/debug/pprof/profile?seconds=1")
+                    .header("Authorization", format!("Bearer {token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 
-    async fn stub_ok() -> &'static str {
-        "profile-ok"
+    #[tokio::test]
+    async fn admin_role_reaches_profiling_handler() {
+        let app = profiling_auth_app(test_state());
+        let token = oidc_token(&["Admin"]);
+        for uri in [
+            "/api/v1/debug/pprof/profile?seconds=1",
+            "/api/v1/debug/pprof/heap",
+        ] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(uri)
+                        .header("Authorization", format!("Bearer {token}"))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                StatusCode::OK,
+                "Admin should reach handler for {uri}"
+            );
+            let body = axum::body::to_bytes(response.into_body(), 1024)
+                .await
+                .unwrap();
+            assert_eq!(&body[..], b"profile-ok");
+        }
     }
 
-    fn admin_gated_app() -> Router {
+    #[tokio::test]
+    async fn profiling_paths_follow_api_v1_versioning_headers() {
+        use axum::Extension;
+
+        use crate::rest_api::versioning::{self, VersionPolicy};
+
+        let state = test_state();
         let policy = Arc::new(VersionPolicy::default());
-        Router::new()
-            .route(
-                "/api/v1/debug/pprof/profile",
-                get(stub_ok).route_layer(middleware::from_fn(api_admin)),
-            )
-            .route(
-                "/api/v1/debug/pprof/heap",
-                get(stub_ok).route_layer(middleware::from_fn(api_admin)),
-            )
+        let app = profiling_auth_app(state)
             .layer(middleware::from_fn(versioning::inject_api_version_headers))
-            .layer(Extension(policy))
-    }
-
-    #[tokio::test]
-    async fn unauthenticated_cpu_profile_rejected_by_admin_gate() {
-        let app = admin_gated_app();
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/api/v1/debug/pprof/profile?seconds=1")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    }
-
-    #[tokio::test]
-    async fn unauthenticated_heap_profile_rejected_by_admin_gate() {
-        let app = admin_gated_app();
+            .layer(Extension(policy));
+        let token = oidc_token(&["Admin"]);
         let response = app
             .oneshot(
                 Request::builder()
                     .uri("/api/v1/debug/pprof/heap")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    }
-
-    #[tokio::test]
-    async fn reader_role_forbidden_for_profiling() {
-        let app = admin_gated_app().layer(middleware::from_fn(inject_reader));
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/api/v1/debug/pprof/profile?seconds=1")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    }
-
-    #[tokio::test]
-    async fn admin_reaches_profiling_handler() {
-        let app = admin_gated_app().layer(middleware::from_fn(inject_admin));
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/api/v1/debug/pprof/profile?seconds=1")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-    }
-
-    #[tokio::test]
-    async fn profiling_paths_follow_api_v1_versioning() {
-        let app = admin_gated_app().layer(middleware::from_fn(inject_admin));
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/api/v1/debug/pprof/heap")
+                    .header("Authorization", format!("Bearer {token}"))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -479,25 +573,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn missing_authorization_rejected_before_handler() {
-        // Mirrors api_reader's missing-Bearer behavior on the protected router.
-        async fn require_bearer(
-            headers: axum::http::HeaderMap,
-            request: Request<Body>,
-            next: Next,
-        ) -> Result<Response, StatusCode> {
-            match headers
-                .get(axum::http::header::AUTHORIZATION)
-                .and_then(|v| v.to_str().ok())
-            {
-                Some(v) if v.starts_with("Bearer ") => Ok(next.run(request).await),
-                _ => Err(StatusCode::UNAUTHORIZED),
-            }
-        }
+    async fn runtime_disabled_profiling_routes_not_registered() {
+        let _guard = lock_env();
+        let previous = std::env::var(PROFILING_ENABLED_ENV).ok();
+        std::env::remove_var(PROFILING_ENABLED_ENV);
+        std::env::set_var(PROFILING_ENABLED_ENV, "false");
 
-        let app = admin_gated_app().layer(middleware::from_fn(require_bearer));
-        let cpu = app
-            .clone()
+        let app = attach_profiling_routes(Router::new().route("/health", get(stub_ok)));
+        let response = app
             .oneshot(
                 Request::builder()
                     .uri("/api/v1/debug/pprof/profile?seconds=1")
@@ -506,9 +589,28 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(cpu.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            response.status(),
+            StatusCode::NOT_FOUND,
+            "disabled runtime flag must not expose profiling routes"
+        );
 
-        let heap = app
+        match previous {
+            Some(v) => std::env::set_var(PROFILING_ENABLED_ENV, v),
+            None => std::env::remove_var(PROFILING_ENABLED_ENV),
+        }
+    }
+
+    #[cfg(feature = "profiling")]
+    #[tokio::test]
+    async fn runtime_enabled_profiling_routes_registered() {
+        let _guard = lock_env();
+        let previous = std::env::var(PROFILING_ENABLED_ENV).ok();
+        std::env::set_var(PROFILING_ENABLED_ENV, "true");
+
+        // Routes are registered with api_admin; absence of identity ? 403 proves the route exists.
+        let app = attach_profiling_routes(Router::new());
+        let response = app
             .oneshot(
                 Request::builder()
                     .uri("/api/v1/debug/pprof/heap")
@@ -517,23 +619,47 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(heap.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            response.status(),
+            StatusCode::FORBIDDEN,
+            "enabled runtime flag must register profiling routes (api_admin rejects bare requests)"
+        );
+
+        match previous {
+            Some(v) => std::env::set_var(PROFILING_ENABLED_ENV, v),
+            None => std::env::remove_var(PROFILING_ENABLED_ENV),
+        }
     }
 
-    #[test]
-    fn attach_without_runtime_flag_does_not_panic() {
-        let _ = profiling_runtime_enabled();
-        let router = Router::new().route("/health", get(stub_ok));
-        let _ = attach_profiling_routes(router);
+    #[cfg(not(feature = "profiling"))]
+    #[tokio::test]
+    async fn without_profiling_feature_routes_unavailable_even_if_env_set() {
+        let _guard = lock_env();
+        let previous = std::env::var(PROFILING_ENABLED_ENV).ok();
+        std::env::set_var(PROFILING_ENABLED_ENV, "true");
+
+        let app = attach_profiling_routes(Router::new());
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/debug/pprof/profile")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+        match previous {
+            Some(v) => std::env::set_var(PROFILING_ENABLED_ENV, v),
+            None => std::env::remove_var(PROFILING_ENABLED_ENV),
+        }
     }
 
     #[cfg(feature = "profiling")]
     #[tokio::test]
     async fn invalid_cpu_format_rejected() {
-        let app = Router::new()
-            .route("/api/v1/debug/pprof/profile", get(cpu_profile))
-            .layer(middleware::from_fn(inject_admin));
-
+        let app = Router::new().route("/api/v1/debug/pprof/profile", get(cpu_profile));
         let response = app
             .oneshot(
                 Request::builder()
@@ -549,10 +675,7 @@ mod tests {
     #[cfg(feature = "profiling")]
     #[tokio::test]
     async fn invalid_cpu_seconds_rejected_by_handler() {
-        let app = Router::new()
-            .route("/api/v1/debug/pprof/profile", get(cpu_profile))
-            .layer(middleware::from_fn(inject_admin));
-
+        let app = Router::new().route("/api/v1/debug/pprof/profile", get(cpu_profile));
         let response = app
             .oneshot(
                 Request::builder()
@@ -563,5 +686,14 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    // Full CPU/heap profile generation (1-60s samples, jemalloc dumps) is not exercised in
+    // unit tests: it is slow, platform-dependent, and requires a writable temp dir + symbols.
+    // Handler bounds and auth/route registration above cover the production safety boundary;
+    // profile byte formats are validated in integration/CI against a profiling-featured image.
+    #[allow(dead_code)]
+    fn profile_output_integration_note() {
+        let _ = ApiRole::Admin;
     }
 }

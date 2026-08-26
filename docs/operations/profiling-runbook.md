@@ -14,7 +14,7 @@ Profiling is **off by default** and uses two independent gates:
    cargo build --release --features profiling
    ```
 
-   Container images used for production profiling must include this feature.
+   Container images used for production profiling must include this feature. Enabling Helm alone does not add the endpoints if the image was built without `profiling`.
 
 2. **Runtime:** set `REST_API_PROFILING_ENABLED=true` so routes are registered.
 
@@ -27,14 +27,17 @@ operator:
     enabled: true
 ```
 
-When `operator.profiling.enabled` is true, the chart sets:
+When `operator.profiling.enabled` is true (and the REST API is enabled), the chart sets:
 
-| Env var | Value |
-|---------|--------|
+| Env / mount | Value |
+|-------------|--------|
 | `REST_API_PROFILING_ENABLED` | `true` |
 | `MALLOC_CONF` | `prof:true,prof_active:true,lg_prof_sample:19` |
+| Volume `profiling-tmp` | ephemeral `emptyDir` mounted at `/tmp` |
 
 `MALLOC_CONF` turns on jemalloc allocation sampling for heap profiles. CPU profiles use the `pprof` crate and do not require jemalloc, but the same image feature enables both.
+
+**Writable temporary directory:** Heap dumps write a short-lived jemalloc profile into the process temp directory (`/tmp`) before converting it to pprof. The chart keeps `readOnlyRootFilesystem: true` and only mounts an ephemeral `emptyDir` at `/tmp` when profiling is enabled. That volume is not a hostPath and is discarded when the pod stops. Profiling-disabled deployments do not get this mount.
 
 ### Security requirements
 
@@ -52,7 +55,7 @@ operator:
     enabled: false
 ```
 
-Redeploy so the env vars are removed. Prefer a rebuild without `--features profiling` for long-lived images that should not expose the capability at all.
+Redeploy so the env vars and `/tmp` emptyDir mount are removed. Prefer a rebuild without `--features profiling` for long-lived images that should not expose the capability at all.
 
 ## Capturing a CPU profile
 
@@ -119,6 +122,8 @@ Open the flame graph view. Look for:
 
 ### Heap protobuf
 
+Heap responses are **gzip-compressed** pprof protobuf (jemalloc_pprof encoding). `go tool pprof` and Google `pprof` accept this format directly:
+
 ```bash
 pprof -http=:8081 ./target/release/stellar-operator heap-profile.pb
 ```
@@ -160,7 +165,7 @@ Compare only profiles taken under similar load and similar duration. Short sampl
 | `403` | Authenticated but not Admin | Grant Admin/RBAC admin verb (same as log-level POST) |
 | `400` `invalid_parameter` | `seconds` out of range or unsupported `format` | Use 1-60; omit format or set `proto` |
 | `429` `profiler_busy` | Overlapping CPU capture | Wait for the in-flight profile to finish |
-| `503` heap errors | jemalloc profiling inactive/unsupported | Confirm `MALLOC_CONF`, Linux image, and `--features profiling` |
+| `503` heap errors | jemalloc profiling inactive/unsupported, or temp write failed | Confirm `MALLOC_CONF`, Linux image with `--features profiling`, and that Helm mounted `/tmp` emptyDir when profiling is enabled |
 | Empty / unreadable stacks | Stripped binary or short sample | Longer capture; analyze with matching symbols |
 | Warning that feature is missing | Env set on a non-profiling build | Rebuild with `--features profiling` |
 

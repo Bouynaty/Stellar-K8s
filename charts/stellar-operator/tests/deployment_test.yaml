@@ -92,6 +92,14 @@ tests:
           content:
             name: REST_API_PROFILING_ENABLED
             value: "true"
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: profiling-tmp
+            mountPath: /tmp
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
 
   - it: sets profiling env when operator.profiling.enabled
     set:
@@ -108,6 +116,19 @@ tests:
           content:
             name: MALLOC_CONF
             value: "prof:true,prof_active:true,lg_prof_sample:19"
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: profiling-tmp
+            emptyDir: {}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: profiling-tmp
+            mountPath: /tmp
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
 
   - it: exposes http and metrics ports
     asserts:

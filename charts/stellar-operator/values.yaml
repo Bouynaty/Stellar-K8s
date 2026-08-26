@@ -199,7 +199,9 @@ operator:
   watchNamespace: ""
   # Optional pprof CPU/heap endpoints (#1330). Off by default.
   # Requires an operator image built with `--features profiling`.
-  # When enabled, sets REST_API_PROFILING_ENABLED and jemalloc MALLOC_CONF.
+  # When enabled, sets REST_API_PROFILING_ENABLED and jemalloc MALLOC_CONF,
+  # and mounts an ephemeral emptyDir at /tmp for jemalloc heap dumps
+  # (readOnlyRootFilesystem stays true).
   # Endpoints remain Admin-authenticated under /api/v1/debug/pprof/*.
   profiling:
     enabled: false
