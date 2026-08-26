@@ -42,7 +42,7 @@ pub const DEFAULT_CURRENT_VERSION: &str = "v1";
 /// Outcome of classifying a path version against policy.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VersionLifecycle {
-    /// Supported stable version — no deprecation headers.
+    /// Supported stable version - no deprecation headers.
     Current,
     /// Still served; clients should migrate before sunset.
     Deprecated { sunset: Option<String> },
@@ -76,18 +76,17 @@ impl Default for VersionPolicy {
 impl VersionPolicy {
     /// Build policy from environment (documented in `docs/api/versioning.md`).
     ///
-    /// * `REST_API_CURRENT_VERSION` — default `v1`
-    /// * `REST_API_DEPRECATED_VERSIONS` — comma-separated ids (`v0,v1`)
-    /// * `REST_API_SUNSET_VERSIONS` — comma-separated retired ids
-    /// * `REST_API_SUNSET_DATES` — `v0=Wed, 01 Jul 2027 00:00:00 GMT;v1=...`
+    /// * `REST_API_CURRENT_VERSION` - default `v1`
+    /// * `REST_API_DEPRECATED_VERSIONS` - comma-separated ids (`v0,v1`)
+    /// * `REST_API_SUNSET_VERSIONS` - comma-separated retired ids
+    /// * `REST_API_SUNSET_DATES` - `v0=Wed, 01 Jul 2027 00:00:00 GMT;v1=...`
     pub fn from_env() -> Self {
         let current_version = std::env::var("REST_API_CURRENT_VERSION")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| DEFAULT_CURRENT_VERSION.to_string());
 
-        let dates =
-            parse_sunset_dates(&std::env::var("REST_API_SUNSET_DATES").unwrap_or_default());
+        let dates = parse_sunset_dates(&std::env::var("REST_API_SUNSET_DATES").unwrap_or_default());
 
         let mut deprecated = HashMap::new();
         for id in
@@ -282,10 +281,8 @@ pub fn apply_deprecation_headers(
     }
 }
 
-/// `GET /api/versions` — unversioned discovery document for coexistence.
-pub async fn list_versions(
-    Extension(policy): Extension<Arc<VersionPolicy>>,
-) -> impl IntoResponse {
+/// `GET /api/versions` - unversioned discovery document for coexistence.
+pub async fn list_versions(Extension(policy): Extension<Arc<VersionPolicy>>) -> impl IntoResponse {
     Json(policy.catalog())
 }
 
@@ -306,10 +303,7 @@ mod tests {
 
     fn policy_v1_deprecated() -> Arc<VersionPolicy> {
         let mut deprecated = HashMap::new();
-        deprecated.insert(
-            "v1".into(),
-            Some("Wed, 01 Sep 2027 00:00:00 GMT".into()),
-        );
+        deprecated.insert("v1".into(), Some("Wed, 01 Sep 2027 00:00:00 GMT".into()));
         Arc::new(VersionPolicy {
             current_version: "v2".into(),
             deprecated,
@@ -458,9 +452,8 @@ mod tests {
 
     #[test]
     fn parse_env_style_sunset_dates() {
-        let dates = parse_sunset_dates(
-            "v1=Wed, 01 Sep 2027 00:00:00 GMT;v0=Thu, 01 Jan 2026 00:00:00 GMT",
-        );
+        let dates =
+            parse_sunset_dates("v1=Wed, 01 Sep 2027 00:00:00 GMT;v0=Thu, 01 Jan 2026 00:00:00 GMT");
         assert_eq!(
             dates.get("v1").map(String::as_str),
             Some("Wed, 01 Sep 2027 00:00:00 GMT")
