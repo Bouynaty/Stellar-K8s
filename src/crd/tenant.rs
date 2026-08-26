@@ -147,6 +147,82 @@ impl TenantSpecCrd {
     }
 }
 
+impl TenantSpec {
+    /// Build the namespace labels required for tenant-aware selectors.
+    pub fn namespace_labels(&self) -> std::collections::BTreeMap<String, String> {
+        let mut labels = std::collections::BTreeMap::new();
+        let label_key = self
+            .network
+            .as_ref()
+            .map(|network| network.label_key.as_str())
+            .unwrap_or("tenant.stellar.org/id");
+        let label_value = self
+            .network
+            .as_ref()
+            .map(|network| network.label_value.as_str())
+            .unwrap_or(self.tenant_id.as_str());
+        labels.insert(label_key.to_string(), label_value.to_string());
+        labels.insert("stellar.org/tenant".to_string(), self.tenant_id.clone());
+        labels
+    }
+
+    /// Build a ResourceQuota manifest for the tenant namespace.
+    pub fn resource_quota_manifest(&self) -> serde_json::Value {
+        let mut hard = serde_json::Map::new();
+        if let Some(cpu) = &self.quota.cpu {
+            hard.insert(
+                "limits.cpu".to_string(),
+                serde_json::Value::String(cpu.clone()),
+            );
+            hard.insert(
+                "requests.cpu".to_string(),
+                serde_json::Value::String(cpu.clone()),
+            );
+        }
+        if let Some(memory) = &self.quota.memory {
+            hard.insert(
+                "limits.memory".to_string(),
+                serde_json::Value::String(memory.clone()),
+            );
+            hard.insert(
+                "requests.memory".to_string(),
+                serde_json::Value::String(memory.clone()),
+            );
+        }
+        serde_json::json!({
+            "apiVersion": "v1",
+            "kind": "ResourceQuota",
+            "metadata": { "name": format!("{}-quota", self.tenant_id), "namespace": self.namespace },
+            "spec": { "hard": hard }
+        })
+    }
+
+    /// Build a default-deny policy that permits traffic only within a tenant.
+    pub fn network_policy_manifest(&self) -> serde_json::Value {
+        let label_key = self
+            .network
+            .as_ref()
+            .map(|network| network.label_key.as_str())
+            .unwrap_or("tenant.stellar.org/id");
+        let label_value = self
+            .network
+            .as_ref()
+            .map(|network| network.label_value.as_str())
+            .unwrap_or(self.tenant_id.as_str());
+        serde_json::json!({
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "NetworkPolicy",
+            "metadata": { "name": format!("{}-isolation", self.tenant_id), "namespace": self.namespace },
+            "spec": {
+                "podSelector": {},
+                "policyTypes": ["Ingress", "Egress"],
+                "ingress": [{ "from": [{ "namespaceSelector": { "matchLabels": { label_key: label_value } } }] }],
+                "egress": [{ "to": [{ "namespaceSelector": { "matchLabels": { label_key: label_value } } }] }]
+            }
+        })
+    }
+}
+
 /// TenantUsage CRD placeholder for usage/billing metrics.
 ///
 /// This is intentionally minimal for now.

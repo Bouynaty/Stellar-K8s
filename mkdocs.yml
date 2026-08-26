@@ -131,6 +131,7 @@ nav:
       - Client Libraries: api/client-libraries.md
   - Security:
     - Security Compliance Guide: security/compliance-guide.md
+    - Container Image Security: container-image-security.md
     - Credentials & Secrets: security/credentials-and-secrets.md
     - Pod Security Standards: security/pss.md
   - Networking:
@@ -138,6 +139,8 @@ nav:
   - Development:
     - Regeneration Guide: development/regeneration-guide.md
     - Repo Health Checklist: development/repo-health-checklist.md
+    - Static Analysis Gates: development/static-analysis-gates.md
+    - Reconciler Phases: reconciler-phases.md
   - Contributing:
     - contributing/index.md
     - Development Setup: contributing/development-setup.md

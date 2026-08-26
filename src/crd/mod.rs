@@ -68,6 +68,10 @@ pub mod stellar_upgrade;
 pub mod tenant;
 pub mod traffic_policy;
 pub mod types;
+pub use tenant::{
+    TenantBillingSpec, TenantCondition, TenantNetworkIsolation, TenantQuotaHard, TenantSpec,
+    TenantSpecCrd, TenantStatus, TenantUsageCrd, TenantUsageSpec, TenantUsageStatus,
+};
 
 // New Epic CRDs (Wave 5)
 pub mod stellar_aiops;

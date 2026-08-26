@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stellar-chaos
+  labels:
+    app.kubernetes.io/part-of: stellar-network
+    purpose: chaos-engineering

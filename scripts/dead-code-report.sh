@@ -4,6 +4,8 @@
 # The report is informational: it always exits 0 and writes a Markdown
 # summary to target/reports/dead-code-report.md so CI can upload it as an
 # artifact. Set SKIP_CARGO=1 to skip the compiler pass (used for smoke tests).
+# shell-safety: disable-file SH001 -- this report must survive a failing cargo pass
+# and always exit 0, so `-e` is deliberately omitted from strict mode.
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

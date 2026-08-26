@@ -26,6 +26,7 @@ This document provides details on all error variants encountered in the Stellar-
 | **SK8S-020** | `ZipError(zip::result::ZipError)` | Failure during compression or extraction of snapshots. | Verify snapshot archive integrity and ensure adequate disk space is available for extraction. |
 | **SK8S-021** | `NetworkSafetyViolation(NetworkSafetyViolation)` | Cross-network safety policy violation (e.g. Mainnet and Testnet in same namespace). | Deploy nodes from different network types into separate Kubernetes namespaces to prevent ledger contamination. |
 | **SK8S-022** | `InternalError(String)` | Unexpected internal state error. | Check operator logs for `[SK8S-022]` details and report unrecoverable internal errors. |
+| **SK8S-023** | `PhaseTransitionError(String)` | The reconciler attempted a reconcile phase transition that the state machine in `src/controller/phases.rs` does not permit. | Always an operator bug, never a bad input. The message names the source phase, the target phase, and the legal moves; see [Reconciler Phases](reconciler-phases.md). |
 
 ## Error Helper Functions & Behavior Semantics
 

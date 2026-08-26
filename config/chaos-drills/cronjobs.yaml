@@ -1,0 +1,114 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: chaos-drill-node-failure
+  namespace: stellar-chaos
+  labels:
+    app: chaos-driller
+    drill-type: node-failure
+spec:
+  schedule: "0 2 1 * *"  # 2 AM on 1st of every month
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 12
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app: chaos-driller
+            drill-type: node-failure
+        spec:
+          serviceAccountName: chaos-driller
+          restartPolicy: Never
+          containers:
+          - name: chaos-drill
+            image: stellar-operator:latest
+            command: ["/scripts/run-chaos-drill.sh"]
+            args: ["node-kill", "60", "validator"]
+            env:
+            - name: NAMESPACE
+              value: "stellar"
+            - name: RESULTS_DIR
+              value: "/results/chaos"
+            volumeMounts:
+            - name: results
+              mountPath: /results
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 256Mi
+          volumes:
+          - name: results
+            persistentVolumeClaim:
+              claimName: chaos-results-pvc
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: chaos-drill-network-partition
+  namespace: stellar-chaos
+  labels:
+    app: chaos-driller
+    drill-type: network-partition
+spec:
+  schedule: "0 2 15 * *"  # 2 AM on 15th of every month
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 12
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app: chaos-driller
+            drill-type: network-partition
+        spec:
+          serviceAccountName: chaos-driller
+          restartPolicy: Never
+          containers:
+          - name: chaos-drill
+            image: stellar-operator:latest
+            command: ["/scripts/run-chaos-drill.sh"]
+            args: ["network", "120", "stellar-validator-0"]
+            env:
+            - name: NAMESPACE
+              value: "stellar"
+            - name: RESULTS_DIR
+              value: "/results/chaos"
+            volumeMounts:
+            - name: results
+              mountPath: /results
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 256Mi
+          volumes:
+          - name: results
+            persistentVolumeClaim:
+              claimName: chaos-results-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chaos-results-pvc
+  namespace: stellar-chaos
+  labels:
+    app: chaos-driller
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard

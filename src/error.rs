@@ -107,6 +107,12 @@ pub enum Error {
     /// An unexpected internal state error that doesn't fit other categories.
     #[error("[SK8S-022] Internal error: {0}")]
     InternalError(String),
+
+    /// The reconciler attempted a phase transition that the state machine in
+    /// [`crate::controller::phases`] does not permit. This always indicates a
+    /// bug in the reconcile pipeline rather than a bad user input.
+    #[error("[SK8S-023] Invalid reconcile phase transition: {0}")]
+    PhaseTransitionError(String),
 }
 
 /// Result type alias for operator operations

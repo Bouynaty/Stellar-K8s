@@ -13,6 +13,7 @@
 pub mod analytics;
 pub mod auth;
 pub mod developer_portal;
+pub mod distributed_ratelimit;
 pub mod handlers;
 pub mod openapi;
 pub mod plugin;
@@ -28,6 +29,11 @@ pub use auth::{
     OAuth2Auth,
 };
 pub use developer_portal::DEVELOPER_PORTAL_HTML;
+pub use distributed_ratelimit::{
+    DistributedCounterStore, DistributedRateLimitConfig, DistributedRateLimiter,
+    InMemoryCounterStore, RateLimitDecision, RateLimitMetrics, RedisCounterStore, RedisStoreConfig,
+    StoreError,
+};
 pub use handlers::{gateway_routes, GatewayStateWrapper};
 pub use openapi::{get_default_routes, ApiRoute, OpenApiDocument, OpenApiGenerator};
 pub use plugin::{GatewayPlugin, PluginContext, PluginHook, PluginManager};

@@ -1,0 +1,22 @@
+---
+# Configuration for scripts/check-shell-safety.py (issue #1049).
+#
+# The checker ships with safe defaults; this file only records repository
+# specific deviations. Every entry should carry a comment explaining why the
+# deviation is justified, so the gate does not quietly erode over time.
+#
+# Run `scripts/check-shell-safety.py --list-rules` for the rule catalogue.
+
+# Paths (repo-relative, fnmatch syntax) that are not scanned at all.
+exclude:
+  # Vendored/generated shell that this repository does not author.
+  - "target/*"
+  - "**/node_modules/*"
+
+# Per-rule severity overrides: error | warning | off.
+#
+# Nothing is downgraded today — the repository is clean at `error` severity
+# and we want it to stay that way. Prefer an inline
+# `# shell-safety: allow SHxxx -- reason` pragma over a global override, so a
+# waiver stays attached to the line that needs it.
+severity_overrides: {}
