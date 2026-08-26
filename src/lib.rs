@@ -93,6 +93,7 @@ pub mod infra;
 pub mod load_balancer;
 pub mod load_modeling;
 pub mod log_scrub;
+pub mod log_aggregation;
 pub mod logging;
 pub mod message_queue;
 pub mod network_observability;
