@@ -22,6 +22,17 @@ use tracing::{debug, warn};
 use crate::crd::{CoreSyncState, NodeType, StellarNode};
 use crate::error::{Error, Result};
 
+/// Snapshot of Core `/info` plus Kubernetes readiness for cutover decisions.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CoreInfoSnapshot {
+    pub sync_state: CoreSyncState,
+    pub ledger: Option<u64>,
+    pub pod_ready: bool,
+    /// Whether `/info` was successfully reached and parsed.
+    pub reachable: bool,
+    pub raw_state: Option<String>,
+}
+
 /// Stellar Core `/info` response (only the fields we care about).
 #[derive(Debug, Deserialize)]
 struct CoreInfoResponse {
@@ -68,7 +79,7 @@ pub async fn query_core_sync_state(pod_ip: &str) -> Result<CoreSyncState> {
 }
 
 /// Map the raw state string from stellar-core to a [`CoreSyncState`].
-fn parse_sync_state(raw: &str) -> CoreSyncState {
+pub fn parse_sync_state(raw: &str) -> CoreSyncState {
     let lower = raw.to_lowercase();
     if lower.contains("synced") {
         CoreSyncState::Synced

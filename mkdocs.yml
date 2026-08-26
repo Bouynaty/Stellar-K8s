@@ -114,6 +114,7 @@ nav:
   - Operations & Observability:
     - SCP Consensus Topology and Monitoring: scp-consensus-topology-and-monitoring.md
     - Production Profiling Runbook: operations/profiling-runbook.md
+    - Core Blue/Green Runbook: operations/core-blue-green-runbook.md
   - Troubleshooting:
     - troubleshooting/index.md
     - Common Issues: troubleshooting/common-issues.md
