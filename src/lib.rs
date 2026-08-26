@@ -86,6 +86,7 @@ pub mod data_pipeline;
 pub mod db_management;
 pub mod deployment_strategy;
 pub mod error;
+pub mod error_budget;
 pub mod event_processing;
 pub mod fork_detector;
 pub mod incident;
