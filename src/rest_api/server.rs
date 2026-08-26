@@ -216,6 +216,7 @@ pub async fn run_server(
             "/apis/custom.metrics.k8s.io/v1beta2/namespaces/:namespace/horizons.stellar.org/:name/:metric",
             get(custom_metrics::get_horizon_metric),
         )
+        .layer(middleware::from_fn(crate::telemetry::http_trace_middleware))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

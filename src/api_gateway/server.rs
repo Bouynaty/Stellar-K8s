@@ -108,6 +108,9 @@ impl ApiGateway {
             // Management endpoints
             .route("/_gateway/keys", axum::routing::get(list_keys))
             .route("/_gateway/analytics", axum::routing::get(get_analytics))
+            .layer(axum::middleware::from_fn(
+                crate::telemetry::http_trace_middleware,
+            ))
             .with_state(state)
     }
 
@@ -218,13 +221,18 @@ async fn handle_request(State(state): State<GatewayState>, req: Request) -> Resp
 
     // Proxy to upstream
     let upstream_url = format!("{}{}", route.upstream, route_match.remaining_path);
+    let mut headers = reqwest::header::HeaderMap::new();
+    crate::telemetry::inject_trace_headers(&mut headers);
+    if let Ok(value) = reqwest::header::HeaderValue::from_str(&normalized.content_type) {
+        headers.insert(reqwest::header::CONTENT_TYPE, value);
+    }
     let upstream_resp = state
         .http_client
         .request(
             reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
             &upstream_url,
         )
-        .header("Content-Type", &normalized.content_type)
+        .headers(headers)
         .body(serde_json::to_vec(&normalized.body).unwrap_or_default())
         .send()
         .await;

@@ -141,8 +141,8 @@ pub fn build_structured_log(event: &Event<'_>) -> StructuredLog {
         module: metadata.module_path().map(|s| s.to_string()),
         file: metadata.file().map(|s| s.to_string()),
         line: metadata.line(),
-        trace_id: None, // Injected by OtelTraceIdLayer
-        span_id: None,
+        trace_id: crate::telemetry::current_trace_context().map(|(tid, _)| tid),
+        span_id: crate::telemetry::current_trace_context().map(|(_, sid)| sid),
         k8s_node: std::env::var("K8S_NODE_NAME").ok(),
         k8s_namespace: std::env::var("K8S_NAMESPACE").ok(),
         reconcile_id: visitor
