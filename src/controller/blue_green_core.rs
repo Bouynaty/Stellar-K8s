@@ -612,7 +612,7 @@ async fn sts_fully_down(client: &Client, namespace: &str, name: &str) -> Result<
         Ok(sts) => {
             let desired = sts.spec.as_ref().and_then(|s| s.replicas);
             let ready = sts.status.as_ref().and_then(|s| s.ready_replicas);
-            let current = sts.status.as_ref().and_then(|s| s.replicas);
+            let current = sts.status.as_ref().map(|s| s.replicas);
             Ok(sts_status_fully_down(desired, ready, current))
         }
         Err(kube::Error::Api(e)) if e.code == 404 => Ok(true),
@@ -1696,8 +1696,7 @@ pub async fn reconcile_validator_blue_green(
 
         CoreBlueGreenPhase::BlueActive
         | CoreBlueGreenPhase::Failed
-        | CoreBlueGreenPhase::UpgradeDeferred
-        | CoreBlueGreenPhase::PreparingGreen => {}
+        | CoreBlueGreenPhase::UpgradeDeferred => {}
     }
 
     Ok(())
