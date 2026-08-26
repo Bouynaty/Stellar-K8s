@@ -4,8 +4,9 @@ This directory contains the API reference and integration documentation for Stel
 
 ## Contents
 
-- [StellarNode CRD Reference](../api-reference.md) — field-level CRD schema (generated)
-- [OpenAPI Specification](openapi.yaml) — operator REST API (Swagger-compatible)
+- [StellarNode CRD Reference](../api-reference.md) - field-level CRD schema (generated)
+- [OpenAPI Specification](openapi.yaml) - operator REST API (Swagger-compatible)
+- [API Versioning Strategy](versioning.md) - URL-path versions, deprecation, migration
 - [Webhook API](webhook.md)
 - [Metrics API](metrics.md)
 - [Client Libraries and SDK Guidance](client-libraries.md)

@@ -6,9 +6,14 @@ info:
     REST API exposed by the Stellar-K8s operator for cluster management, health checks,
     diagnostics, and the operator dashboard.
 
+    **API versioning:** Canonical public routes use URL path versions (`/api/v1/...`).
+    Discover supported versions with `GET /api/versions`. Deprecated versions (when
+    configured) include `Deprecation` and optional `Sunset` response headers.
+    See `docs/api/versioning.md`.
+
     **Authentication:** Protected routes require a valid API token (Bearer) or mTLS client
     certificate depending on deployment configuration. Public probe endpoints (`/healthz`,
-    `/readyz`, `/livez`) do not require authentication.
+    `/readyz`, `/livez`) and `GET /api/versions` do not require authentication.
 
     **Interactive explorer:** When the API gateway is enabled, open `/developer` for the
     bundled Swagger UI backed by the live OpenAPI document at `/gateway/openapi.json`.
@@ -59,6 +64,8 @@ tags:
     description: Operator audit log
   - name: Metrics
     description: Prometheus and custom metrics surfaces
+  - name: Versioning
+    description: API version catalog and lifecycle discovery
 
 paths:
   /health:
@@ -125,6 +132,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProbeResponse'
+
+  /api/versions:
+    get:
+      tags: [Versioning]
+      summary: List API versions and lifecycle status
+      description: |
+        Unversioned discovery document for URL-path API coexistence.
+        See docs/api/versioning.md.
+      operationId: listApiVersions
+      responses:
+        '200':
+          description: Version catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionCatalog'
 
   /leader:
     get:
@@ -499,6 +522,39 @@ components:
         reason:
           type: string
           nullable: true
+
+    VersionCatalog:
+      type: object
+      properties:
+        canonical_scheme:
+          type: string
+          example: url_path
+        current:
+          type: string
+          example: v1
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionInfo'
+      required: [canonical_scheme, current, versions]
+
+    VersionInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: v1
+        status:
+          type: string
+          enum: [current, deprecated, sunset]
+        base_path:
+          type: string
+          example: /api/v1
+        sunset:
+          type: string
+          nullable: true
+          description: HTTP-date Sunset value when configured
+      required: [id, status, base_path]
 
     LeaderResponse:
       type: object

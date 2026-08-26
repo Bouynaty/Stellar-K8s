@@ -20,6 +20,7 @@ EXPECTED_PATHS = {
     "/readyz",
     "/livez",
     "/leader",
+    "/api/versions",
     "/api/v1/nodes",
     "/api/v1/nodes/{namespace}/{name}",
     "/v1/health/summary",
