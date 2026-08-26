@@ -65,6 +65,16 @@ src = [
     "src/controller/cve_reconciler.rs",
 ]
 
+# ── Database migrations ────────────────────────────────────────────────────────
+[[entry]]
+doc = "docs/database/migrations.md"
+src = [
+    "src/db_migrations.rs",
+    "db/migrations/**",
+    "tests/db_migration_harness.rs",
+    "scripts/ci/test-db-migrations.sh",
+]
+
 # ── Development Guide ──────────────────────────────────────────────────────────
 [[entry]]
 doc = "docs/development.md"
@@ -124,6 +134,15 @@ src = [
     "config/manifests/gatekeeper",
     "policy/kyverno-policies.yaml",
     "tests/gatekeeper_policies_test.rs",
+]
+
+# ── Helm chart testing ─────────────────────────────────────────────────────────
+[[entry]]
+doc = "docs/helm-chart-testing.md"
+src = [
+    "charts/stellar-operator/tests/**",
+    "charts/stellar-operator/templates/deployment.yaml",
+    "scripts/ci/helm-upgrade-test.sh",
 ]
 
 # ── Health Checks ──────────────────────────────────────────────────────────────
@@ -187,6 +206,19 @@ src = [
     "src/controller/vpa.rs",
 ]
 
+# ── OpenTelemetry tracing ──────────────────────────────────────────────────────
+[[entry]]
+doc = "docs/observability/tracing.md"
+src = [
+    "src/telemetry.rs",
+    "src/logging/subscriber.rs",
+    "src/rest_api/server.rs",
+    "src/webhook/server.rs",
+    "src/api_gateway/server.rs",
+    "docker-compose.tracing.yml",
+    "tests/otel_propagation.rs",
+]
+
 # ── Scalability ────────────────────────────────────────────────────────────────
 [[entry]]
 doc = "docs/scalability.md"
@@ -231,6 +263,17 @@ src = [
     "src/webhook/mutation.rs",
     "src/webhook/types.rs",
     "examples/plugins",
+]
+
+# ── YAML / CRD schema validation ───────────────────────────────────────────────
+[[entry]]
+doc = "docs/yaml-schema-validation.md"
+src = [
+    ".yamllint.yml",
+    "scripts/ci/extract-crd-json-schemas.py",
+    "scripts/ci/validate-yaml.sh",
+    "schemas/crd/**",
+    "config/crd/**",
 ]
 
 # ── Webhook Benchmarking ───────────────────────────────────────────────────────
