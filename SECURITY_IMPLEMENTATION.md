@@ -179,7 +179,7 @@ The project currently has 23 security advisories in the ignore list, all with do
 
 ### Short-term (1-3 months)
 - [ ] Implement cargo-vet for dependency auditing
-- [ ] Add automated dependency update PRs
+- [x] Add automated dependency update PRs (Dependabot: `.github/dependabot.yml`; process: `docs/security/dependency-updates.md`)
 - [ ] Enhance SBOM with vulnerability data
 - [ ] Implement security metrics dashboard
 

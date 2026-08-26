@@ -109,7 +109,7 @@ lto = true            # Link-time optimization
 
 ### Phase 3: Long-term Hardening (Month 2)
 - [ ] Implement SBOM generation
-- [ ] Set up automated dependency update PRs
+- [x] Set up automated dependency update PRs (Dependabot + `docs/security/dependency-updates.md`)
 - [ ] Create security baseline documentation
 - [ ] Establish quarterly security review process
 
