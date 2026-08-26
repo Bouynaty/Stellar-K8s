@@ -131,6 +131,7 @@ nav:
       - Client Libraries: api/client-libraries.md
   - Security:
     - Security Compliance Guide: security/compliance-guide.md
+    - Container Image Security: container-image-security.md
     - Credentials & Secrets: security/credentials-and-secrets.md
     - Pod Security Standards: security/pss.md
   - Networking:

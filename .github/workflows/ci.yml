@@ -884,6 +884,48 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  # ── 10b. Image vulnerability gate (pull requests) ─────────────────────────────
+  # Issue #1334: critical vulnerabilities must block merge. The `docker` job
+  # below only runs on non-PR events, so before this job a pull request could
+  # introduce a critical CVE in the image and never be told. Builds locally and
+  # does not push — nothing from an unreviewed PR reaches the registry.
+  image-scan:
+    name: Image Vulnerability Gate
+    if: >-
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [changes]
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image locally (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runtime
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: stellar-operator:pr-scan
+          cache-from: type=gha,scope=stellar-k8s-docker
+          provenance: false
+          sbom: false
+
+      - name: Scan image and block on critical vulnerabilities
+        uses: ./.github/actions/security-scan
+        with:
+          image-ref: stellar-operator:pr-scan
+          severity: "CRITICAL,HIGH"
+          fail-on-severity: "CRITICAL"
+
   # ── 11. Docker build & push (main push only) ──────────────────────────────────
   docker:
     name: Docker Build

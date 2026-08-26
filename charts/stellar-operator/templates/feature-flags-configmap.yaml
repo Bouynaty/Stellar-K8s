@@ -10,3 +10,12 @@ data:
   # Only enable_dr remains; it gates DR / cross-region Helm resources.
   # See README.md and src/controller/feature_flags.rs for documentation.
   enable_dr: {{ .Values.featureFlags.enableDr | quote }}
+  {{- /*
+    Gradual-rollout flags (issue #1337). Each entry becomes a `flag.<name>`
+    key holding the JSON rule that src/feature_flags.rs evaluates. Editing
+    this ConfigMap in a live cluster retargets a rollout without a redeploy.
+  */}}
+  {{- range $name, $rule := (.Values.featureFlags.rollouts | default dict) }}
+  flag.{{ $name }}: |
+{{ toPrettyJson $rule | indent 4 }}
+  {{- end }}
