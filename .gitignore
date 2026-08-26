@@ -100,9 +100,14 @@ skills-lock.json
 results/*
 !results/.gitkeep
 
-# Helm rendered manifests — regenerate with: helm template stellar-operator charts/stellar-operator
-rendered/
+# Scratch Helm render from `make bundle-render` (repo root only; deleted by
+# `make bundle-validate`). Anchored so it cannot swallow the committed drift
+# goldens under charts/stellar-operator/rendered/ (issue #1045).
+/rendered/
 rendered-manifests.yaml
+
+# Committed Helm drift goldens — regenerate with: make helm-drift-update
+!charts/stellar-operator/rendered/
 
 # OLM bundle CSV — generated from config/manifests/bases by operator-sdk, regenerate with: make bundle
 # (bundle/metadata/annotations.yaml is hand-written and stays committed)

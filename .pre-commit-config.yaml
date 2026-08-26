@@ -6,6 +6,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         exclude: ^charts/.*/templates/.*\.yaml$
+        args: [--allow-multiple-documents]
       - id: check-added-large-files
       - id: check-merge-conflict
 
@@ -32,6 +33,29 @@ repos:
         types: [rust]
         pass_filenames: false
         stages: [pre-push]
+
+      # ── Static analysis gates (issues #1044, #1045, #1049) ──────────────
+      # See docs/development/static-analysis-gates.md
+      - id: shell-safety
+        name: shell safety gate (unsafe shell patterns)
+        entry: python3 scripts/check-shell-safety.py
+        language: system
+        files: '\.(sh|bash|bats)$'
+        pass_filenames: false
+
+      - id: validate-yaml-manifests
+        name: YAML manifest schema validation
+        entry: python3 scripts/validate-yaml-manifests.py
+        language: system
+        files: '\.(ya?ml)$'
+        pass_filenames: false
+
+      - id: helm-drift
+        name: helm template drift detection
+        entry: bash scripts/check-helm-drift.sh
+        language: system
+        files: '^charts/.*'
+        pass_filenames: false
 
       # Security-focused hooks
       - id: cargo-deny
@@ -84,4 +108,6 @@ repos:
     hooks:
       - id: yamllint
         args: [-c=.yamllint.yml]
-        exclude: ^charts/.*/templates/.*\.yaml$
+        # Helm templates are Go templates, not YAML; the drift goldens under
+        # charts/*/rendered/ are generated helm output (issue #1045).
+        exclude: ^charts/.*/(templates/.*|rendered/.*)\.yaml$

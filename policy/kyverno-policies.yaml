@@ -261,7 +261,7 @@ spec:
         message: "StellarNode resources should define minAvailable or maxUnavailable for pod disruption budgets"
         pattern:
           spec:
-            |(min_available | max_unavailable): "?*"
+            "|(min_available | max_unavailable)": "?*"
 
 ---
 apiVersion: kyverno.io/v1

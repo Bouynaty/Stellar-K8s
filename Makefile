@@ -33,6 +33,8 @@
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
 	health health-fast validate preflight test-preflight test-shell all \
+	shell-safety test-shell-safety validate-yaml test-yaml-validation \
+	helm-drift helm-drift-update test-helm-drift \
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
 	check-pipeline-log-redaction \
@@ -131,10 +133,11 @@ lint-strict: ## Run clippy (adds complexity checks on top of lint; same base exc
 audit: ## Security audit (cargo audit + deny) via consolidated lockfile gate
 	@bash scripts/dep-gate.sh
 
-security-scan: ## Run security scan (audit + dependency policy + shellcheck)
+security-scan: ## Run security scan (audit + dependency policy + shellcheck + shell safety)
 	@echo "→ Running comprehensive security scan..."
 	$(MAKE) audit
 	$(MAKE) shellcheck
+	$(MAKE) shell-safety
 	@echo "  Checking for outdated dependencies..."
 	@command -v cargo-outdated >/dev/null 2>&1 || cargo install --locked cargo-outdated
 	@$(CARGO) outdated --root-deps-only || true
@@ -143,6 +146,7 @@ security-all: ## Run all security checks (audit + policy + scan + SBOM)
 	@echo "→ Running complete security audit suite..."
 	$(MAKE) audit
 	$(MAKE) shellcheck
+	$(MAKE) shell-safety
 	@echo "  Generating Software Bill of Materials..."
 	@mkdir -p security/sbom
 	@$(CARGO) tree --format "{p} {l}" > security/sbom/dependencies.txt
@@ -173,6 +177,33 @@ security-report: ## Generate comprehensive security report
 shellcheck: ## Run shellcheck on all shell scripts
 	@echo "→ Running shellcheck..."
 	@find scripts -type f -name "*.sh" -print0 | xargs -0 shellcheck -S error || true
+
+shell-safety: ## Static analysis gate for unsafe shell patterns (#1049)
+	@python3 scripts/check-shell-safety.py
+
+test-shell-safety: ## Unit tests for the shell safety gate (#1049)
+	@echo "→ Testing shell safety gate..."
+	@python3 -m unittest scripts.tests.test_check_shell_safety
+
+# ── Manifest validation & drift ───────────────────────────────────────────────
+
+validate-yaml: ## Repository-wide schema validation for YAML manifests (#1044)
+	@python3 scripts/validate-yaml-manifests.py
+
+test-yaml-validation: ## Unit tests for the YAML manifest validator (#1044)
+	@echo "→ Testing YAML manifest validator..."
+	@python3 -m unittest scripts.tests.test_validate_yaml_manifests
+
+helm-drift: ## Detect drift between Helm templates and the committed renders (#1045)
+	@bash scripts/check-helm-drift.sh
+
+helm-drift-update: ## Regenerate the committed Helm render goldens (#1045)
+	@bash scripts/check-helm-drift.sh --update
+
+test-helm-drift: ## Bats tests for the Helm drift gate (#1045)
+	@echo "→ Testing Helm drift gate..."
+	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
+	@bats scripts/tests/helm-drift.bats
 
 # ── Test & Build ──────────────────────────────────────────────────────────────
 
@@ -399,7 +430,8 @@ helm-lint: ## Helm lint check
 	helm lint charts/stellar-operator --strict
 	@echo "→ Validating Helm template rendering..."
 	helm template stellar-operator charts/stellar-operator > /dev/null
-	@echo "✓ Helm charts passed linting and validation"
+	@$(MAKE) --no-print-directory helm-drift
+	@echo "✓ Helm charts passed linting, validation, and drift checks"
 
 # ── Development Setup ─────────────────────────────────────────────────────────
 
