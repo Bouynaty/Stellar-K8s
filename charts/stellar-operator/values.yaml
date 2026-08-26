@@ -330,6 +330,20 @@ featureFlags:
   # Gates Helm-rendered DR / cross-region bridge resources and runtime DR drills.
   enableDr: false
 
+  # Gradual-rollout flags evaluated by src/feature_flags.rs (issue #1337).
+  # Each entry renders a `flag.<name>` key in the stellar-operator-config
+  # ConfigMap. Toggle a rollout by editing that ConfigMap — no redeploy.
+  rollouts: {}
+  #  new_archive_pruner:
+  #    enabled: true
+  #    rollout_percentage: 25          # 0-100, deterministic per subject
+  #    segments:                       # all must match to be eligible
+  #      - key: env
+  #        op: in                      # in | notIn | contains | prefix
+  #        values: [staging, canary]
+  #    allow_subjects: [tenant-alpha]  # always on, bypasses the percentage
+  #    deny_subjects: [tenant-critical]  # always off, wins over everything
+
 security:
   audit:
     enabled: true

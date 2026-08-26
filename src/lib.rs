@@ -87,6 +87,7 @@ pub mod db_management;
 pub mod deployment_strategy;
 pub mod error;
 pub mod event_processing;
+pub mod feature_flags;
 pub mod fork_detector;
 pub mod incident;
 pub mod infra;
