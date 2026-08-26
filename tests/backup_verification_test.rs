@@ -22,6 +22,9 @@ async fn test_backup_verification_config_default() {
     assert!(!config.enabled);
     assert_eq!(config.schedule, "0 2 * * 0");
     assert_eq!(config.timeout_minutes, 60);
+    assert_eq!(config.rpo_target_minutes, 60);
+    assert_eq!(config.retention_days, 30);
+    assert!(!config.point_in_time_restore);
     assert!(!config.benchmark_enabled);
     assert_eq!(config.strategy, VerificationStrategy::Standard);
 }
@@ -119,6 +122,9 @@ async fn test_backup_verification_config_full_serialization() {
         backup_source: s3_backup_source(),
         strategy: VerificationStrategy::Full,
         timeout_minutes: 120,
+        rpo_target_minutes: 30,
+        retention_days: 90,
+        point_in_time_restore: true,
         benchmark_enabled: true,
         notification_webhook: Some("https://webhook.example.com".to_string()),
         report_storage: None,
@@ -129,4 +135,30 @@ async fn test_backup_verification_config_full_serialization() {
     let deserialized: BackupVerificationConfig = serde_json::from_str(&json).unwrap();
 
     assert_eq!(config, deserialized);
+}
+
+#[test]
+fn test_backup_verification_config_rejects_invalid_recovery_objectives() {
+    let mut config = BackupVerificationConfig::default();
+    config.timeout_minutes = 0;
+    assert!(config.validate().is_err());
+
+    config.timeout_minutes = 60;
+    config.rpo_target_minutes = 0;
+    assert!(config.validate().is_err());
+
+    config.rpo_target_minutes = 60;
+    config.retention_days = 0;
+    assert!(config.validate().is_err());
+}
+
+#[test]
+fn test_backup_verification_config_accepts_pitr_schedule() {
+    let config = BackupVerificationConfig {
+        point_in_time_restore: true,
+        schedule: "0 0 0 1 * *".to_string(),
+        ..BackupVerificationConfig::default()
+    };
+
+    assert!(config.validate().is_ok());
 }

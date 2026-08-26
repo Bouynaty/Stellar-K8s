@@ -613,6 +613,9 @@ jobs:
       - name: Check API docs are up to date
         run: make check-api-docs
 
+      - name: Check OpenAPI specification coverage
+        run: make check-openapi-spec
+
   # ── 7a. CRD drift check ─────────────────────────────────────────────────────────
   crd-drift:
     name: CRD Drift Check
