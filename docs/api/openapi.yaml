@@ -15,6 +15,10 @@ info:
     certificate depending on deployment configuration. Public probe endpoints (`/healthz`,
     `/readyz`, `/livez`) and `GET /api/versions` do not require authentication.
 
+    **Profiling:** Optional CPU/heap pprof endpoints under `/api/v1/debug/pprof/*` require
+    the `profiling` Cargo feature, `REST_API_PROFILING_ENABLED=true`, and Admin auth.
+    See `docs/operations/profiling-runbook.md`.
+
     **Interactive explorer:** When the API gateway is enabled, open `/developer` for the
     bundled Swagger UI backed by the live OpenAPI document at `/gateway/openapi.json`.
 
@@ -290,8 +294,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LogLevelResponse'
+
+  /api/v1/debug/pprof/profile:
+    get:
+      tags: [Profiling]
+      summary: Capture a CPU profile
+      description: |
+        Admin-only. Available only when the operator binary is built with `--features profiling`
+        and `REST_API_PROFILING_ENABLED=true`. Returns a pprof protobuf. Duration is bounded to
+        1–60 seconds. Render flamegraphs offline with `pprof` / `go tool pprof` (server-side SVG
+        is not enabled to avoid the CDDL-licensed `inferno` dependency).
+      operationId: getCpuProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: seconds
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 30
+          description: CPU sample duration in seconds
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [proto]
+            default: proto
+          description: Only `proto` is supported
+      responses:
+        '200':
+          description: CPU profile protobuf
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid seconds or format
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Missing or invalid credentials
+        '403':
+          description: Admin role required
+        '404':
+          description: Profiling not enabled for this deployment
+        '429':
+          description: Another CPU profile is already in progress
+
+  /api/v1/debug/pprof/heap:
+    get:
+      tags: [Profiling]
+      summary: Capture a jemalloc heap profile
+      description: |
+        Admin-only. Requires `--features profiling`, runtime enablement, and jemalloc profiling
+        (`MALLOC_CONF` with `prof:true`). Returns a pprof protobuf of sampled allocations.
+        Linux/unix jemalloc builds only; unsupported platforms return 503.
+      operationId: getHeapProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Heap profile protobuf
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Missing or invalid credentials
+        '403':
+          description: Admin role required
+        '404':
+          description: Profiling not enabled for this deployment
+        '503':
+          description: Heap profiling unavailable or inactive
 
   /api/v1/compliance/report:
     get:

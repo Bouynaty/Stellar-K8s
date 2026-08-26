@@ -197,6 +197,12 @@ operator:
   metricsPort: 9090
   # Namespace to watch (empty = all namespaces)
   watchNamespace: ""
+  # Optional pprof CPU/heap endpoints (#1330). Off by default.
+  # Requires an operator image built with `--features profiling`.
+  # When enabled, sets REST_API_PROFILING_ENABLED and jemalloc MALLOC_CONF.
+  # Endpoints remain Admin-authenticated under /api/v1/debug/pprof/*.
+  profiling:
+    enabled: false
 
 # Diagnostic sidecar configuration
 sidecar:

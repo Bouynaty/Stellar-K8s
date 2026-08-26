@@ -113,6 +113,7 @@ nav:
     - Backup and Restore: tutorials/backup-restore.md
   - Operations & Observability:
     - SCP Consensus Topology and Monitoring: scp-consensus-topology-and-monitoring.md
+    - Production Profiling Runbook: operations/profiling-runbook.md
   - Troubleshooting:
     - troubleshooting/index.md
     - Common Issues: troubleshooting/common-issues.md

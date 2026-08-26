@@ -30,6 +30,7 @@ use super::handlers;
 use super::health_summary;
 use super::horizon_cache_handlers;
 use super::job_handlers;
+use super::profiling;
 use super::resource_optimization_handlers;
 use super::scp_topology;
 use super::stellar_metrics_server;
@@ -236,7 +237,11 @@ pub fn build_router(state: Arc<ControllerState>) -> Router {
         .route("/api/v1/audit-log", get(audit_handlers::list_audit_log))
         .route("/api/v1/audit-log/search", get(audit_handlers::search_audit_log))
         .route("/api/v1/audit-log/stream", get(audit_handlers::audit_log_stream))
-        .route("/api/v1/audit-log/anomalies", get(audit_handlers::list_audit_anomalies))
+        .route("/api/v1/audit-log/anomalies", get(audit_handlers::list_audit_anomalies));
+
+    // Optional CPU/heap profiling (#1330). Registered only with `--features profiling`
+    // and REST_API_PROFILING_ENABLED=true. Still behind api_reader + api_admin.
+    let protected = profiling::attach_profiling_routes(protected)
         // Custom metrics API (Kubernetes custom.metrics.k8s.io/v1beta2)
         // Discovery endpoint — required by the HPA aggregation layer
         .route(

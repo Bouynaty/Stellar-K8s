@@ -109,6 +109,12 @@ axum = { version = "0.7.5", optional = true, features = ["ws"] }
 tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["trace"], optional = true }
 
+# Optional production profiling (#1330) — not in default features
+pprof = { version = "0.14", default-features = false, features = ["prost-codec"], optional = true }
+prost = { version = "0.12", optional = true }
+tikv-jemallocator = { version = "0.6", features = ["profiling", "unprefixed_malloc_on_supported_platforms"], optional = true }
+jemalloc_pprof = { version = "0.8", optional = true }
+
 # Metrics
 prometheus-client = { version = "0.22", optional = true }
 once_cell = { version = "1", optional = true }
@@ -176,6 +182,15 @@ admission-webhook = [
     "dep:axum",
     "dep:tower",
     "dep:tower-http",
+]
+# CPU (pprof) + heap (jemalloc) profiling HTTP endpoints for the operator REST API (#1330).
+# Off by default. Requires REST_API_PROFILING_ENABLED=true at runtime to register routes.
+profiling = [
+    "rest-api",
+    "dep:pprof",
+    "dep:prost",
+    "dep:tikv-jemallocator",
+    "dep:jemalloc_pprof",
 ]
 # Expose reconciler for state-machine fuzzing (reconcile_no_panic, event sequences)
 reconciler-fuzz = []

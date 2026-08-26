@@ -62,6 +62,13 @@ spec:
             - name: REST_API_PORT
               value: {{ .Values.operator.restApiPort | quote }}
             {{- end }}
+            {{- if and .Values.operator.restApiEnabled .Values.operator.profiling.enabled }}
+            - name: REST_API_PROFILING_ENABLED
+              value: "true"
+            # Enable jemalloc profiling samples for heap dumps (image must include `profiling` feature).
+            - name: MALLOC_CONF
+              value: "prof:true,prof_active:true,lg_prof_sample:19"
+            {{- end }}
             {{- if .Values.otel.enabled }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.otel.endpoint | quote }}

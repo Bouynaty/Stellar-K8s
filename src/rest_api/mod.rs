@@ -33,8 +33,11 @@
 //! - `GET /metrics` - Prometheus metrics
 //! - `GET /` - Interactive dashboard
 //! - `POST /config/log-level` - Adjust log level dynamically
+//! - `GET /api/v1/debug/pprof/profile` - CPU profile (feature `profiling` + runtime flag)
+//! - `GET /api/v1/debug/pprof/heap` - Heap profile (feature `profiling` + runtime flag)
 //!
 //! Versioning uses the URL path (`/api/vN/...`). See `docs/api/versioning.md`.
+//! Profiling requires Admin auth; see `docs/operations/profiling-runbook.md`.
 //!
 //! # Example: Querying Nodes
 //!
@@ -61,6 +64,7 @@ mod horizon_cache_handlers;
 mod job_handlers;
 pub mod metrics_store;
 mod oidc;
+mod profiling;
 mod resource_optimization_handlers;
 mod scp_topology;
 mod server;

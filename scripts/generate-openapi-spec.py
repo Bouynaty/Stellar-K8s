@@ -37,6 +37,8 @@ EXPECTED_PATHS = {
     "/api/v1/jobs",
     "/api/v1/jobs/stats",
     "/api/v1/audit-log",
+    "/api/v1/debug/pprof/profile",
+    "/api/v1/debug/pprof/heap",
     "/metrics",
 }
 
