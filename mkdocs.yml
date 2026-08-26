@@ -138,6 +138,8 @@ nav:
   - Development:
     - Regeneration Guide: development/regeneration-guide.md
     - Repo Health Checklist: development/repo-health-checklist.md
+    - Static Analysis Gates: development/static-analysis-gates.md
+    - Reconciler Phases: reconciler-phases.md
   - Contributing:
     - contributing/index.md
     - Development Setup: contributing/development-setup.md

@@ -74,6 +74,7 @@ use super::mtls;
 use super::oci_snapshot;
 use super::operator_config::{hardcoded_defaults, OperatorConfig};
 use super::peer_discovery;
+use super::phases::{PhaseMachine, ReconcilePhase};
 use super::pss;
 use super::remediation;
 use super::resources;
@@ -798,8 +799,16 @@ fn reconcile(
         #[cfg(feature = "metrics")]
         let reconcile_start = std::time::Instant::now();
 
+        // One phase machine per reconciliation pass. It records the pipeline
+        // stages this pass walked through, so the reconcile trail is explicit
+        // in logs instead of implied by statement order (issue #1047).
+        let phases = Arc::new(std::sync::Mutex::new(PhaseMachine::new()));
+
         if !ctx.is_leader.load(std::sync::atomic::Ordering::Relaxed) {
             debug!("Not the leader, skipping reconciliation");
+            if let Ok(mut machine) = phases.lock() {
+                machine.succeed("not the leader; pass skipped");
+            }
             return Ok(Action::requeue(Duration::from_secs(5)));
         }
 
@@ -836,8 +845,18 @@ fn reconcile(
 
             // Manual finalizer logic to avoid HRTB Send issues with the helper closure
             if obj.metadata.deletion_timestamp.is_some() {
+                advance_phase(
+                    &phases,
+                    ReconcilePhase::Finalizing,
+                    "deletion timestamp is set",
+                );
                 if obj.finalizers().iter().any(|f| f == STELLAR_NODE_FINALIZER) {
-                    cleanup_stellar_node(client.clone(), obj.clone(), ctx.clone()).await?;
+                    if let Err(err) =
+                        cleanup_stellar_node(client.clone(), obj.clone(), ctx.clone()).await
+                    {
+                        fail_phase(&phases, &format!("cleanup failed: {err}"));
+                        return Err(err);
+                    }
 
                     let patch = serde_json::json!({
                         "metadata": {
@@ -846,8 +865,16 @@ fn reconcile(
                     });
                     api.patch(&node_name, &PatchParams::default(), &Patch::Merge(patch)).await?;
                 }
+                if let Ok(mut machine) = phases.lock() {
+                    machine.succeed("finalizer removed");
+                }
                 Ok(Action::await_change())
             } else {
+                advance_phase(
+                    &phases,
+                    ReconcilePhase::Validating,
+                    "reconciling a live StellarNode",
+                );
                 if !obj.finalizers().iter().any(|f| f == STELLAR_NODE_FINALIZER) {
                     let mut finalizers = obj.finalizers().to_vec();
                     finalizers.push(STELLAR_NODE_FINALIZER.to_string());
@@ -858,9 +885,26 @@ fn reconcile(
                     });
                     api.patch(&node_name, &PatchParams::default(), &Patch::Merge(patch)).await?;
                 }
-                apply_stellar_node(client.clone(), obj.clone(), ctx.clone()).await
+                apply_stellar_node(client.clone(), obj.clone(), ctx.clone(), phases.clone())
+                    .await
             }
         };
+
+        // Close out the phase trail and emit it as a single line, so a
+        // reconcile pass can be read end-to-end from one log entry.
+        if let Ok(mut machine) = phases.lock() {
+            match &res {
+                Ok(_) => machine.succeed("reconciliation completed"),
+                Err(err) => machine.fail(format!("reconciliation failed: {err}")),
+            }
+            info!(
+                node = %node_name,
+                namespace = %namespace,
+                phase = %machine.current(),
+                "reconcile phases: {}",
+                machine.summary()
+            );
+        }
 
         #[cfg(feature = "metrics")]
         {
@@ -892,11 +936,40 @@ fn reconcile(
     .boxed()
 }
 
+/// Advance the reconcile phase machine, without ever failing the pass.
+///
+/// The machine is authoritative for *observability* — it names the stage in
+/// logs and validates that the pipeline still runs in the declared order. A
+/// bookkeeping mistake must not take the operator down, so an illegal
+/// transition is logged loudly and reconciliation continues exactly as before.
+fn advance_phase(phases: &Arc<std::sync::Mutex<PhaseMachine>>, to: ReconcilePhase, reason: &str) {
+    match phases.lock() {
+        Ok(mut machine) => {
+            if let Err(err) = machine.transition_to(to, reason) {
+                warn!("reconcile phase bookkeeping rejected a transition: {err}");
+            }
+        }
+        Err(poisoned) => {
+            // A poisoned lock means another task panicked mid-transition; the
+            // phase trail is unreliable from here but reconciliation is not.
+            warn!("reconcile phase machine lock poisoned: {poisoned}");
+        }
+    }
+}
+
+/// Mark the phase machine failed, for error paths that return early.
+fn fail_phase(phases: &Arc<std::sync::Mutex<PhaseMachine>>, reason: &str) {
+    if let Ok(mut machine) = phases.lock() {
+        machine.fail(reason);
+    }
+}
+
 /// Apply/create/update the StellarNode resources
 pub(crate) fn apply_stellar_node(
     client: Client,
     node: Arc<StellarNode>,
     ctx: Arc<ControllerState>,
+    phases: Arc<std::sync::Mutex<PhaseMachine>>,
 ) -> BoxFuture<'static, Result<Action>> {
     async move {
         let name = node.name_any();
@@ -990,6 +1063,7 @@ pub(crate) fn apply_stellar_node(
             );
         }
 
+        advance_phase(&phases, ReconcilePhase::Provisioning, "spec validated; ensuring durable prerequisites");
         // 1. Core infrastructure (PVC and ConfigMap) always managed by operator
         apply_or_emit!(
             &ctx,
@@ -1429,6 +1503,7 @@ pub(crate) fn apply_stellar_node(
             .await
             .unwrap_or(false);
 
+        advance_phase(&phases, ReconcilePhase::Deploying, "prerequisites ready; rolling out the workload");
         // 5. Create/update the Deployment/StatefulSet based on node type
         let workload_result = apply_or_emit!(
             &ctx,
@@ -1943,6 +2018,7 @@ pub(crate) fn apply_stellar_node(
         )
         .await?;
 
+        advance_phase(&phases, ReconcilePhase::Scaling, "workload applied; reconciling elasticity");
         // 6. Autoscaling and Monitoring
         apply_or_emit!(
             &ctx,
@@ -2002,6 +2078,7 @@ pub(crate) fn apply_stellar_node(
             }
         }
 
+        advance_phase(&phases, ReconcilePhase::Observing, "checking node health and sync state");
         // 7. Perform health check to determine if node is ready
         //
         // Measure reduction in API polling overhead: Reactive Status check
@@ -2298,6 +2375,7 @@ pub(crate) fn apply_stellar_node(
             }
         }
 
+        advance_phase(&phases, ReconcilePhase::Remediating, "evaluating automatic remediation");
         // 9. Auto-remediation check
         if health_result.healthy && !node.spec.suspended {
             let stale_check = remediation::check_stale_node(&node, health_result.ledger_sequence);
@@ -2769,6 +2847,7 @@ pub(crate) fn apply_stellar_node(
             }
         }
 
+        advance_phase(&phases, ReconcilePhase::Publishing, "publishing status and events");
         // 15. Update status to Running with ready replica count
         // Use configured requeue interval for healthy reconciliation
         let requeue_interval = ctx.operator_config.reconciler.requeue_interval;

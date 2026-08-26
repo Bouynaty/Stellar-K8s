@@ -330,6 +330,19 @@ featureFlags:
   # Gates Helm-rendered DR / cross-region bridge resources and runtime DR drills.
   enableDr: false
 
+# Cross-region state synchronization. Only rendered when
+# featureFlags.enableDr is also true (see templates/cross-region-bridge.yaml).
+crossRegion:
+  enabled: false
+  # Peer clusters this operator bridges to. Each entry renders an
+  # ExternalName Service plus a NetworkPolicy egress rule.
+  peerClusters: []
+  #  - clusterId: us-west-2
+  #    enabled: true
+  #    endpoint: api.us-west-2.example.com   # becomes Service.spec.externalName
+  #    region: us-west-2
+  #    port: 11625
+
 security:
   audit:
     enabled: true

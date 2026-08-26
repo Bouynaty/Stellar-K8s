@@ -31,9 +31,7 @@ impl std::fmt::Display for ArchiveIntegrityCheckResult {
         write!(
             f,
             "{}: {} ({} checkpoints verified)",
-            self.url,
-            self.message,
-            self.checkpoints_verified
+            self.url, self.message, self.checkpoints_verified
         )?;
         if let Some(ref err) = self.error {
             write!(f, " [{err}]")?;
