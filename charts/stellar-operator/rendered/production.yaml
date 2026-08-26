@@ -533,6 +533,27 @@ spec:
                 type: object
               strategy:
                 properties:
+                  blueGreen:
+                    description: Validator (Stellar Core) blue/green rollout settings
+                    properties:
+                      maxLedgerLag:
+                        default: 5
+                        type: integer
+                      postCutoverSuccessThreshold:
+                        default: 3
+                        type: integer
+                      readyTimeoutSeconds:
+                        default: 3600
+                        type: integer
+                      requireVolumeSnapshot:
+                        default: true
+                        type: boolean
+                      rollbackWindowSeconds:
+                        default: 3600
+                        type: integer
+                      volumeSnapshotClassName:
+                        type: string
+                    type: object
                   canary:
                     properties:
                       checkIntervalSeconds:
@@ -546,6 +567,12 @@ spec:
                     type: object
                   rollingUpdate:
                     type: object
+                  type:
+                    enum:
+                    - rollingUpdate
+                    - canary
+                    - blueGreen
+                    type: string
                 type: object
               suspended:
                 default: false
@@ -636,6 +663,26 @@ spec:
             type: object
           status:
             properties:
+              blueGreenActiveColor:
+                description: Active deployment color (blue or green).
+                nullable: true
+                type: string
+              blueGreenMessage:
+                description: Human-readable blue/green progress message.
+                nullable: true
+                type: string
+              blueGreenPhase:
+                description: Validator blue/green rollout phase.
+                nullable: true
+                type: string
+              blueGreenSnapshotName:
+                description: VolumeSnapshot used to seed the green Validator PVC.
+                nullable: true
+                type: string
+              blueGreenTargetVersion:
+                description: Target Core version for an in-progress blue/green rollout.
+                nullable: true
+                type: string
               canaryReadyReplicas:
                 type: integer
               canaryVersion:
