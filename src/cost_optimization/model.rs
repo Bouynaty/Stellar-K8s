@@ -56,6 +56,10 @@ pub struct CostRecord {
 
 impl CostRecord {
     pub fn hourly_rate(&self) -> f64 {
-        if self.usage_hours > 0.0 { self.cost_usd / self.usage_hours } else { 0.0 }
+        if self.usage_hours > 0.0 {
+            self.cost_usd / self.usage_hours
+        } else {
+            0.0
+        }
     }
 }

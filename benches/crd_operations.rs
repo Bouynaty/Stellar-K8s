@@ -64,7 +64,9 @@ fn bench_crd_create(c: &mut Criterion) {
 
     // Benchmark different resource complexity levels
     let configs = vec![
-        ("minimal", r#"
+        (
+            "minimal",
+            r#"
 apiVersion: stellar.org/v1alpha1
 kind: StellarNode
 metadata:
@@ -75,9 +77,12 @@ spec:
   network: testnet
   version: v21.0.0
   replicas: 1
-"#),
+"#.to_string(),
+        ),
         ("standard", make_stellarnode_manifest("bench-standard")),
-        ("with_autoscaling", r#"
+        (
+            "with_autoscaling",
+            r#"
 apiVersion: stellar.org/v1alpha1
 kind: StellarNode
 metadata:
@@ -93,8 +98,11 @@ spec:
     minReplicas: 1
     maxReplicas: 10
     targetCPUUtilization: 70
-"#),
-        ("full_config", r#"
+"#.to_string(),
+        ),
+        (
+            "full_config",
+            r#"
 apiVersion: stellar.org/v1alpha1
 kind: StellarNode
 metadata:
@@ -126,20 +134,25 @@ spec:
     enableHistoryArchive: true
     historyArchiveUrls:
       - https://history.stellar.org/prd/core-live/core_live_01
-"#),
+"#.to_string(),
+        ),
     ];
 
     for (name, manifest) in configs {
         let lines = manifest.lines().count() as u64;
         group.throughput(Throughput::Bytes(lines * 50)); // approximate bytes
-        group.bench_with_input(BenchmarkId::from_parameter(name), &manifest, |b, _manifest| {
-            b.iter(|| {
-                // In a real benchmark, this would apply the manifest to a kind cluster:
-                // kubectl apply -f -
-                // For now, we benchmark the manifest serialization overhead
-                let _ = _manifest.len();
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::from_parameter(name),
+            &manifest,
+            |b: &mut criterion::Bencher, _manifest: &String| {
+                b.iter(|| {
+                    // In a real benchmark, this would apply the manifest to a kind cluster:
+                    // kubectl apply -f -
+                    // For now, we benchmark the manifest serialization overhead
+                    let _ = _manifest.len();
+                });
+            },
+        );
     }
 
     group.finish();
@@ -157,7 +170,7 @@ fn bench_crd_update(c: &mut Criterion) {
     let updated_replicas = base.replace("replicas: 1", "replicas: 5");
 
     group.throughput(Throughput::Bytes(updated_replicas.len() as u64));
-    group.bench_function("replica_scale_up", |b| {
+    group.bench_function("replica_scale_up", |b: &mut criterion::Bencher| {
         b.iter(|| {
             // In a real benchmark: kubectl apply -f -
             let _ = updated_replicas.len();
@@ -168,7 +181,7 @@ fn bench_crd_update(c: &mut Criterion) {
         "{}\n  labels:\n    updated: \"true\"\n    version: v2",
         base.replace("  labels:\n    app: stellar-benchmark\n", "")
     );
-    group.bench_function("label_update", |b| {
+    group.bench_function("label_update", |b: &mut criterion::Bencher| {
         b.iter(|| {
             let _ = updated_labels.len();
         });
@@ -185,14 +198,14 @@ fn bench_crd_delete(c: &mut Criterion) {
     group.sample_size(50);
     group.measurement_time(Duration::from_secs(30));
 
-    group.bench_function("single_delete", |b| {
+    group.bench_function("single_delete", |b: &mut criterion::Bencher| {
         b.iter(|| {
             // In a real benchmark: kubectl delete stellarnode <name> -n benchmark
             // For now, benchmark the cleanup overhead
         });
     });
 
-    group.bench_function("batch_delete_namespace", |b| {
+    group.bench_function("batch_delete_namespace", |b: &mut criterion::Bencher| {
         b.iter(|| {
             // In a real benchmark: kubectl delete stellarnodes -n benchmark -l benchmark=true
         });
@@ -213,7 +226,7 @@ fn bench_crd_concurrent(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("{}-workers", concurrency)),
             &concurrency,
-            |b, &conc| {
+            |b: &mut criterion::Bencher, &conc: &i32| {
                 b.iter(|| {
                     // In a real benchmark:
                     // 1. Create 'conc' StellarNode resources concurrently

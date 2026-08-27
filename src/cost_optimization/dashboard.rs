@@ -36,8 +36,12 @@ impl CostDashboard {
         forecasts: &[CostForecast],
     ) -> Self {
         let total = allocation.total();
-        let savings: f64 = recommendations.iter().map(|r| r.estimated_monthly_savings).sum();
-        let forecast_30d = forecasts.iter().map(|f| f.forecast_30d_usd).sum::<f64>() / forecasts.len().max(1) as f64;
+        let savings: f64 = recommendations
+            .iter()
+            .map(|r| r.estimated_monthly_savings)
+            .sum();
+        let forecast_30d = forecasts.iter().map(|f| f.forecast_30d_usd).sum::<f64>()
+            / forecasts.len().max(1) as f64;
 
         let namespace_breakdown = allocation
             .by_namespace()
@@ -46,7 +50,11 @@ impl CostDashboard {
                 namespace: ns.namespace.clone(),
                 team: ns.team.clone(),
                 cost_usd: ns.total_cost_usd,
-                cost_pct: if total > 0.0 { ns.total_cost_usd / total * 100.0 } else { 0.0 },
+                cost_pct: if total > 0.0 {
+                    ns.total_cost_usd / total * 100.0
+                } else {
+                    0.0
+                },
             })
             .collect();
 
@@ -63,13 +71,19 @@ impl CostDashboard {
              stellar_cost_potential_savings_usd {:.2}\n\
              # TYPE stellar_cost_anomalies_active gauge\n\
              stellar_cost_anomalies_active {}\n",
-            total, savings, anomalies.len(),
+            total,
+            savings,
+            anomalies.len(),
         );
 
         Self {
             total_monthly_cost_usd: total,
             total_potential_savings_usd: savings,
-            savings_pct: if total > 0.0 { savings / total * 100.0 } else { 0.0 },
+            savings_pct: if total > 0.0 {
+                savings / total * 100.0
+            } else {
+                0.0
+            },
             active_anomalies: anomalies.len(),
             top_recommendations,
             namespace_breakdown,

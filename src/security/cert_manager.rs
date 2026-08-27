@@ -310,7 +310,7 @@ impl CertManager {
         // 2. Wait for certificate issuance
         // 3. Update secret in Kubernetes
         // 4. Reload Ingress/Gateway
-        
+
         // Simulate 90-day certificate
         let new_expiry = Utc::now() + ChronoDuration::days(90);
         Ok(new_expiry)
@@ -328,7 +328,10 @@ impl CertManager {
         let history = self.renewal_history.read().await;
 
         let total = certs.len();
-        let active = certs.values().filter(|c| matches!(c.status, CertStatus::Active)).count();
+        let active = certs
+            .values()
+            .filter(|c| matches!(c.status, CertStatus::Active))
+            .count();
         let expiring_soon = certs
             .values()
             .filter(|c| c.is_expiring_soon(self.renewal_config.threshold_days))
@@ -340,7 +343,7 @@ impl CertManager {
         CertMetrics {
             total_certificates: total,
             active_certificates: active,
-            expiring_soon: expiring_soon,
+            expiring_soon,
             expired_certificates: expired,
             renewals_attempted,
             renewals_succeeded,
@@ -439,7 +442,7 @@ mod tests {
     #[tokio::test]
     async fn test_cert_manager_add_and_get() {
         let manager = CertManager::new(RenewalConfig::default());
-        
+
         let cert = CertificateInfo {
             name: "test-cert".to_string(),
             domain: "example.com".to_string(),
@@ -455,7 +458,7 @@ mod tests {
 
         manager.add_certificate(cert).await;
         let retrieved = manager.get_certificate("test-cert").await;
-        
+
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().domain, "example.com");
     }
@@ -463,7 +466,7 @@ mod tests {
     #[tokio::test]
     async fn test_cert_manager_expiring_soon() {
         let manager = CertManager::new(RenewalConfig::default());
-        
+
         let cert = CertificateInfo {
             name: "expiring-cert".to_string(),
             domain: "example.com".to_string(),
@@ -479,7 +482,7 @@ mod tests {
 
         manager.add_certificate(cert).await;
         let expiring = manager.get_expiring_soon(30).await;
-        
+
         assert_eq!(expiring.len(), 1);
         assert_eq!(expiring[0].name, "expiring-cert");
     }

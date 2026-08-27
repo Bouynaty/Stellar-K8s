@@ -1,0 +1,55 @@
+{{- if .Values.security.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "stellar-operator.fullname" . }}-default-deny
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "stellar-operator.labels" . | nindent 4 }}
+spec:
+  podSelector: {} # Selects all pods in this namespace
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress on metricsPort and restApiPort
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.operator.metricsPort | default 9090 }}
+        {{- if .Values.operator.restApiEnabled }}
+        - protocol: TCP
+          port: {{ .Values.operator.restApiPort | default 8080 }}
+        {{- end }}
+  egress:
+    # Allow all egress (outbound communication to API server, DNS, and external endpoints)
+    - {}
+---
+{{- if .Values.webhook.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stellar-webhook-default-deny
+  namespace: stellar-webhook
+  labels:
+    app.kubernetes.io/name: stellar-webhook
+spec:
+  podSelector: {} # Selects all pods in webhook namespace
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow webhook HTTPS requests on webhook port
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.webhook.port | default 8443 }}
+        - protocol: TCP
+          port: 443
+    # Allow metrics scrape
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.webhook.metricsPort | default 9090 }}
+  egress:
+    # Allow all egress
+    - {}
+{{- end }}
+{{- end }}

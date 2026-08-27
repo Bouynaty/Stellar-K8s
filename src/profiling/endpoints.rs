@@ -50,7 +50,11 @@ impl ProfilingAuth {
         if stored.len() != provided.len() {
             return false;
         }
-        stored.iter().zip(provided).fold(0u8, |acc, (a, b)| acc | (a ^ b)) == 0
+        stored
+            .iter()
+            .zip(provided)
+            .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+            == 0
     }
 }
 

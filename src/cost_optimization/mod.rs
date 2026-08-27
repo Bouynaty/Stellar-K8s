@@ -30,4 +30,4 @@ pub use recommender::{OptimizationRecommendation, RecommendationEngine};
 pub use resource_tracker::{
     ResourceObservation, ResourceTracker, RightSizingConfig, RightSizingRecommendation,
 };
-pub use spot::{SpotConfig, SpotManager, SpotCostAnalysis, SpotRequest};
+pub use spot::{SpotConfig, SpotCostAnalysis, SpotManager, SpotRequest};

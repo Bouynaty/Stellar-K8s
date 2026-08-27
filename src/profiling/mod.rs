@@ -26,7 +26,7 @@ pub mod metrics;
 pub mod reporter;
 
 pub use collector::{AllocationSample, CpuSample, ProfileCollector};
-pub use endpoints::{ProfilingEndpoints, ProfilingConfig, ProfilingAuth};
+pub use endpoints::{ProfilingAuth, ProfilingConfig, ProfilingEndpoints};
 pub use exporter::{ProfileExporter, ProfileFormat};
 pub use metrics::ProfilingMetrics;
 pub use reporter::{BottleneckReport, ProfileReporter};

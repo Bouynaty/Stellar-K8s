@@ -69,8 +69,8 @@ pub struct ProfileReporter {
 impl Default for ProfileReporter {
     fn default() -> Self {
         Self {
-            cpu_wall_warn_ms: 1_000.0,         // >1 s
-            rss_warn_bytes: 512 * 1024 * 1024, // >512 MB
+            cpu_wall_warn_ms: 1_000.0,                          // >1 s
+            rss_warn_bytes: 512 * 1024 * 1024,                  // >512 MB
             rss_growth_warn_bytes_per_sample: 10 * 1024 * 1024, // >10 MB/sample growth
         }
     }
@@ -173,7 +173,9 @@ impl ProfileReporter {
                     avg_rss_bytes as f64 / (1024.0 * 1024.0),
                     self.rss_warn_bytes as f64 / (1024.0 * 1024.0)
                 ),
-                recommendation: "Review top allocation sites; consider arena allocators or cache eviction.".to_string(),
+                recommendation:
+                    "Review top allocation sites; consider arena allocators or cache eviction."
+                        .to_string(),
                 observed_value: avg_rss_bytes as f64,
                 threshold: self.rss_warn_bytes as f64,
             });
@@ -223,7 +225,9 @@ fn is_growing(values: &[u64], threshold: u64) -> bool {
     if values.len() < 2 {
         return false;
     }
-    values.windows(2).all(|w| w[1].saturating_sub(w[0]) > threshold)
+    values
+        .windows(2)
+        .all(|w| w[1].saturating_sub(w[0]) > threshold)
 }
 
 fn build_summary(bottlenecks: &[Bottleneck], cpu_count: usize, alloc_count: usize) -> String {
@@ -250,8 +254,16 @@ fn build_summary(bottlenecks: &[Bottleneck], cpu_count: usize, alloc_count: usiz
             warnings.len(),
             cpu_count,
             alloc_count,
-            if critical.is_empty() { "none".to_string() } else { critical.join("; ") },
-            if warnings.is_empty() { "none".to_string() } else { warnings.join("; ") },
+            if critical.is_empty() {
+                "none".to_string()
+            } else {
+                critical.join("; ")
+            },
+            if warnings.is_empty() {
+                "none".to_string()
+            } else {
+                warnings.join("; ")
+            },
         )
     }
 }
@@ -327,10 +339,7 @@ mod tests {
             .collect();
         let report = reporter.analyse(&[], &samples);
         assert!(report.rss_growing);
-        assert!(report
-            .bottlenecks
-            .iter()
-            .any(|b| b.id == "rss-growth"));
+        assert!(report.bottlenecks.iter().any(|b| b.id == "rss-growth"));
     }
 
     #[test]

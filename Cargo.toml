@@ -6,6 +6,7 @@ authors = ["Stellar K8s Contributors"]
 description = "Cloud-Native Kubernetes Operator for Stellar Infrastructure"
 license = "Apache-2.0"
 repository = "https://github.com/OtowoOrg/Stellar-K8s"
+autobenches = false
 
 [dependencies]
 ed25519-dalek = { version = "2", features = ["rand_core"] }
@@ -156,6 +157,7 @@ aws-sdk-s3 = "1.132.0"
 aws-config = "1.8.17"
 json-patch = "4.2.0"
 md5 = "0.8.0"
+uuid = { version = "1.26.0", features = ["v4"] }
 
 [build-dependencies]
 chrono = "0.4"
