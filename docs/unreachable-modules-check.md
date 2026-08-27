@@ -7,7 +7,10 @@ Static reachability audit for Rust sources under `src/`. Introduced for
 
 1. **Orphan source files** — `.rs` files that are never reached via `mod`
    declarations from any crate root (`src/lib.rs`, `src/main.rs`, and every
-   `[[bin]]` path in `Cargo.toml`).
+   `[[bin]]` path in `Cargo.toml`). Resolution matches rustc: `mod x;` in a
+   crate root (including declared bins such as `src/kubectl_plugin.rs`)
+   resolves to a *sibling* of the root file, while `mod x;` in any other
+   `foo.rs` resolves under `foo/x.rs` or `foo/x/mod.rs`.
 2. **Ambiguous module paths** — directories that contain both `foo.rs` and
    `foo/mod.rs` (rustc E0761).
 3. **Dead code-path markers** — `todo!()`, `unimplemented!()`, and
@@ -17,14 +20,18 @@ Static reachability audit for Rust sources under `src/`. Introduced for
 
 ## Allowlist
 
-Known WIP orphans are listed in
+Known WIP orphans may be listed in
 [`config/unreachable-modules-allowlist.txt`](../config/unreachable-modules-allowlist.txt).
 Allowlisted orphans are reported but do not fail CI. New orphans that are
 not on the allowlist fail the check so accidental dead modules cannot land
 unnoticed.
 
-Prefer wiring a module into `lib.rs` / a `[[bin]]` entry, or deleting it,
-over growing the allowlist.
+The allowlist is **currently empty**: the cleanup wave deleted every
+allowlisted orphan, declared the load-bearing `crdgen` and
+`stellar-log-shipper` binaries in `Cargo.toml`, and fixed the audit's
+crate-root resolution, which un-orphaned `src/explain.rs`,
+`src/audit_report.rs`, and `src/sql.rs` (live code of the `kubectl-stellar`
+binary).
 
 ## Running locally
 

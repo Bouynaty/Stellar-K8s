@@ -20,8 +20,6 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/lib/errors.sh"
 cd "${REPO_ROOT}"
 
-# shellcheck source=scripts/lib/errors.sh
-source "${SCRIPT_DIR}/lib/errors.sh"
 # shellcheck source=scripts/lib/health-steps.sh
 source "${SCRIPT_DIR}/lib/health-steps.sh"
 
