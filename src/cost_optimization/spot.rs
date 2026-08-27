@@ -151,7 +151,7 @@ impl SpotManager {
         }
 
         let request = SpotRequest {
-            id: format!("sir-{}", uuid::Uuid::new_v4()),
+            id: format!("sir-{:016x}", rand::random::<u64>()),
             instance_type: instance_type.to_string(),
             availability_zone: self.config.availability_zones[0].clone(),
             max_price_usd: self.config.max_price_per_hour_usd,

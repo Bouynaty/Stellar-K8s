@@ -197,6 +197,7 @@ async fn handle_request(State(state): State<GatewayState>, req: Request) -> Resp
     if let VersionStatus::Deprecated { sunset_date } = &version_status {
         extra_headers.extend(deprecation_headers(
             route.sunset_date.as_deref().or(sunset_date.as_deref()),
+            &state.config.versioning.current_version,
         ));
     }
 
