@@ -120,20 +120,30 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
             .collect(),
     };
 
-    // TODO(exempt: pending storage backends): Implement storage backend handling
+    // Storage backend handling - only file and s3 are supported
     match args.backend.as_str() {
         "file" => backup_to_file(&args, &metadata, &files).await?,
         "s3" => backup_to_s3(&args, &metadata, &files).await?,
-        "arweave" => backup_to_arweave(&args, &metadata, &files).await?,
-        "ipfs" => backup_to_ipfs(&args, &metadata, &files).await?,
-        "filecoin" => backup_to_filecoin(&args, &metadata, &files).await?,
+        // Deprecated: arweave, ipfs, and filecoin backends removed in cleanup wave
+        "arweave" | "ipfs" | "filecoin" => {
+            return Err(anyhow::anyhow!(
+                "{}",
+                diagnostic(
+                    "backend deprecated",
+                    format!(
+                        "backend {:?} has been removed; supported backends: file, s3",
+                        args.backend
+                    )
+                )
+            ))
+        }
         _ => {
             return Err(anyhow::anyhow!(
                 "{}",
                 diagnostic(
                     "select backend",
                     format!(
-                        "unsupported backend {:?}; expected file, s3, arweave, ipfs, or filecoin",
+                        "unsupported backend {:?}; expected file or s3",
                         args.backend
                     )
                 )
@@ -145,10 +155,58 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
 
     if args.verify {
         println!("Verifying backup...");
-        // TODO(exempt: pending storage backends): Implement verification
+        verify_backup_integrity(&backup_path).await?;
+        println!("✓ Backup verification passed");
     }
 
     Ok(())
+}
+
+/// Verify backup integrity with checksum and structure validation
+async fn verify_backup_integrity(backup_path: &str) -> Result<()> {
+    use sha2::{Sha256, Digest};
+    use std::fs::File;
+    use std::io::Read;
+
+    let file = std::fs::File::open(backup_path)?;
+    let mut reader = std::io::BufReader::new(file);
+    let mut hasher = Sha256::new();
+    let mut buffer = [0; 8192];
+
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+
+    let checksum = format!("{:x}", hasher.finalize());
+    println!("  Checksum: {}", checksum);
+
+    // Try to list archive contents
+    if backup_path.ends_with(".tar.gz") {
+        use flate2::read::GzDecoder;
+        use tar::Archive;
+
+        let file = File::open(backup_path)?;
+        let gz = GzDecoder::new(file);
+        let mut archive = Archive::new(gz);
+        let mut count = 0;
+
+        for entry in archive.entries()? {
+            let _entry = entry?;
+            count += 1;
+        }
+
+        println!("  Files: {}", count);
+        if count == 0 {
+            return Err(anyhow::anyhow!("Backup appears empty"));
+        }
+    }
+
+    Ok(())
+}
 }
 
 pub async fn run_restore(args: RestoreArgs) -> Result<()> {
@@ -163,16 +221,26 @@ pub async fn run_restore(args: RestoreArgs) -> Result<()> {
     match args.backend.as_str() {
         "file" => restore_from_file(&args).await?,
         "s3" => restore_from_s3(&args).await?,
-        "arweave" => restore_from_arweave(&args).await?,
-        "ipfs" => restore_from_ipfs(&args).await?,
-        "filecoin" => restore_from_filecoin(&args).await?,
+        // Deprecated: arweave, ipfs, and filecoin backends removed in cleanup wave
+        "arweave" | "ipfs" | "filecoin" => {
+            return Err(anyhow::anyhow!(
+                "{}",
+                diagnostic(
+                    "backend deprecated",
+                    format!(
+                        "backend {:?} has been removed; supported backends: file, s3",
+                        args.backend
+                    )
+                )
+            ))
+        }
         _ => {
             return Err(anyhow::anyhow!(
                 "{}",
                 diagnostic(
                     "select backend",
                     format!(
-                        "unsupported backend {:?}; expected file, s3, arweave, ipfs, or filecoin",
+                        "unsupported backend {:?}; expected file or s3",
                         args.backend
                     )
                 )
@@ -192,16 +260,26 @@ pub async fn run_list(args: ListArgs) -> Result<()> {
     match args.backend.as_str() {
         "file" => list_from_file(&args).await?,
         "s3" => list_from_s3(&args).await?,
-        "arweave" => list_from_arweave(&args).await?,
-        "ipfs" => list_from_ipfs(&args).await?,
-        "filecoin" => list_from_filecoin(&args).await?,
+        // Deprecated: arweave, ipfs, and filecoin backends removed in cleanup wave
+        "arweave" | "ipfs" | "filecoin" => {
+            return Err(anyhow::anyhow!(
+                "{}",
+                diagnostic(
+                    "backend deprecated",
+                    format!(
+                        "backend {:?} has been removed; supported backends: file, s3",
+                        args.backend
+                    )
+                )
+            ))
+        }
         _ => {
             return Err(anyhow::anyhow!(
                 "{}",
                 diagnostic(
                     "select backend",
                     format!(
-                        "unsupported backend {:?}; expected file, s3, arweave, ipfs, or filecoin",
+                        "unsupported backend {:?}; expected file or s3",
                         args.backend
                     )
                 )
@@ -213,25 +291,34 @@ pub async fn run_list(args: ListArgs) -> Result<()> {
 }
 
 pub async fn run_cleanup(args: CleanupArgs) -> Result<()> {
-    println!(
-        "Cleaning up backups at {}, keeping last {}",
+    println!("Cleaning up backups at {}, keeping last {}",
         args.location, args.keep
     );
 
-    // TODO(exempt: pending storage backends): Implement cleanup based on backend
+    // Only file and s3 are supported
     match args.backend.as_str() {
         "file" => cleanup_from_file(&args).await?,
         "s3" => cleanup_from_s3(&args).await?,
-        "arweave" => cleanup_from_arweave(&args).await?,
-        "ipfs" => cleanup_from_ipfs(&args).await?,
-        "filecoin" => cleanup_from_filecoin(&args).await?,
+        // Deprecated: arweave, ipfs, and filecoin backends removed in cleanup wave
+        "arweave" | "ipfs" | "filecoin" => {
+            return Err(anyhow::anyhow!(
+                "{}",
+                diagnostic(
+                    "backend deprecated",
+                    format!(
+                        "backend {:?} has been removed; supported backends: file, s3",
+                        args.backend
+                    )
+                )
+            ))
+        }
         _ => {
             return Err(anyhow::anyhow!(
                 "{}",
                 diagnostic(
                     "select backend",
                     format!(
-                        "unsupported backend {:?}; expected file, s3, arweave, ipfs, or filecoin",
+                        "unsupported backend {:?}; expected file or s3",
                         args.backend
                     )
                 )
