@@ -16,7 +16,7 @@ use crate::crd::StellarNode;
 use crate::rest_api::auth::RequestIdentity;
 
 use super::dto::{
-    ErrorResponse, HealthResponse, LeaderResponse, LogLevelRequest, LogLevelResponse,
+    ApiErrorCode, ErrorResponse, HealthResponse, LeaderResponse, LogLevelRequest, LogLevelResponse,
     NodeDetailResponse, NodeListResponse, NodeSummary, ProbeResponse,
 };
 
@@ -92,7 +92,11 @@ pub async fn list_nodes(
             error!("Failed to list nodes: {:?}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("list_failed", &e.to_string())),
+                Json(ErrorResponse::structured(
+                    ApiErrorCode::ErrInternalServerError,
+                    &format!("Failed to list nodes: {e}"),
+                    None,
+                )),
             ))
         }
     }
@@ -121,16 +125,21 @@ pub async fn get_node(
         }
         Err(kube::Error::Api(e)) if e.code == 404 => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new(
-                "not_found",
+            Json(ErrorResponse::structured(
+                ApiErrorCode::ErrNotFound,
                 &format!("Node {namespace}/{name} not found"),
+                None,
             )),
         )),
         Err(e) => {
             error!("Failed to get node {}/{}: {:?}", namespace, name, e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("get_failed", &e.to_string())),
+                Json(ErrorResponse::structured(
+                    ApiErrorCode::ErrInternalServerError,
+                    &format!("Failed to get node {namespace}/{name}: {e}"),
+                    None,
+                )),
             ))
         }
     }
@@ -148,7 +157,11 @@ pub async fn set_log_level(
         Err(e) => {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("invalid_level", &e.to_string())),
+                Json(ErrorResponse::structured(
+                    ApiErrorCode::ErrBadRequest,
+                    &format!("Invalid log level: {e}"),
+                    None,
+                )),
             ));
         }
     };
@@ -157,7 +170,11 @@ pub async fn set_log_level(
         error!("Failed to reload log filter: {:?}", e);
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("reload_failed", &e.to_string())),
+            Json(ErrorResponse::structured(
+                ApiErrorCode::ErrInternalServerError,
+                &format!("Failed to reload log filter: {e}"),
+                None,
+            )),
         ));
     }
 
@@ -390,9 +407,10 @@ pub async fn compliance_report(
             error!("Failed to generate compliance report: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "compliance_report_error",
+                Json(ErrorResponse::structured(
+                    ApiErrorCode::ErrInternalServerError,
                     &format!("Failed to generate compliance report: {e}"),
+                    None,
                 )),
             ))
         }

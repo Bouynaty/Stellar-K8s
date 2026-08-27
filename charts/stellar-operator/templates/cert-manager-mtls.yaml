@@ -1,0 +1,78 @@
+{{- if .Values.mtls.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: stellar-inter-service-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/component: security
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: stellar-core-mtls-cert
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: stellar-core-mtls-secret
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
+  isCA: false
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - stellar-core
+    - stellar-core.{{ .Release.Namespace }}
+    - stellar-core.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    name: stellar-inter-service-ca
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: horizon-mtls-cert
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: horizon-mtls-secret
+  duration: 2160h
+  renewBefore: 360h
+  isCA: false
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - horizon
+    - horizon.{{ .Release.Namespace }}
+    - horizon.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    name: stellar-inter-service-ca
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: soroban-rpc-mtls-cert
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: soroban-rpc-mtls-secret
+  duration: 2160h
+  renewBefore: 360h
+  isCA: false
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - soroban-rpc
+    - soroban-rpc.{{ .Release.Namespace }}
+    - soroban-rpc.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    name: stellar-inter-service-ca
+    kind: Issuer
+    group: cert-manager.io
+{{- end }}

@@ -64,6 +64,9 @@ pub struct StructuredLog {
     /// Controller reconcile ID
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reconcile_id: Option<String>,
+    /// Request correlation ID across service boundaries
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<String>,
     /// Arbitrary additional context
     #[serde(flatten)]
     pub extras: HashMap<String, serde_json::Value>,
@@ -148,6 +151,11 @@ pub fn build_structured_log(event: &Event<'_>) -> StructuredLog {
         reconcile_id: visitor
             .extras
             .get("reconcile_id")
+            .and_then(|v| v.as_str().map(|s| s.to_string())),
+        correlation_id: visitor
+            .extras
+            .get("correlation_id")
+            .or_else(|| visitor.extras.get("x_correlation_id"))
             .and_then(|v| v.as_str().map(|s| s.to_string())),
         extras: visitor.extras,
     }
