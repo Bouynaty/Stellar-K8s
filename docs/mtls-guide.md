@@ -8,6 +8,7 @@ This repository currently manages mTLS in two places:
 
 - Operator REST API mTLS (server cert + CA, with automatic server cert rotation)
 - StellarNode workload certs (per-node client cert secret, recreated on reconcile if missing)
+- Inter-service mTLS mesh between Stellar Core, Horizon, Soroban RPC, and companion services via cert-manager (issue #1281; see [End-to-End Encryption Architecture](security/e2e-encryption-architecture.md))
 
 ## Certificate and Secret Model
 
