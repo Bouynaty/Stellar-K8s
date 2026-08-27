@@ -38,6 +38,9 @@
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
 	check-pipeline-log-redaction \
+	license-headers check-license-headers \
+	gitleaks-secret-scan check-api-contract check-api-coverage check-breaking-changes \
+	crd-benchmark crd-perf-regression-check \
 	cleanup clean
 
 .DEFAULT_GOAL := help
@@ -400,6 +403,54 @@ check-pipeline-log-redaction: ## Enforce secret redaction on pipeline command lo
 	@echo "→ Checking pipeline log secret redaction..."
 	@$(CARGO) run --quiet --locked --bin check-pipeline-log-redaction -- \
 		--fixture tests/fixtures/pipeline_logs/dirty-ci-sample.txt
+
+# ── Issue #1285: Security scanning ────────────────────────────────────────────
+
+gitleaks-secret-scan: ## Run gitleaks secret scanning (#1285)
+	@echo "→ Running gitleaks secret scan..."
+	@command -v gitleaks >/dev/null 2>&1 || { \
+		echo "gitleaks not found. Install: https://github.com/gitleaks/gitleaks"; \
+		exit 1; \
+	}
+	@gitleaks detect --source . --config .gitleaks.toml --verbose --redact
+
+# ── Issue #1286: License header enforcement ───────────────────────────────────
+
+license-headers: ## Check license headers on Rust/Shell/YAML files (#1286)
+	@echo "→ Checking license headers..."
+	@python3 scripts/check-license-headers.py
+
+check-license-headers: license-headers ## Alias for license-headers
+
+# ── Issue #1287: CRD performance regression ───────────────────────────────────
+
+crd-benchmark: ## Build CRD operation benchmarks (#1287)
+	@echo "→ Building CRD benchmarks..."
+	@$(CARGO) bench --bench crd_operations --no-run 2>&1 | tail -5
+	@echo "✓ CRD benchmarks compiled (run with: cargo bench --bench crd_operations)"
+
+crd-perf-regression-check: ## Check CRD performance against baseline (#1287)
+	@echo "→ Checking CRD performance regression..."
+	@python3 scripts/check-crd-performance.py \
+		--current results/crd-benchmark.json \
+		--baseline benchmarks/baselines/crd-performance-v0.1.0.json \
+		--threshold 10
+
+# ── Issue #1288: API contract testing ─────────────────────────────────────────
+
+check-api-contract: ## Validate API contract against OpenAPI spec (#1288)
+	@echo "→ Validating API contract..."
+	@python3 scripts/check-api-contract.py check --spec docs/api/openapi.yaml
+
+check-api-coverage: ## Check API endpoint coverage exceeds 90% (#1288)
+	@echo "→ Checking API endpoint coverage..."
+	@python3 scripts/check-api-contract.py coverage --spec docs/api/openapi.yaml --min-coverage 90
+
+check-breaking-changes: ## Detect breaking API changes vs base branch (#1288)
+	@echo "→ Detecting breaking API changes..."
+	@python3 scripts/check-api-contract.py breaking \
+		--base /tmp/base-openapi.yaml \
+		--head docs/api/openapi.yaml
 
 # ── Completions ────────────────────────────────────────────────────────────────
 
