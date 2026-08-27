@@ -328,6 +328,15 @@ cargo audit  # Uses .cargo/audit.toml config
   (schedule + `workflow_dispatch` only — no duplicate PR trigger).
 - **Not duplicated in:** `dependency-review.yml` or `maintenance.yml`.
 
+### YAML schema, Helm edge cases, tracing, migrations (#1289–#1291, #1317)
+- **YAML lint + CRD JSON schema drift + Helm-render kubeconform:** `ci.yml` `yaml-schema`
+  (`make yaml-schema-validate`). Does not replace `repo-hygiene`'s
+  `validate-yaml-manifests.py` (#1044).
+- **Helm unittest + upgrade preservation:** `ci.yml` `helm-test`
+  (`make helm-unittest`, `make helm-upgrade-test`).
+- **Database migration harness:** `ci.yml` `db-migrations` with Postgres 16
+  (`make test-db-migrations`). Uses isolated `stellar_migration_test` credentials only.
+
 ### Security scanning (Trivy / Checkov)
 - **Canonical workflow:** `.github/workflows/security-scan.yml` (push to `main`,
   schedule, `workflow_dispatch`). Uses `.github/actions/security-scan` for image scans.

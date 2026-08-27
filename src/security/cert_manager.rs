@@ -99,6 +99,71 @@ impl Default for RenewalConfig {
     }
 }
 
+/// Inter-service mTLS configuration for Stellar services (issue #1281)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InterServiceMtlsConfig {
+    pub enabled: bool,
+    pub issuer_name: String,
+    pub namespace: String,
+    pub stellar_core_service: String,
+    pub horizon_service: String,
+    pub companion_services: Vec<String>,
+    pub cert_duration_hours: u32,
+    pub renew_before_hours: u32,
+}
+
+impl Default for InterServiceMtlsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            issuer_name: "stellar-inter-service-ca".to_string(),
+            namespace: "stellar-system".to_string(),
+            stellar_core_service: "stellar-core".to_string(),
+            horizon_service: "horizon".to_string(),
+            companion_services: vec!["soroban-rpc".to_string(), "ingestion-worker".to_string()],
+            cert_duration_hours: 2160, // 90 days
+            renew_before_hours: 360,   // 15 days
+        }
+    }
+}
+
+/// Cert-manager Custom Resource manifest generator for inter-service mTLS
+pub struct CertManagerResourceGenerator;
+
+impl CertManagerResourceGenerator {
+    /// Generate a cert-manager Certificate manifest for a given service
+    pub fn generate_certificate_manifest(config: &InterServiceMtlsConfig, service_name: &str) -> String {
+        format!(
+            "apiVersion: cert-manager.io/v1\n\
+             kind: Certificate\n\
+             metadata:\n\
+             \x20 name: {service_name}-mtls-cert\n\
+             \x20 namespace: {namespace}\n\
+             spec:\n\
+             \x20 secretName: {service_name}-mtls-secret\n\
+             \x20 duration: {duration}h\n\
+             \x20 renewBefore: {renew_before}h\n\
+             \x20 isCA: false\n\
+             \x20 privateKey:\n\
+             \x20\x20 algorithm: ECDSA\n\
+             \x20\x20 size: 256\n\
+             \x20 dnsNames:\n\
+             \x20 - {service_name}\n\
+             \x20 - {service_name}.{namespace}\n\
+             \x20 - {service_name}.{namespace}.svc.cluster.local\n\
+             \x20 issuerRef:\n\
+             \x20\x20 name: {issuer}\n\
+             \x20\x20 kind: Issuer\n\
+             \x20\x20 group: cert-manager.io\n",
+            service_name = service_name,
+            namespace = config.namespace,
+            duration = config.cert_duration_hours,
+            renew_before = config.renew_before_hours,
+            issuer = config.issuer_name,
+        )
+    }
+}
+
 /// Certificate manager
 pub struct CertManager {
     certificates: Arc<RwLock<HashMap<String, CertificateInfo>>>,

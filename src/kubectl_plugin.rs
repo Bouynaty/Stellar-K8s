@@ -781,7 +781,10 @@ async fn run(cli: Cli) -> Result<()> {
                 } => snapshot_restore(&client, namespace, &snapshot_name, &node_name).await,
             }
         }
-        _ => todo!(),
+        other => {
+            eprintln!("Error: unrecognized stellar command: {:?}", other);
+            std::process::exit(1);
+        }
     }
 }
 

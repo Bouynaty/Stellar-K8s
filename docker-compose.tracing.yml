@@ -1,0 +1,24 @@
+# Local Jaeger for OpenTelemetry (issue #1290)
+#
+# Start:  docker compose -f docker-compose.tracing.yml up -d
+# UI:     http://localhost:16686
+# OTLP:   http://localhost:4317  (gRPC)  /  http://localhost:4318 (HTTP)
+#
+# Point the operator at this collector:
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+#   OTEL_SERVICE_NAME=stellar-operator
+#   OTEL_TRACES_SAMPLER=parentbased_traceidratio
+#   OTEL_TRACES_SAMPLER_ARG=1.0
+version: "3.8"
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: stellar-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    restart: unless-stopped

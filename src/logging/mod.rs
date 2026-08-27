@@ -64,6 +64,9 @@ pub struct StructuredLog {
     /// Controller reconcile ID
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reconcile_id: Option<String>,
+    /// Request correlation ID across service boundaries
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<String>,
     /// Arbitrary additional context
     #[serde(flatten)]
     pub extras: HashMap<String, serde_json::Value>,
@@ -141,13 +144,18 @@ pub fn build_structured_log(event: &Event<'_>) -> StructuredLog {
         module: metadata.module_path().map(|s| s.to_string()),
         file: metadata.file().map(|s| s.to_string()),
         line: metadata.line(),
-        trace_id: None, // Injected by OtelTraceIdLayer
-        span_id: None,
+        trace_id: crate::telemetry::current_trace_context().map(|(tid, _)| tid),
+        span_id: crate::telemetry::current_trace_context().map(|(_, sid)| sid),
         k8s_node: std::env::var("K8S_NODE_NAME").ok(),
         k8s_namespace: std::env::var("K8S_NAMESPACE").ok(),
         reconcile_id: visitor
             .extras
             .get("reconcile_id")
+            .and_then(|v| v.as_str().map(|s| s.to_string())),
+        correlation_id: visitor
+            .extras
+            .get("correlation_id")
+            .or_else(|| visitor.extras.get("x_correlation_id"))
             .and_then(|v| v.as_str().map(|s| s.to_string())),
         extras: visitor.extras,
     }

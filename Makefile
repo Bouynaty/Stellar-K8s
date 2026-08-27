@@ -24,7 +24,7 @@
 	docker-build docker-build-ci docker-multiarch \
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
-	helm-lint link-check link-check-all changelog \
+	helm-lint helm-unittest helm-upgrade-test link-check link-check-all changelog \
 	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
 	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
@@ -34,6 +34,7 @@
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
 	health health-fast validate preflight test-preflight test-shell all \
 	shell-safety test-shell-safety validate-yaml test-yaml-validation \
+	yaml-lint crd-schemas yaml-schema-validate test-db-migrations \
 	helm-drift helm-drift-update test-helm-drift \
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
@@ -196,6 +197,22 @@ validate-yaml: ## Repository-wide schema validation for YAML manifests (#1044)
 test-yaml-validation: ## Unit tests for the YAML manifest validator (#1044)
 	@echo "→ Testing YAML manifest validator..."
 	@python3 -m unittest scripts.tests.test_validate_yaml_manifests
+
+yaml-lint: ## Lint YAML with the project yamllint config (#1291)
+	@echo "→ Running yamllint..."
+	yamllint -c .yamllint.yml .
+
+crd-schemas: ## Derive JSON schemas from config/crd/ into schemas/crd/ (#1291)
+	@echo "→ Extracting CRD JSON schemas..."
+	@python3 scripts/ci/extract-crd-json-schemas.py
+
+yaml-schema-validate: ## yamllint + CRD schema drift + Helm-render kubeconform (#1291)
+	@echo "→ Running YAML / CRD / Helm schema validation..."
+	@bash scripts/ci/validate-yaml.sh
+
+test-db-migrations: ## Forward/rollback SQL migration harness (#1317)
+	@echo "→ Running database migration tests..."
+	@bash scripts/ci/test-db-migrations.sh
 
 helm-drift: ## Detect drift between Helm templates and the committed renders (#1045)
 	@bash scripts/check-helm-drift.sh
@@ -483,6 +500,14 @@ helm-lint: ## Helm lint check
 	helm template stellar-operator charts/stellar-operator > /dev/null
 	@$(MAKE) --no-print-directory helm-drift
 	@echo "✓ Helm charts passed linting, validation, and drift checks"
+
+helm-unittest: ## Helm unittest including edge-case and upgrade preservation suites (#1289)
+	@echo "→ Running Helm unit tests..."
+	helm unittest charts/stellar-operator --strict --color
+
+helm-upgrade-test: ## Values-preservation check from the last supported production schema (#1289)
+	@echo "→ Running Helm upgrade preservation check..."
+	@bash scripts/ci/helm-upgrade-test.sh
 
 # ── Development Setup ─────────────────────────────────────────────────────────
 

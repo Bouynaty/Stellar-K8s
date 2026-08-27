@@ -243,6 +243,18 @@ path = "src/kubectl_plugin.rs"
 name = "stellar-completions"
 path = "src/bin/completions.rs"
 
+[[bin]]
+name = "conventional-commit-check"
+path = "src/bin/conventional-commit-check.rs"
+
+[[bin]]
+name = "changelog-gen"
+path = "src/bin/changelog-gen.rs"
+
+[[bin]]
+name = "backup-verify"
+path = "src/bin/backup-verify.rs"
+
 # Cross-platform developer bootstrap verifier — pure Rust so it also runs on
 # plain Windows (no WSL/Git Bash needed), unlike scripts/preflight.sh.
 [[bin]]

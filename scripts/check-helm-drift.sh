@@ -55,6 +55,7 @@ PROFILES=(
 
 UPDATE=0
 ONLY_PROFILE=""
+MAX_CHANGED_LINES=0
 DRIFTED=0
 FAILED=0
 
@@ -66,6 +67,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --update) UPDATE=1; shift ;;
     --profile) ONLY_PROFILE="${2:?--profile needs a name}"; shift 2 ;;
+    --max-changed-lines) MAX_CHANGED_LINES="${2:?--max-changed-lines needs a number}"; shift 2 ;;
     --list)
       for entry in "${PROFILES[@]}"; do echo "${entry%%|*}"; done
       exit 0 ;;
@@ -147,6 +149,12 @@ for entry in "${PROFILES[@]}"; do
   else
     changed="$(grep -c '^[+-]' "${TEMP_DIR}/${name}.diff" || true)"
     echo -e "  ${RED}✗${NC} ${name}: rendered output drifted from the golden file (${changed} changed lines)"
+    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+      echo "::error file=charts/stellar-operator/rendered/${name}.yaml::Helm template drift detected in profile '${name}' (${changed} changed lines)."
+    fi
+    if [[ "${MAX_CHANGED_LINES}" -gt 0 && "${changed}" -gt "${MAX_CHANGED_LINES}" ]]; then
+      echo -e "      ${RED}ALERT: Changed lines (${changed}) exceeds acceptable threshold (${MAX_CHANGED_LINES})${NC}"
+    fi
     echo ""
     head -80 "${TEMP_DIR}/${name}.diff" | sed 's/^/      /'
     if [[ "${changed}" -gt 80 ]]; then
