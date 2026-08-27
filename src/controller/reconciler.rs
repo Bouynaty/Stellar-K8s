@@ -1987,7 +1987,7 @@ pub(crate) fn apply_stellar_node(
         {
             let dry_run = ctx.dry_run;
             if let Err(e) =
-                secret_watcher::handle_passphrase_secret_rotation(&client, &node, dry_run).await
+                secret_watcher::handle_passphrase_secret_rotation(&client, &node, dry_run, &ctx.audit_log).await
             {
                 warn!(
                     "Passphrase secret rotation check failed for {}/{}: {}",
@@ -1995,7 +1995,7 @@ pub(crate) fn apply_stellar_node(
                 );
             }
             if let Err(e) =
-                secret_watcher::handle_seed_secret_rotation(&client, &node, dry_run).await
+                secret_watcher::handle_seed_secret_rotation(&client, &node, dry_run, &ctx.audit_log).await
             {
                 warn!(
                     "Seed secret rotation check failed for {}/{}: {}",

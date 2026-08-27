@@ -139,8 +139,10 @@ async fn test_backup_verification_config_full_serialization() {
 
 #[test]
 fn test_backup_verification_config_rejects_invalid_recovery_objectives() {
-    let mut config = BackupVerificationConfig::default();
-    config.timeout_minutes = 0;
+    let mut config = BackupVerificationConfig {
+        timeout_minutes: 0,
+        ..Default::default()
+    };
     assert!(config.validate().is_err());
 
     config.timeout_minutes = 60;

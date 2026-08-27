@@ -48,14 +48,10 @@ pub enum VersionStatus {
     Current,
     /// The requested version is still served but has a published end-of-life
     /// date.  Callers must migrate before `sunset_date`.
-    Deprecated {
-        sunset_date: Option<String>,
-    },
+    Deprecated { sunset_date: Option<String> },
     /// The requested version is no longer served.  The gateway responds
     /// `410 Gone` for all requests to this version.
-    Sunset {
-        sunset_date: Option<String>,
-    },
+    Sunset { sunset_date: Option<String> },
     /// The version identifier could not be determined from the request using
     /// the configured [`VersionStrategy`].
     Unknown,
@@ -108,19 +104,18 @@ pub fn extract_version_from_headers(
                 .get("accept")
                 .or_else(|| headers.get("Accept"))
                 .and_then(|v| {
-                    v.split(',')
-                        .find_map(|part| {
-                            let part = part.trim();
-                            let prefix = "application/vnd.stellar.";
-                            if let Some(rest) = part.strip_prefix(prefix) {
-                                // rest = "v2+json" or "v2"
-                                let version = rest.split('+').next().unwrap_or(rest);
-                                if version.starts_with('v') {
-                                    return Some(version.to_string());
-                                }
+                    v.split(',').find_map(|part| {
+                        let part = part.trim();
+                        let prefix = "application/vnd.stellar.";
+                        if let Some(rest) = part.strip_prefix(prefix) {
+                            // rest = "v2+json" or "v2"
+                            let version = rest.split('+').next().unwrap_or(rest);
+                            if version.starts_with('v') {
+                                return Some(version.to_string());
                             }
-                            None
-                        })
+                        }
+                        None
+                    })
                 })
         }
         VersionStrategy::CustomHeader { header_name } => headers
@@ -209,10 +204,7 @@ mod tests {
     #[test]
     fn detects_unknown() {
         let cfg = make_cfg();
-        assert!(matches!(
-            check_version("v99", &cfg),
-            VersionStatus::Unknown
-        ));
+        assert!(matches!(check_version("v99", &cfg), VersionStatus::Unknown));
     }
 
     #[test]
