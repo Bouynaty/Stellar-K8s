@@ -8,7 +8,10 @@ structurally unable to fail.
 |---|---|---|---|
 | Shell safety | `make shell-safety` | #1049 | Extends `shellcheck -S error` |
 | YAML manifest validation | `make validate-yaml` | #1044 | Extends `validate-config-samples.sh` |
+| YAML lint + CRD JSON schemas + Helm kubeconform | `make yaml-schema-validate` | #1291 | Adds yamllint, `schemas/crd/`, rendered-chart kubeconform |
 | Helm template drift | `make helm-drift` | #1045 | Replaces `check-chart-diff.sh` |
+| Helm edge-case / upgrade unittest | `make helm-unittest` / `make helm-upgrade-test` | #1289 | Extends helm-unittest |
+| Database migration harness | `make test-db-migrations` | #1317 | sqlx + Postgres |
 
 All three need only Python 3 with `pyyaml` and `jsonschema`:
 

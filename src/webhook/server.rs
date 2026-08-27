@@ -183,7 +183,15 @@ impl WebhookServer {
             return ValidationOutput::allowed();
         };
 
-        let result = self.policy_http.post(endpoint).json(input).send().await;
+        let mut headers = reqwest::header::HeaderMap::new();
+        crate::telemetry::inject_trace_headers(&mut headers);
+        let result = self
+            .policy_http
+            .post(endpoint)
+            .headers(headers)
+            .json(input)
+            .send()
+            .await;
 
         let response = match result {
             Ok(resp) => resp,
@@ -420,6 +428,9 @@ impl WebhookServer {
                 "/plugins/{name}",
                 axum::routing::delete(remove_plugin_handler),
             )
+            .layer(axum::middleware::from_fn(
+                crate::telemetry::http_trace_middleware,
+            ))
             .with_state(state)
     }
 

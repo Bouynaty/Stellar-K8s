@@ -86,6 +86,7 @@ pub mod cost_optimization;
 pub mod crd;
 pub mod data_pipeline;
 pub mod db_management;
+pub mod db_migrations;
 pub mod deployment_strategy;
 pub mod error;
 pub mod error_budget;
