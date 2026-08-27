@@ -115,6 +115,7 @@ nav:
     - SCP Consensus Topology and Monitoring: scp-consensus-topology-and-monitoring.md
     - Production Profiling Runbook: operations/profiling-runbook.md
     - Core Blue/Green Runbook: operations/core-blue-green-runbook.md
+    - OpenTelemetry Tracing: observability/tracing.md
   - Troubleshooting:
     - troubleshooting/index.md
     - Common Issues: troubleshooting/common-issues.md
@@ -144,6 +145,9 @@ nav:
     - Regeneration Guide: development/regeneration-guide.md
     - Repo Health Checklist: development/repo-health-checklist.md
     - Static Analysis Gates: development/static-analysis-gates.md
+    - YAML Schema Validation: yaml-schema-validation.md
+    - Helm Chart Testing: helm-chart-testing.md
+    - Database Migrations: database/migrations.md
     - Reconciler Phases: reconciler-phases.md
   - Contributing:
     - contributing/index.md

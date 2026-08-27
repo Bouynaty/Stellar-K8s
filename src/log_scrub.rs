@@ -211,12 +211,16 @@ impl<'writer> tracing::field::Visit for RedactingFieldVisitor<'writer> {
 
 impl<'writer> RedactingFieldVisitor<'writer> {
     fn write_field(&mut self, field: &tracing::field::Field, value: &str) {
+        self.write_field_name_value(field.name(), value);
+    }
+
+    fn write_field_name_value(&mut self, name: &str, value: &str) {
         if self.has_fields {
             let _ = write!(self.writer, " ");
         } else {
             self.has_fields = true;
         }
-        let _ = write!(self.writer, "{}={}", field.name(), value);
+        let _ = write!(self.writer, "{name}={value}");
     }
 }
 
@@ -230,6 +234,10 @@ impl<'writer> FormatFields<'writer> for RedactingFields {
             has_fields: false,
         };
         fields.record(&mut visitor);
+        if let Some((trace_id, span_id)) = crate::telemetry::current_trace_context() {
+            visitor.write_field_name_value("trace_id", &trace_id);
+            visitor.write_field_name_value("span_id", &span_id);
+        }
         Ok(())
     }
 }

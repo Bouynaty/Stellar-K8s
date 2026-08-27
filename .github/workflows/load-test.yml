@@ -95,7 +95,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "load-test"
+          cache-key: "perf-load-test"
           toolchain: "1.92"
 
       - name: Set up Python

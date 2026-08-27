@@ -176,12 +176,20 @@ feature set (`rest-api`, `metrics`, `admission-webhook`, `k8s-v1-30`,
 exactly. Plain `cargo test --all-features` will **not** produce the same
 result.
 
-This runs **62+ tests** including:
-- 52 `StellarNodeSpec` validation tests (CRD schema validation)
-- 5 kubectl plugin tests (output formatting)
-- Controller reconciliation logic tests
-- Webhook validation tests
-- Backup scheduler tests
+Additional gates:
+
+```bash
+make test-db-migrations      # SQL forward/rollback harness (needs DATABASE_URL)
+cargo test --test otel_propagation -- --nocapture
+make yaml-schema-validate    # yamllint + CRD JSON schemas + Helm kubeconform
+make helm-unittest
+make helm-upgrade-test
+```
+
+See [docs/database/migrations.md](docs/database/migrations.md),
+[docs/yaml-schema-validation.md](docs/yaml-schema-validation.md),
+[docs/observability/tracing.md](docs/observability/tracing.md), and
+[docs/helm-chart-testing.md](docs/helm-chart-testing.md).
 
 ### Run Specific Test
 

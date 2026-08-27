@@ -227,6 +227,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /v1/health/nodes:
     get:
@@ -242,6 +244,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /v1/health/incidents:
     get:
@@ -259,6 +263,8 @@ paths:
                 type: array
                 items:
                   type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /config/log-level:
     get:
@@ -274,6 +280,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LogLevelResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags: [Configuration]
       summary: Set log level
@@ -386,6 +394,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/compliance/status:
     get:
@@ -401,6 +411,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/horizon/cache/status:
     get:
@@ -416,6 +428,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/dashboard/overview:
     get:
@@ -431,6 +445,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/dashboard/metrics:
     get:
@@ -446,6 +462,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/optimization/recommendations:
     get:
@@ -461,6 +479,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/quorum/topology:
     get:
@@ -476,6 +496,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/jobs:
     get:
@@ -491,6 +513,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/jobs/stats:
     get:
@@ -506,6 +530,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /api/v1/audit-log:
     get:
@@ -521,6 +547,8 @@ paths:
             application/json:
               schema:
                 type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /metrics:
     get:

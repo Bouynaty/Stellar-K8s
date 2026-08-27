@@ -12,6 +12,12 @@
 //!    when `--warn-only`, hard failures otherwise for `todo!`/`unimplemented!`
 //!    when `--strict-dead-paths` is set).
 //!
+//! Module resolution matches rustc: `mod x;` in a crate root (lib.rs, main.rs,
+//! or a declared bin such as `src/kubectl_plugin.rs`) resolves to a sibling of
+//! the root file, while `mod x;` in any other `foo.rs` resolves under
+//! `foo/x.rs` or `foo/x/mod.rs`.
+
+//!
 //! # Usage
 //!
 //! ```text
@@ -247,7 +253,13 @@ fn looks_like_file_mod(line: &str, next: Option<&str>) -> bool {
 }
 
 /// Resolve a `mod name;` declaration relative to the declaring file.
-fn resolve_mod_file(declaring_file: &Path, decl: &ModDecl) -> Vec<PathBuf> {
+///
+/// `is_crate_root` must be true for crate roots (lib.rs, main.rs, and every
+/// `[[bin]]` path declared in Cargo.toml). rustc resolves `mod x;` in a crate
+/// root as a *sibling* of the root file (`src/kubectl_plugin.rs` +
+/// `mod explain;` → `src/explain.rs`), not under a `kubectl_plugin/`
+/// subdirectory. Only non-root files follow the `foo.rs → foo/` rule.
+fn resolve_mod_file(declaring_file: &Path, decl: &ModDecl, is_crate_root: bool) -> Vec<PathBuf> {
     let parent = declaring_file
         .parent()
         .unwrap_or_else(|| Path::new("."))
@@ -257,18 +269,12 @@ fn resolve_mod_file(declaring_file: &Path, decl: &ModDecl) -> Vec<PathBuf> {
         return vec![parent.join(path_attr)];
     }
 
-    // Special case: declarations in lib.rs / main.rs of a directory use that dir.
-    // For `src/lib.rs` declaring `mod foo`, look at `src/foo.rs` or `src/foo/mod.rs`.
-    // For `src/controller/mod.rs` declaring `mod bar`, look at `src/controller/bar.rs`
-    // or `src/controller/bar/mod.rs`.
-    // For `src/controller.rs` declaring `mod bar`, look at `src/controller/bar.rs`
-    // or `src/controller/bar/mod.rs`.
     let stem = declaring_file
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("");
 
-    let search_dir = if stem == "mod" || stem == "lib" || stem == "main" {
+    let search_dir = if is_crate_root || stem == "mod" || stem == "lib" || stem == "main" {
         parent
     } else {
         // foo.rs → foo/
@@ -348,6 +354,7 @@ fn crate_roots(repo_root: &Path) -> Result<Vec<PathBuf>, String> {
 
 fn build_reachable(repo_root: &Path, roots: &[PathBuf]) -> Result<HashSet<PathBuf>, String> {
     let mut reachable = HashSet::new();
+    let root_set: HashSet<PathBuf> = roots.iter().map(|r| normalize(repo_root, r)).collect();
     let mut queue: VecDeque<PathBuf> = roots.iter().cloned().collect();
 
     while let Some(file) = queue.pop_front() {
@@ -358,10 +365,11 @@ fn build_reachable(repo_root: &Path, roots: &[PathBuf]) -> Result<HashSet<PathBu
         if !canon.is_file() {
             continue;
         }
+        let is_crate_root = root_set.contains(&canon);
         let source =
             fs::read_to_string(&canon).map_err(|e| format!("read {}: {e}", canon.display()))?;
         for decl in parse_mod_decls(&source) {
-            for candidate in resolve_mod_file(&canon, &decl) {
+            for candidate in resolve_mod_file(&canon, &decl, is_crate_root) {
                 let candidate = normalize(repo_root, &candidate);
                 if candidate.is_file() {
                     queue.push_back(candidate);
@@ -725,7 +733,7 @@ mod tests {
             name: "controller".into(),
             path_attr: None,
         };
-        let candidates = resolve_mod_file(&lib, &decl);
+        let candidates = resolve_mod_file(&lib, &decl, true);
         assert!(candidates
             .iter()
             .any(|p| p.ends_with("src/controller.rs") || p.ends_with("src\\controller.rs")));
@@ -741,10 +749,33 @@ mod tests {
             name: "health".into(),
             path_attr: None,
         };
-        let candidates = resolve_mod_file(&file, &decl);
+        let candidates = resolve_mod_file(&file, &decl, false);
         assert!(candidates
             .iter()
             .any(|p| p.ends_with("controller/health.rs") || p.ends_with("controller\\health.rs")));
+    }
+
+    #[test]
+    fn resolve_from_bin_crate_root_is_sibling() {
+        // rustc treats a `[[bin]]` path (e.g. src/kubectl_plugin.rs) as a crate
+        // root, so `mod explain;` resolves to the SIBLING src/explain.rs — not
+        // src/kubectl_plugin/explain.rs. Regression test for the cleanup that
+        // removed the false-positive orphans src/{explain,audit_report,sql}.rs.
+        let file = PathBuf::from("/repo/src/kubectl_plugin.rs");
+        let decl = ModDecl {
+            name: "explain".into(),
+            path_attr: None,
+        };
+        let candidates = resolve_mod_file(&file, &decl, true);
+        assert!(
+            candidates
+                .iter()
+                .any(|p| p.ends_with("src/explain.rs") || p.ends_with("src\\explain.rs")),
+            "expected sibling resolution, got {candidates:?}"
+        );
+        assert!(!candidates.iter().any(|p| {
+            p.ends_with("kubectl_plugin/explain.rs") || p.ends_with("kubectl_plugin\\explain.rs")
+        }));
     }
 
     #[test]

@@ -24,7 +24,7 @@
 	docker-build docker-build-ci docker-multiarch \
 	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
-	helm-lint link-check link-check-all changelog \
+	helm-lint helm-unittest helm-upgrade-test link-check link-check-all changelog \
 	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
 	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
@@ -34,10 +34,14 @@
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
 	health health-fast validate preflight test-preflight test-shell all \
 	shell-safety test-shell-safety validate-yaml test-yaml-validation \
+	yaml-lint crd-schemas yaml-schema-validate test-db-migrations \
 	helm-drift helm-drift-update test-helm-drift \
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
 	check-pipeline-log-redaction \
+	license-headers check-license-headers \
+	gitleaks-secret-scan check-api-contract check-api-coverage check-breaking-changes \
+	crd-benchmark crd-perf-regression-check \
 	cleanup clean
 
 .DEFAULT_GOAL := help
@@ -193,6 +197,22 @@ validate-yaml: ## Repository-wide schema validation for YAML manifests (#1044)
 test-yaml-validation: ## Unit tests for the YAML manifest validator (#1044)
 	@echo "→ Testing YAML manifest validator..."
 	@python3 -m unittest scripts.tests.test_validate_yaml_manifests
+
+yaml-lint: ## Lint YAML with the project yamllint config (#1291)
+	@echo "→ Running yamllint..."
+	yamllint -c .yamllint.yml .
+
+crd-schemas: ## Derive JSON schemas from config/crd/ into schemas/crd/ (#1291)
+	@echo "→ Extracting CRD JSON schemas..."
+	@python3 scripts/ci/extract-crd-json-schemas.py
+
+yaml-schema-validate: ## yamllint + CRD schema drift + Helm-render kubeconform (#1291)
+	@echo "→ Running YAML / CRD / Helm schema validation..."
+	@bash scripts/ci/validate-yaml.sh
+
+test-db-migrations: ## Forward/rollback SQL migration harness (#1317)
+	@echo "→ Running database migration tests..."
+	@bash scripts/ci/test-db-migrations.sh
 
 helm-drift: ## Detect drift between Helm templates and the committed renders (#1045)
 	@bash scripts/check-helm-drift.sh
@@ -401,6 +421,54 @@ check-pipeline-log-redaction: ## Enforce secret redaction on pipeline command lo
 	@$(CARGO) run --quiet --locked --bin check-pipeline-log-redaction -- \
 		--fixture tests/fixtures/pipeline_logs/dirty-ci-sample.txt
 
+# ── Issue #1285: Security scanning ────────────────────────────────────────────
+
+gitleaks-secret-scan: ## Run gitleaks secret scanning (#1285)
+	@echo "→ Running gitleaks secret scan..."
+	@command -v gitleaks >/dev/null 2>&1 || { \
+		echo "gitleaks not found. Install: https://github.com/gitleaks/gitleaks"; \
+		exit 1; \
+	}
+	@gitleaks detect --source . --config .gitleaks.toml --verbose --redact
+
+# ── Issue #1286: License header enforcement ───────────────────────────────────
+
+license-headers: ## Check license headers on Rust/Shell/YAML files (#1286)
+	@echo "→ Checking license headers..."
+	@python3 scripts/check-license-headers.py
+
+check-license-headers: license-headers ## Alias for license-headers
+
+# ── Issue #1287: CRD performance regression ───────────────────────────────────
+
+crd-benchmark: ## Build CRD operation benchmarks (#1287)
+	@echo "→ Building CRD benchmarks..."
+	@$(CARGO) bench --bench crd_operations --no-run 2>&1 | tail -5
+	@echo "✓ CRD benchmarks compiled (run with: cargo bench --bench crd_operations)"
+
+crd-perf-regression-check: ## Check CRD performance against baseline (#1287)
+	@echo "→ Checking CRD performance regression..."
+	@python3 scripts/check-crd-performance.py \
+		--current results/crd-benchmark.json \
+		--baseline benchmarks/baselines/crd-performance-v0.1.0.json \
+		--threshold 10
+
+# ── Issue #1288: API contract testing ─────────────────────────────────────────
+
+check-api-contract: ## Validate API contract against OpenAPI spec (#1288)
+	@echo "→ Validating API contract..."
+	@python3 scripts/check-api-contract.py check --spec docs/api/openapi.yaml
+
+check-api-coverage: ## Check API endpoint coverage exceeds 90% (#1288)
+	@echo "→ Checking API endpoint coverage..."
+	@python3 scripts/check-api-contract.py coverage --spec docs/api/openapi.yaml --min-coverage 90
+
+check-breaking-changes: ## Detect breaking API changes vs base branch (#1288)
+	@echo "→ Detecting breaking API changes..."
+	@python3 scripts/check-api-contract.py breaking \
+		--base /tmp/base-openapi.yaml \
+		--head docs/api/openapi.yaml
+
 # ── Completions ────────────────────────────────────────────────────────────────
 
 completions: completions-bash completions-zsh completions-fish ## Generate all shell completion scripts
@@ -432,6 +500,14 @@ helm-lint: ## Helm lint check
 	helm template stellar-operator charts/stellar-operator > /dev/null
 	@$(MAKE) --no-print-directory helm-drift
 	@echo "✓ Helm charts passed linting, validation, and drift checks"
+
+helm-unittest: ## Helm unittest including edge-case and upgrade preservation suites (#1289)
+	@echo "→ Running Helm unit tests..."
+	helm unittest charts/stellar-operator --strict --color
+
+helm-upgrade-test: ## Values-preservation check from the last supported production schema (#1289)
+	@echo "→ Running Helm upgrade preservation check..."
+	@bash scripts/ci/helm-upgrade-test.sh
 
 # ── Development Setup ─────────────────────────────────────────────────────────
 

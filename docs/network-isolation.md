@@ -154,6 +154,14 @@ Both sets allow:
 - The operator namespace (health probes, event publishing)
 - The monitoring namespace (Prometheus scraping, if `allowMonitoringNamespace: true`)
 
+### C. Operator and Webhook Default Deny Policies (Helm-deployed)
+
+**Source:** `charts/stellar-operator/templates/networkpolicy.yaml`
+
+To implement zero-trust hardening for the operator's own control-plane infrastructure, default-deny NetworkPolicies are deployed for:
+1. **Operator namespace** (`.Release.Namespace`) — drops all ingress/egress by default. Allows ingress only to the metrics endpoint (port 9090) and the REST API (port 8080).
+2. **Webhook namespace** (`stellar-webhook`) — drops all ingress/egress by default. Allows ingress only for HTTPS webhook calls (port 8443 or 443) and Prometheus metrics (port 9090).
+
 ---
 
 ## RBAC Scoping

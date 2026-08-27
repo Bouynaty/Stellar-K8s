@@ -763,4 +763,196 @@ mod tests {
         assert!(config.enable_smoke_tests);
         assert_eq!(config.health_check_endpoint, Some("/health".to_string()));
     }
+
+    #[test]
+    fn test_auto_rollback_policy_defaults() {
+        let policy = AutoRollbackPolicy::default();
+        assert_eq!(policy.failure_threshold, 3);
+        assert_eq!(policy.observation_window_secs, 120);
+        assert!(policy.enabled);
+    }
+
+    #[test]
+    fn test_rollback_trigger_threshold() {
+        let policy = AutoRollbackPolicy {
+            failure_threshold: 2,
+            observation_window_secs: 60,
+            enabled: true,
+        };
+        let mut counter = RollbackCounter::new(policy.failure_threshold);
+        counter.record_failure();
+        assert!(!counter.should_rollback());
+        counter.record_failure();
+        assert!(counter.should_rollback());
+    }
+}
+
+// ── Automated rollback support ───────────────────────────────────────────────
+//
+// Issue #1417: Add automated rollback on health check failure.
+//
+// After traffic has been switched to the Green deployment the operator starts
+// a background health-check loop.  If the green deployment's readiness probe
+// fails `failure_threshold` times within `observation_window_secs` seconds the
+// operator automatically re-runs `rollback_to_blue` and emits a Kubernetes
+// warning event.
+
+/// Policy controlling automated rollback behaviour.
+#[derive(Clone, Debug)]
+pub struct AutoRollbackPolicy {
+    /// How many consecutive health-check failures trigger a rollback.
+    /// Defaults to 3.
+    pub failure_threshold: u32,
+    /// Observation window in seconds.  Only failures within this window count
+    /// toward the threshold.  Defaults to 120s.
+    pub observation_window_secs: u64,
+    /// Set to `false` to disable automated rollback (manual-only mode).
+    pub enabled: bool,
+}
+
+impl Default for AutoRollbackPolicy {
+    fn default() -> Self {
+        Self {
+            failure_threshold: 3,
+            observation_window_secs: 120,
+            enabled: true,
+        }
+    }
+}
+
+/// Lightweight counter that tracks consecutive failures for the rollback gate.
+pub struct RollbackCounter {
+    threshold: u32,
+    failures: u32,
+}
+
+impl RollbackCounter {
+    pub fn new(threshold: u32) -> Self {
+        Self {
+            threshold,
+            failures: 0,
+        }
+    }
+
+    /// Record one health-check failure.
+    pub fn record_failure(&mut self) {
+        self.failures += 1;
+    }
+
+    /// Record a successful health-check (resets the consecutive-failure count).
+    pub fn record_success(&mut self) {
+        self.failures = 0;
+    }
+
+    /// Returns `true` when the failure count has reached the rollback threshold.
+    pub fn should_rollback(&self) -> bool {
+        self.failures >= self.threshold
+    }
+}
+
+/// Monitor the Green deployment after traffic switch and automatically roll
+/// back to Blue if health checks fail.
+///
+/// This function is intended to be driven by the main reconciliation loop, not
+/// spawned as a detached task, so that the operator's cooperative scheduling
+/// is preserved.
+///
+/// # Arguments
+///
+/// * `client`  – Kubernetes client.
+/// * `node`    – The `StellarNode` resource.
+/// * `policy`  – Rollback policy (thresholds and window).
+/// * `config`  – Blue/green deployment config (timeout, health endpoint).
+///
+/// # Returns
+///
+/// * `Ok(true)`  – Green deployment remained healthy; rollback was not needed.
+/// * `Ok(false)` – Rollback was triggered and executed.
+pub async fn monitor_and_auto_rollback(
+    client: &Client,
+    node: &StellarNode,
+    policy: &AutoRollbackPolicy,
+    config: &BlueGreenConfig,
+) -> Result<bool> {
+    if !policy.enabled {
+        info!(
+            "Auto-rollback is disabled for {}/{}; skipping monitor",
+            node.namespace().unwrap_or_default(),
+            node.name_any()
+        );
+        return Ok(true);
+    }
+
+    let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
+    let node_name = node.name_any();
+    let green_name = format!("{}-green", node_name);
+    let api: Api<Deployment> = Api::namespaced(client.clone(), &namespace);
+
+    let mut counter = RollbackCounter::new(policy.failure_threshold);
+    let deadline = std::time::Instant::now() + Duration::from_secs(policy.observation_window_secs);
+    let check_interval = Duration::from_secs(10);
+
+    info!(
+        "Starting health-check monitor for green deployment {}/{} \
+         (threshold={}, window={}s)",
+        namespace, green_name, policy.failure_threshold, policy.observation_window_secs
+    );
+
+    while std::time::Instant::now() < deadline {
+        let healthy = is_deployment_healthy(&api, &green_name).await;
+
+        // Optionally probe the HTTP health endpoint if configured.
+        let endpoint_ok = if let Some(ref ep) = config.health_check_endpoint {
+            run_smoke_tests(client, node, ep).await.unwrap_or(false)
+        } else {
+            true
+        };
+
+        if healthy && endpoint_ok {
+            counter.record_success();
+            debug!(
+                "Green deployment {}/{} health check passed",
+                namespace, green_name
+            );
+        } else {
+            counter.record_failure();
+            warn!(
+                "Green deployment {}/{} health check failed ({}/{} threshold)",
+                namespace, green_name, counter.failures, policy.failure_threshold
+            );
+
+            if counter.should_rollback() {
+                warn!(
+                    "Auto-rollback triggered for {}/{}: {} consecutive failures",
+                    namespace, node_name, counter.failures
+                );
+                rollback_to_blue(client, node).await?;
+                return Ok(false);
+            }
+        }
+
+        tokio::time::sleep(check_interval).await;
+    }
+
+    info!(
+        "Health-check observation window elapsed for {}/{}; green deployment is healthy",
+        namespace, node_name
+    );
+    Ok(true)
+}
+
+/// Check whether a Deployment has all desired replicas ready.
+async fn is_deployment_healthy(api: &Api<Deployment>, name: &str) -> bool {
+    match api.get(name).await {
+        Ok(dep) => {
+            if let Some(status) = dep.status {
+                let desired = dep.spec.and_then(|s| s.replicas).unwrap_or(1);
+                let ready = status.ready_replicas.unwrap_or(0);
+                ready >= desired
+            } else {
+                false
+            }
+        }
+        Err(_) => false,
+    }
 }

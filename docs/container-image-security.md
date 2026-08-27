@@ -1,68 +1,93 @@
 # Container Image Security
 
-Issue #1334. Covers image vulnerability scanning and Cosign supply-chain
-signing.
+*Addresses issues #1334 and #1420.*
 
-## What changed
+This document covers the container image vulnerability scanning pipeline,
+Cosign supply-chain signing, and the deployment gate policy.
 
-Trivy already scanned images and uploaded SARIF to the Security tab, but the
-action never set `exit-code`, so **a critical CVE could not fail anything**.
-Nothing was signed, and pull requests got no image scan at all — the `docker`
-job in `ci.yml` is gated on `github.event_name != 'pull_request'`.
+---
 
-| Gate | Where | Blocks |
+## Pipeline Overview
+
+The [`.github/workflows/container-image-security.yml`](../.github/workflows/container-image-security.yml)
+workflow runs on every PR, every push to `main`, and nightly.
+
+```
+build-image ──► trivy-scan  ──► sign-image ──► verify-signature
+            └─► grype-scan  ─┘
+            └─► sbom
+```
+
+| Job | Purpose | Blocks merge? |
 |---|---|---|
-| PR image scan | `ci.yml` → `image-scan` | Merge |
-| Release image scan | `release.yml` → `security` | The GitHub release |
-| Cosign signing | `release.yml` → `container` | — |
-| Signature verification | `release.yml` → `provenance-check` | The release being trusted |
+| `build-image` | Build the operator image | Yes (prerequisite) |
+| `trivy-scan` | Vulnerability scan (CRITICAL gate) | **Yes** |
+| `grype-scan` | Cross-validation scan | Reported only |
+| `sbom` | SPDX SBOM generation | No |
+| `sign-image` | Keyless Cosign signing | No (post-merge) |
+| `verify-signature` | Signature retrievability check | No (post-merge) |
 
-## Vulnerability gate
+---
 
-[`.github/actions/security-scan`](https://github.com/OtowoOrg/Stellar-K8s/blob/main/.github/actions/security-scan/action.yml)
-now runs two passes:
+## Vulnerability Scanning
 
-1. **Report** — full `CRITICAL,HIGH` range, SARIF uploaded to the Security tab.
-2. **Gate** — `fail-on-severity` (default `CRITICAL`) with `exit-code: 1`.
+### Trivy (primary gate)
 
-They are separate passes so the SARIF upload still happens for the full
-severity range even when the gate fails the job.
+Trivy runs two passes on every PR:
 
-`ignore-unfixed` defaults to `true` in the gate: a base-image CVE with no
-upstream fix should not wedge every merge in the repository, and it is still
-reported in the Security tab by the first pass.
+1. **Report pass** — scans for `CRITICAL` and `HIGH` severity CVEs and uploads
+   a SARIF file to the GitHub Security tab.
+2. **Gate pass** — scans for `CRITICAL` CVEs that have an upstream fix
+   available (`ignore-unfixed: true`).  The job exits with code `1` if any
+   are found, **blocking the merge**.
 
-To make a caller report-only, pass `fail-on-severity: ""`.
+The `ignore-unfixed` flag prevents base-image CVEs with no available fix from
+wedging every PR in the repository.  Those CVEs are still reported in the
+Security tab by the report pass.
 
-### PR gate
+### Grype (cross-validation)
 
-`image-scan` builds the image locally with `push: false` — nothing from an
-unreviewed pull request reaches the registry — and scans it. It runs only when
-the `changes` job detects Docker-relevant edits, and reuses the shared
-BuildKit cache.
+Grype from Anchore provides an independent vulnerability database.  Its
+findings are uploaded to the Security tab as a separate SARIF category.
+Grype does not gate merges on its own — if Grype finds a critical that Trivy
+misses, a maintainer should open a security issue and check for a Trivy DB
+update within 48 hours.
 
-### Release gate
+### Nightly scans
 
-`release.yml`'s `release` job already depends on `security`, so a critical
-vulnerability now blocks the release itself, satisfying "block deployment of
-images with critical vulnerabilities".
+The workflow runs nightly at 04:00 UTC to detect newly published CVEs against
+the latest `main` image, independent of code changes.
 
-## Signing
+---
 
-[`.github/actions/sign-image`](https://github.com/OtowoOrg/Stellar-K8s/blob/main/.github/actions/sign-image/action.yml)
-signs **keylessly** via Fulcio/Rekor, using the GitHub Actions OIDC token as
-the signing identity. There is no private key to store, rotate, or leak. The
-calling job needs `id-token: write` and `packages: write`.
+## SBOM (Software Bill of Materials)
 
-Images are signed **by digest**, not by tag — a tag can later be moved to
-different content, so a tag signature proves nothing about what you pull.
+[Syft](https://github.com/anchore/syft) generates an SPDX-JSON SBOM on every
+run.  The SBOM artifact (`stellar-operator-sbom.spdx.json`) is attached to
+the workflow run and can be used for:
 
-Signing complements, rather than replaces, the existing build provenance
-attestation:
+- Automated license compliance auditing.
+- Offline CVE scanning (export and run `grype sbom:stellar-operator-sbom.spdx.json`).
+- Supply-chain attestation alongside the Cosign signature.
 
-- **Provenance** says *how* the image was built.
-- **Signature** says *this exact digest came from this repository*, and is what
-  a cluster-side admission policy verifies before pulling.
+---
+
+## Image Signing (Cosign)
+
+Images published from `main` are signed keylessly via
+[Sigstore Cosign](https://docs.sigstore.dev/cosign/overview/).
+
+### Why keyless signing?
+
+The signing identity is the GitHub Actions OIDC token, so there is no
+long-lived private key to store, rotate, or leak.  The signature is anchored
+to the repository and workflow path in the Rekor transparency log.
+
+### Signed by digest, not tag
+
+Images are signed using their `sha256:...` digest.  A tag can be repointed to
+different content at any time; a digest signature proves exactly *what* you
+pulled.
 
 ### Verifying an image
 
@@ -73,42 +98,59 @@ cosign verify \
   ghcr.io/otoworg/stellar-operator:0.1.0
 ```
 
-The identity regexp matters: without it, `cosign verify` accepts a signature
-from *any* Fulcio identity that happens to have signed the digest.
+The `--certificate-identity-regexp` flag is required.  Without it, `cosign
+verify` accepts any Fulcio identity that signed the digest — which is not what
+you want.
 
-## Verification
+---
 
-Both actions are composite YAML, so the checks that can run locally are
-structural:
+## Deployment Gate Policy
 
-```bash
-# Both action definitions parse and declare the expected inputs
-python3 - <<'PY'
-import yaml
-scan = yaml.safe_load(open(".github/actions/security-scan/action.yml"))
-sign = yaml.safe_load(open(".github/actions/sign-image/action.yml"))
-assert "fail-on-severity" in scan["inputs"]
-assert scan["inputs"]["fail-on-severity"]["default"] == "CRITICAL"
-assert {"image", "digest"} <= set(sign["inputs"])
-print("action definitions OK")
-PY
+| Condition | Effect |
+|---|---|
+| CRITICAL CVE with available fix | **CI fails** — merge blocked |
+| CRITICAL CVE with no fix | Reported in Security tab; merge not blocked |
+| HIGH CVE | Reported in Security tab; merge not blocked |
+| Unsigned image | Admission webhook rejects pod (if policy enforced) |
 
-# The PR gate exists and does not push
-python3 - <<'PY'
-import yaml
-ci = yaml.safe_load(open(".github/workflows/ci.yml"))
-job = ci["jobs"]["image-scan"]
-build = next(s for s in job["steps"] if "build-push-action" in str(s.get("uses")))
-assert build["with"]["push"] is False, "PR builds must never push"
-print("PR image gate OK")
-PY
+### Admission Webhook Policy
+
+To enforce at deploy time, add a [Kyverno](https://kyverno.io/) or
+[OPA/Gatekeeper](https://open-policy-agent.github.io/gatekeeper/) policy that
+verifies the Cosign signature before admitting operator pods.  An example
+Kyverno policy:
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-stellar-operator-signature
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: check-image-signature
+      match:
+        resources:
+          kinds: [Pod]
+          namespaces: [stellar-system]
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/otoworg/stellar-operator:*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/OtowoOrg/Stellar-K8s/.github/workflows/container-image-security.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
 ```
 
-End-to-end, in CI:
+---
 
-1. Open a PR touching `Dockerfile` → the **Image Vulnerability Gate** job runs
-   and fails if the image has a fixable critical CVE.
-2. Push a `v*` tag → `container` signs the image, `security` scans it, and
-   `provenance-check` verifies both the attestation and the Cosign signature.
-3. `cosign verify` (above) against the published tag returns the certificate
-   identity of the workflow that signed it.
+## Summary of Security-Scan Actions
+
+| Action | Path | Purpose |
+|---|---|---|
+| `security-scan` | `.github/actions/security-scan` | Reusable Trivy action with SARIF + gate |
+| `sign-image` | `.github/actions/sign-image` | Keyless Cosign signing by digest |
+
+Both actions are reused by `release.yml` so the same gate and signing
+behaviour applies to production releases.

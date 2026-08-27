@@ -19,6 +19,7 @@ pub mod openapi;
 pub mod plugin;
 pub mod ratelimit;
 pub mod router;
+pub mod throttle;
 pub mod transform;
 
 pub use analytics::{
@@ -39,6 +40,10 @@ pub use openapi::{get_default_routes, ApiRoute, OpenApiDocument, OpenApiGenerato
 pub use plugin::{GatewayPlugin, PluginContext, PluginHook, PluginManager};
 pub use ratelimit::{QuotaConfig, QuotaManager, QuotaTier, RateLimitConfig, RateLimiter};
 pub use router::{ApiVersion, RouteRule, RouterConfig, VersionedRouter};
+pub use throttle::{
+    EndpointTierTable, KeyRateOverride, PerEndpointRateLimiter, RateLimitOutcome, ThrottleResponse,
+    TierLimits,
+};
 pub use transform::{BodyTransform, TransformPipeline, TransformRule};
 
 use axum::{

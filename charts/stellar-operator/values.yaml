@@ -338,6 +338,80 @@ featureFlags:
   # Gates Helm-rendered DR / cross-region bridge resources and runtime DR drills.
   enableDr: false
 
+# =============================================================================
+# Performance Profiling (issue #1416)
+# =============================================================================
+# Exposes pprof-compatible profiling endpoints gated behind a shared token.
+# The profiling server binds to localhost ONLY (127.0.0.1:6060) and is never
+# exposed via the main service or ingress.
+#
+# To capture a profile:
+#   kubectl port-forward pod/<operator-pod> 6060:6060
+#   curl -H "X-Profiling-Token: $TOKEN" http://localhost:6060/debug/pprof/profile?duration=30
+#
+# See docs/profiling-runbook.md for full instructions.
+profiling:
+  # Set to true to enable the profiling HTTP server.
+  enabled: false
+  # Bind address (must remain localhost-only in production).
+  bindAddr: "127.0.0.1:6060"
+  # Name of the Kubernetes Secret that holds the raw token value.
+  # Key within the secret must be `token`.
+  tokenSecretName: "stellar-profiling-token"
+  # SHA-256 hex digest of the profiling token (pre-computed to avoid
+  # storing the raw value in values.yaml).
+  # Generate: echo -n "YOUR-TOKEN" | sha256sum | awk '{print $1}'
+  tokenSha256: ""
+  # Default CPU profile duration (seconds) when no ?duration param is given.
+  defaultCpuDurationSecs: 30
+  # Maximum CPU profile duration allowed (seconds).
+  maxCpuDurationSecs: 300
+
+# =============================================================================
+# Cost Optimization (issue #1413)
+# =============================================================================
+costOptimization:
+  # Enable resource usage tracking and right-sizing recommendations.
+  resourceTracking:
+    enabled: true
+    # How many hourly observations to retain per workload.
+    windowSize: 336
+    # Headroom factor applied to P95 usage when computing recommendations.
+    headroomFactor: 1.20
+  # Spot instance configuration.
+  spot:
+    enabled: false
+    maxPricePerHourUsd: "0.50"
+    fallbackToOnDemand: true
+  # Monthly budget guard (USD). Set to 0 to disable.
+  monthlyBudgetUsd: 0
+
+# =============================================================================
+# Certificate Management (issue #1415)
+# =============================================================================
+certManagement:
+  # Enable automatic certificate rotation controller.
+  enabled: true
+  # Backend to use: "cert-manager" (default), "vault-pki", or "local-ca".
+  backend: "cert-manager"
+  # Vault PKI backend settings (only used when backend == "vault-pki").
+  vault:
+    addr: "https://vault.stellar-system.svc:8200"
+    pkiMount: "pki_int"
+    roleName: "stellar-operator"
+    # Name of the K8s secret containing the Vault token (key: "token").
+    tokenSecretName: ""
+    tlsVerify: true
+  # Expiry monitoring thresholds.
+  expiryAlerts:
+    warningDays: 30
+    criticalDays: 7
+    emergencyHours: 24
+  # Default certificate TTL (hours). 90 days = 2160 hours.
+  defaultTtlHours: 2160
+  # Days before expiry at which auto-renewal is triggered. Must be < defaultTtlHours/24.
+  renewBeforeDays: 30
+
 # Cross-region state synchronization. Only rendered when
 # featureFlags.enableDr is also true (see templates/cross-region-bridge.yaml).
 crossRegion:

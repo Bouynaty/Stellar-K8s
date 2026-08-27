@@ -104,10 +104,10 @@ impl AnomalyDetector {
 
 #[cfg(test)]
 mod tests {
+    use super::super::model::{CloudProvider, ResourceType};
     use super::*;
     use chrono::Utc;
     use std::collections::HashMap;
-    use super::super::model::{CloudProvider, ResourceType};
 
     fn record(id: &str, cost: f64) -> CostRecord {
         CostRecord {
@@ -132,7 +132,9 @@ mod tests {
     #[test]
     fn test_normal_costs_no_anomaly() {
         let mut det = AnomalyDetector::new(10, 2.0);
-        for _ in 0..8 { det.observe(&record("r1", 100.0)); }
+        for _ in 0..8 {
+            det.observe(&record("r1", 100.0));
+        }
         let result = det.observe(&record("r1", 105.0));
         assert!(result.is_none());
     }
@@ -140,7 +142,9 @@ mod tests {
     #[test]
     fn test_spike_detected() {
         let mut det = AnomalyDetector::new(10, 2.0);
-        for _ in 0..8 { det.observe(&record("r1", 100.0)); }
+        for _ in 0..8 {
+            det.observe(&record("r1", 100.0));
+        }
         let result = det.observe(&record("r1", 500.0));
         assert!(result.is_some());
         assert!(result.unwrap().severity == AnomalySeverity::High);

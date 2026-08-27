@@ -50,6 +50,13 @@ repos:
         files: '\.(ya?ml)$'
         pass_filenames: false
 
+      - id: k8s-manifest-crd-validation
+        name: Kubernetes manifest & CRD schema validation
+        entry: python3 scripts/validate-k8s-manifests.py
+        language: system
+        files: '^(config|charts|examples|bundle)/.*\.ya?ml$'
+        pass_filenames: false
+
       - id: helm-drift
         name: helm template drift detection
         entry: bash scripts/check-helm-drift.sh
@@ -102,6 +109,14 @@ repos:
         pass_filenames: false
         # Only warn locally — CI enforces the hard failure.
         args: ["--warn-only", "status"]
+
+      # ── License header enforcement (issue #1286) ───────────────────────────
+      - id: license-headers
+        name: license header check
+        entry: python3 scripts/check-license-headers.py
+        language: system
+        files: '\.(rs|sh|ya?ml)$'
+        pass_filenames: false
 
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.35.1

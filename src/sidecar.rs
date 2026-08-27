@@ -228,7 +228,15 @@ async fn monitor_ebpf_metrics(events: Api<Event>, pod_name: String, namespace: S
     let mut last_retransmits = 0.0;
 
     loop {
-        if let Ok(resp) = client.get("http://localhost:9435/metrics").send().await {
+        if let Ok(resp) = {
+            let mut headers = reqwest::header::HeaderMap::new();
+            crate::telemetry::inject_trace_headers(&mut headers);
+            client
+                .get("http://localhost:9435/metrics")
+                .headers(headers)
+                .send()
+                .await
+        } {
             if let Ok(text) = resp.text().await {
                 let mut current_latency = 0.0;
                 let mut current_retransmits = 0.0;

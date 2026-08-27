@@ -1831,6 +1831,31 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 0.1.0
+    helm.sh/chart: stellar-operator-0.1.0
+  name: stellar-operator-default-deny
+  namespace: stellar-system
+spec:
+  egress:
+  - {}
+  ingress:
+  - ports:
+    - port: 9090
+      protocol: TCP
+    - port: 9090
+      protocol: TCP
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
   annotations:
     stellar.org/isolation-description: 'Blocks all egress traffic to namespaces that are not labelled stellar.org/network=testnet. This prevents Testnet nodes from accidentally connecting to Mainnet peers or databases.
 

@@ -1,0 +1,33 @@
+{
+  "version": "crd-v0.1.0",
+  "baseline_created": "2024-01-01T00:00:00Z",
+  "description": "Initial baseline for CRD operation performance (StellarNode)",
+  "environment": {
+    "k8s_version": "1.30",
+    "nodes": 3,
+    "cpu_per_node": "4 cores",
+    "memory_per_node": "16Gi",
+    "tool": "criterion"
+  },
+  "metrics": {
+    "crd_create_minimal_ms": 45.0,
+    "crd_create_standard_ms": 65.0,
+    "crd_create_with_autoscaling_ms": 85.0,
+    "crd_create_full_config_ms": 120.0,
+    "crd_update_replica_scale_up_ms": 55.0,
+    "crd_update_label_ms": 50.0,
+    "crd_delete_single_ms": 40.0,
+    "crd_delete_batch_ns_ms": 200.0,
+    "crd_concurrent_1_workers_ms": 50.0,
+    "crd_concurrent_5_workers_ms": 180.0,
+    "crd_concurrent_10_workers_ms": 320.0,
+    "crd_concurrent_25_workers_ms": 750.0,
+    "crd_concurrent_50_workers_ms": 1500.0,
+    "crd_concurrent_50_throughput_ops_per_sec": 33.0,
+    "crd_concurrent_50_failure_count": 0
+  },
+  "thresholds": {
+    "regression_percent": 10,
+    "description": "FAIL/ALERT when any metric regresses by more than 10%"
+  }
+}

@@ -129,6 +129,7 @@ pub mod read_pool;
 pub(crate) mod reconciler;
 #[cfg(test)]
 mod reconciler_test;
+pub mod tenant_reconciler;
 pub(crate) mod remediation;
 #[cfg(test)]
 mod remediation_test;

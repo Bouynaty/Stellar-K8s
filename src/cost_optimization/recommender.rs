@@ -49,7 +49,11 @@ impl RecommendationEngine {
         Self { min_savings_usd }
     }
 
-    pub fn generate(&self, record: &CostRecord, cost: &ResourceCost) -> Vec<OptimizationRecommendation> {
+    pub fn generate(
+        &self,
+        record: &CostRecord,
+        cost: &ResourceCost,
+    ) -> Vec<OptimizationRecommendation> {
         let mut recs = Vec::new();
 
         // Reserved instance recommendation

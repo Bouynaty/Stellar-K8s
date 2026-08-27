@@ -633,6 +633,13 @@ Interactive Swagger UI is available at `/developer` when the API gateway is enab
 
 For detailed instructions on setting up a local development environment, building the project, running tests, and managing Kubernetes resources locally, please refer to the **[Development Guide](DEVELOPMENT.md)**.
 
+Reliability and observability:
+
+- [Database migration testing](docs/database/migrations.md)
+- [YAML / CRD schema validation](docs/yaml-schema-validation.md)
+- [Helm chart testing](docs/helm-chart-testing.md)
+- [OpenTelemetry tracing](docs/observability/tracing.md)
+
 ### Reconciler fuzzing
 
 To ensure the operator never panics under malformed or extreme inputs, the reconciler is fuzzed with random `StellarNodeSpec` mutations and event sequences (proptest). Run the fuzzer locally:
