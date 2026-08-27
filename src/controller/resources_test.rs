@@ -592,6 +592,33 @@ peer-2 = "G..."
     }
 
     #[test]
+    fn test_validator_blue_green_service_selects_active_color() {
+        let mut node = make_node(NodeType::Validator);
+        node.spec.strategy.strategy_type = crate::crd::types::RolloutStrategyType::BlueGreen;
+        node.status = Some(crate::crd::StellarNodeStatus {
+            blue_green_active_color: Some("green".to_string()),
+            ..Default::default()
+        });
+
+        let svc = build_service(&node, false);
+        let selector = svc
+            .spec
+            .as_ref()
+            .and_then(|s| s.selector.as_ref())
+            .expect("service selector");
+        assert_eq!(
+            selector
+                .get("stellar.org/deployment-color")
+                .map(String::as_str),
+            Some("green")
+        );
+        assert_eq!(
+            selector.get("stellar.org/bg-role").map(String::as_str),
+            Some("active")
+        );
+    }
+
+    #[test]
     fn test_statefulset_has_standard_labels_and_owner_ref() {
         let node = make_node(NodeType::Validator);
         let sts = build_statefulset(&node, false, None);

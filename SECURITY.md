@@ -39,6 +39,7 @@ When reporting a vulnerability, please include:
 This project implements comprehensive dependency security monitoring:
 
 - **Automated Scanning**: `cargo audit` and `cargo deny` in CI
+- **Automated Updates**: Dependabot (`.github/dependabot.yml`); review and merge process in [`docs/security/dependency-updates.md`](docs/security/dependency-updates.md)
 - **License Compliance**: Strict allowlist of permitted licenses
 - **Vulnerability Tracking**: All security advisories reviewed and documented
 - **Supply Chain Security**: Dependency provenance verification

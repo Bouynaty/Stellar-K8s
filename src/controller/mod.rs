@@ -18,7 +18,8 @@
 //! - **Disaster Recovery**: Backup and restore automation
 //! - **Service Mesh Integration**: Istio and Linkerd support
 //! - **CVE Patching**: Automatic security updates
-//! - **Blue/Green Deployments**: Zero-downtime RPC node updates
+//! - **Blue/Green Deployments**: Horizon/RPC Deployment color switching
+//! - **Core Blue/Green**: Validator StatefulSet sync-gated cutover (`blue_green_core`)
 //! - **Metrics**: Prometheus metrics for observability
 //!
 //! # Key Types
@@ -50,6 +51,7 @@
 
 pub mod benchmark;
 pub mod blue_green;
+pub mod blue_green_core;
 pub mod cache_aware_queue;
 pub mod canary;
 pub mod cross_cloud_failover;
@@ -167,6 +169,12 @@ pub use benchmark::run_benchmark_controller;
 pub use blue_green::{
     cleanup_blue_deployment, create_green_deployment, rollback_to_blue, run_smoke_tests,
     switch_traffic_to_green, wait_for_green_ready, BlueGreenConfig, BlueGreenStatus,
+};
+pub use blue_green_core::{
+    evaluate_cutover_gate, may_switch_service_to_green, plan_cutover_advance,
+    plan_rollback_advance, reconcile_validator_blue_green, should_take_over_validator_workload,
+    storage_identities, CoreBlueGreenPhase, CutoverCommand, CutoverGateResult, CutoverStep,
+    RollbackCommand, RollbackStep, COLOR_BLUE, COLOR_GREEN, COLOR_LABEL,
 };
 pub use cache_aware_queue::{
     calculate_cache_aware_backoff, priority_from_signals, CacheAwareBackoffInput,

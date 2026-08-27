@@ -386,7 +386,7 @@ curl -s localhost:9090/metrics | grep stellar_operator
 
 - **k6**: Load testing for health check endpoints
 - **prometheus**: Metrics collection and analysis
-- **pprof**: Memory and CPU profiling (Rust)
+- **pprof**: Optional CPU and heap profiling via auth-gated `/api/v1/debug/pprof/*` (see [profiling runbook](operations/profiling-runbook.md))
 - **kubectl top**: Resource utilization monitoring
 
 ## Future Work

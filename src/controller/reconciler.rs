@@ -1537,12 +1537,26 @@ pub(crate) fn apply_stellar_node(
                             None
                         };
 
-                        resources::ensure_statefulset(&client, &node, ctx.enable_mtls,
-                            seed_injection.as_ref(),
-                            &propagated_labels,
-                            ctx.dry_run,
-                        )
-                        .await?;
+                        if super::blue_green_core::should_take_over_validator_workload(&node) {
+                            super::blue_green_core::reconcile_validator_blue_green(
+                                &client,
+                                &node,
+                                ctx.enable_mtls,
+                                seed_injection.as_ref(),
+                                ctx.dry_run,
+                            )
+                            .await?;
+                        } else {
+                            resources::ensure_statefulset(
+                                &client,
+                                &node,
+                                ctx.enable_mtls,
+                                seed_injection.as_ref(),
+                                &propagated_labels,
+                                ctx.dry_run,
+                            )
+                            .await?;
+                        }
                         kms_secret::reconcile_vault_secret_rotation(&client, &node, seed_injection.as_ref(),
                         )
                         .await?;

@@ -6,9 +6,18 @@ info:
     REST API exposed by the Stellar-K8s operator for cluster management, health checks,
     diagnostics, and the operator dashboard.
 
+    **API versioning:** Canonical public routes use URL path versions (`/api/v1/...`).
+    Discover supported versions with `GET /api/versions`. Deprecated versions (when
+    configured) include `Deprecation` and optional `Sunset` response headers.
+    See `docs/api/versioning.md`.
+
     **Authentication:** Protected routes require a valid API token (Bearer) or mTLS client
     certificate depending on deployment configuration. Public probe endpoints (`/healthz`,
-    `/readyz`, `/livez`) do not require authentication.
+    `/readyz`, `/livez`) and `GET /api/versions` do not require authentication.
+
+    **Profiling:** Optional CPU/heap pprof endpoints under `/api/v1/debug/pprof/*` require
+    the `profiling` Cargo feature, `REST_API_PROFILING_ENABLED=true`, and Admin auth.
+    See `docs/operations/profiling-runbook.md`.
 
     **Interactive explorer:** When the API gateway is enabled, open `/developer` for the
     bundled Swagger UI backed by the live OpenAPI document at `/gateway/openapi.json`.
@@ -59,6 +68,8 @@ tags:
     description: Operator audit log
   - name: Metrics
     description: Prometheus and custom metrics surfaces
+  - name: Versioning
+    description: API version catalog and lifecycle discovery
 
 paths:
   /health:
@@ -125,6 +136,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProbeResponse'
+
+  /api/versions:
+    get:
+      tags: [Versioning]
+      summary: List API versions and lifecycle status
+      description: |
+        Unversioned discovery document for URL-path API coexistence.
+        See docs/api/versioning.md.
+      operationId: listApiVersions
+      responses:
+        '200':
+          description: Version catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionCatalog'
 
   /leader:
     get:
@@ -275,8 +302,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LogLevelResponse'
+
+  /api/v1/debug/pprof/profile:
+    get:
+      tags: [Profiling]
+      summary: Capture a CPU profile
+      description: |
+        Admin-only. Available only when the operator binary is built with `--features profiling`
+        and `REST_API_PROFILING_ENABLED=true`. Returns a pprof protobuf. Duration is bounded to
+        1–60 seconds. Render flamegraphs offline with `pprof` / `go tool pprof` (server-side SVG
+        is not enabled to avoid the CDDL-licensed `inferno` dependency).
+      operationId: getCpuProfile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: seconds
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 30
+          description: CPU sample duration in seconds
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [proto]
+            default: proto
+          description: Only `proto` is supported
+      responses:
+        '200':
+          description: CPU profile protobuf
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid seconds or format
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Missing or invalid credentials
+        '403':
+          description: Admin role required
+        '404':
+          description: Profiling not enabled for this deployment
+        '429':
+          description: Another CPU profile is already in progress
+
+  /api/v1/debug/pprof/heap:
+    get:
+      tags: [Profiling]
+      summary: Capture a jemalloc heap profile
+      description: |
+        Admin-only. Requires `--features profiling`, runtime enablement, and jemalloc profiling
+        (`MALLOC_CONF` with `prof:true`). Returns a pprof protobuf of sampled allocations.
+        Linux/unix jemalloc builds only; unsupported platforms return 503.
+      operationId: getHeapProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Heap profile protobuf
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Missing or invalid credentials
+        '403':
+          description: Admin role required
+        '404':
+          description: Profiling not enabled for this deployment
+        '503':
+          description: Heap profiling unavailable or inactive
 
   /api/v1/compliance/report:
     get:
@@ -527,6 +629,39 @@ components:
         reason:
           type: string
           nullable: true
+
+    VersionCatalog:
+      type: object
+      properties:
+        canonical_scheme:
+          type: string
+          example: url_path
+        current:
+          type: string
+          example: v1
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionInfo'
+      required: [canonical_scheme, current, versions]
+
+    VersionInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: v1
+        status:
+          type: string
+          enum: [current, deprecated, sunset]
+        base_path:
+          type: string
+          example: /api/v1
+        sunset:
+          type: string
+          nullable: true
+          description: HTTP-date Sunset value when configured
+      required: [id, status, base_path]
 
     LeaderResponse:
       type: object

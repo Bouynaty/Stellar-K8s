@@ -110,6 +110,14 @@
         },
         "watchNamespace": {
           "type": "string"
+        },
+        "profiling": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          }
         }
       }
     },

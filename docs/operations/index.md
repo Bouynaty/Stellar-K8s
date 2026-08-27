@@ -52,5 +52,6 @@ Key signals to monitor:
 ## Related Documentation
 
 - [Incident Response](incident-response.md)
+- [Production Profiling Runbook](profiling-runbook.md)
 - [API Reference](../api/index.md)
 - [Production Security Hardening](../production-security-hardening.md)

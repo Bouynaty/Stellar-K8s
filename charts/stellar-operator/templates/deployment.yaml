@@ -34,6 +34,12 @@ spec:
         - name: operator-config
           configMap:
             name: {{ include "stellar-operator.fullname" . }}-defaults
+        {{- if and .Values.operator.restApiEnabled .Values.operator.profiling.enabled }}
+        # Ephemeral writable temp for jemalloc heap profile dumps (NamedTempFile → /tmp).
+        # Root filesystem stays read-only; this emptyDir is mounted only when profiling is on.
+        - name: profiling-tmp
+          emptyDir: {}
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -62,6 +68,13 @@ spec:
             - name: REST_API_PORT
               value: {{ .Values.operator.restApiPort | quote }}
             {{- end }}
+            {{- if and .Values.operator.restApiEnabled .Values.operator.profiling.enabled }}
+            - name: REST_API_PROFILING_ENABLED
+              value: "true"
+            # Enable jemalloc profiling samples for heap dumps (image must include `profiling` feature).
+            - name: MALLOC_CONF
+              value: "prof:true,prof_active:true,lg_prof_sample:19"
+            {{- end }}
             {{- if .Values.otel.enabled }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.otel.endpoint | quote }}
@@ -70,6 +83,10 @@ spec:
             - name: operator-config
               mountPath: /etc/stellar-operator
               readOnly: true
+            {{- if and .Values.operator.restApiEnabled .Values.operator.profiling.enabled }}
+            - name: profiling-tmp
+              mountPath: /tmp
+            {{- end }}
           args:
             - run
             - --log-level={{ .Values.operator.logLevel }}
