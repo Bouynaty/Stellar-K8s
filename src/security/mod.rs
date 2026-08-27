@@ -3,6 +3,7 @@
 //! Provides automated scanning, runtime monitoring, and automated remediation.
 
 pub mod cert_manager;
+pub mod cert_rotation;
 pub mod compliance;
 pub mod kms;
 pub mod policy;
@@ -15,6 +16,11 @@ pub mod secret_sync;
 pub mod vulnerability;
 
 pub use cert_manager::{CertManager, CertificateInfo, CertStatus, CertMetrics, RenewalConfig};
+pub use cert_rotation::{
+    CertExpiryAlert, CertIssuanceRequest, CertIssuanceResponse, CertRecord, CertRotationController,
+    CertRotationError, ExpiryMonitor, ExpiryMonitorConfig, ExpirySeverity, LocalCaBackend,
+    PkiBackend, RotationAuditLog, RotationEvent, RotationTrigger, VaultPkiBackend, VaultPkiConfig,
+};
 
 use serde::{Deserialize, Serialize};
 

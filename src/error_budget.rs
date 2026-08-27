@@ -6,11 +6,12 @@
 use chrono::{DateTime, Duration, Utc};
 use prometheus_client::{
     encoding::EncodeLabelSet,
-    metrics::{counter::Counter, gauge::Gauge, histogram::Histogram, family::Family},
+    metrics::{family::Family, gauge::Gauge},
     registry::Registry,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -64,6 +65,8 @@ pub struct ErrorBudgetStatus {
     pub burn_rate: f64,
     /// Time until budget exhaustion at current rate
     pub time_to_exhaustion: Option<Duration>,
+    /// Current SLI value
+    pub current_sli_value: f64,
     /// Current SLO compliance status
     pub status: SloStatus,
     /// Last updated timestamp
@@ -128,23 +131,23 @@ pub struct ErrorBudgetTracker {
 /// Prometheus metrics for error budget tracking
 pub struct ErrorBudgetMetrics {
     /// Current error budget remaining (0.0 - 1.0)
-    pub budget_remaining: Family<SloLabels, Gauge>,
+    pub budget_remaining: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// Total error budget for the window
-    pub total_budget: Family<SloLabels, Gauge>,
+    pub total_budget: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// Budget consumed so far
-    pub budget_consumed: Family<SloLabels, Gauge>,
+    pub budget_consumed: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// Current burn rate (budget consumed per hour)
-    pub burn_rate: Family<SloLabels, Gauge>,
+    pub burn_rate: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// Time until budget exhaustion in hours
-    pub time_to_exhaustion_hours: Family<SloLabels, Gauge>,
+    pub time_to_exhaustion_hours: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// SLO compliance status (0=healthy, 1=warning, 2=critical, 3=exhausted)
-    pub slo_status: Family<SloLabels, Gauge>,
+    pub slo_status: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// SLO target
-    pub slo_target: Family<SloLabels, Gauge>,
+    pub slo_target: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// Current SLI value
-    pub current_sli_value: Family<SloLabels, Gauge>,
+    pub current_sli_value: Family<SloLabels, Gauge<f64, AtomicU64>>,
     /// Alert firing status
-    pub alert_firing: Family<AlertLabels, Gauge>,
+    pub alert_firing: Family<AlertLabels, Gauge<f64, AtomicU64>>,
 }
 
 /// Labels for SLO metrics
@@ -170,7 +173,7 @@ impl ErrorBudgetTracker {
         let metrics = Arc::new(ErrorBudgetMetrics::new(registry));
         
         Arc::new(Self {
-            registry: Arc::new(Registry::new()),
+            registry: Arc::new(Registry::default()),
             slos: Arc::new(RwLock::new(HashMap::new())),
             alert_configs: Arc::new(RwLock::new(HashMap::new())),
             budgets: Arc::new(RwLock::new(HashMap::new())),
@@ -192,6 +195,7 @@ impl ErrorBudgetTracker {
             budget_consumed: 0.0,
             burn_rate: 0.0,
             time_to_exhaustion: None,
+            current_sli_value: slo.target,
             status: SloStatus::Healthy,
             last_updated: Utc::now(),
         });
@@ -222,9 +226,7 @@ impl ErrorBudgetTracker {
         
         if let Some(budget) = budgets.get_mut(slo_id) {
             let slos = self.slos.read().await;
-            let slo = slos.get(slo_id);
-            
-            if let Some(slo) = slos {
+            if let Some(slo) = slos.get(slo_id) {
                 // Calculate error budget consumed based on SLI vs target
                 let error_rate = 1.0 - current_sli / slo.target.max(0.001);
                 let error_rate = error_rate.max(0.0).min(1.0);
@@ -251,26 +253,23 @@ impl ErrorBudgetTracker {
                 budget.status = self.calculate_status(budget.budget_remaining);
                 
                 // Update metrics
-                let slos = self.slos.read().await;
-                if let Some(slo) = slos.get(slo_id) {
-                    let labels = SloLabels {
-                        slo_id: slo.id.clone(),
-                        service: slo.service.clone(),
-                        sli_type: format!("{:?}", slo.sli_type),
-                        window: slo.window.clone(),
-                    };
-                    
-                    self.metrics.budget_remaining.get_or_create(&labels).set(budget.budget_remaining);
-                    self.metrics.budget_consumed.get_or_create(&labels).set(budget.budget_consumed);
-                    self.metrics.burn_rate.get_or_create(&labels).set(budget.burn_rate);
-                    self.metrics.current_sli_value.get_or_create(&labels).set(current_sli);
-                    
-                    if let Some(ttx) = budget.time_to_exhaustion {
-                        self.metrics.time_to_exhaustion_hours.get_or_create(&labels).set(ttx.num_hours() as f64);
-                    }
-                    
-                    self.metrics.slo_status.get_or_create(&labels).set(budget.status as i64 as f64);
+                let labels = SloLabels {
+                    slo_id: slo.id.clone(),
+                    service: slo.service.clone(),
+                    sli_type: format!("{:?}", slo.sli_type),
+                    window: slo.window.clone(),
+                };
+                
+                self.metrics.budget_remaining.get_or_create(&labels).set(budget.budget_remaining);
+                self.metrics.budget_consumed.get_or_create(&labels).set(budget.budget_consumed);
+                self.metrics.burn_rate.get_or_create(&labels).set(budget.burn_rate);
+                self.metrics.current_sli_value.get_or_create(&labels).set(current_sli);
+                
+                if let Some(ttx) = budget.time_to_exhaustion {
+                    self.metrics.time_to_exhaustion_hours.get_or_create(&labels).set(ttx.num_hours() as f64);
                 }
+                
+                self.metrics.slo_status.get_or_create(&labels).set(budget.status as i64 as f64);
                 
                 // Check alerts
                 self.check_alerts(slo_id, budget).await;
@@ -480,7 +479,7 @@ mod tests {
 
     #[test]
     fn test_slo_status_calculation() {
-        let tracker = ErrorBudgetTracker::new(&mut Registry::new());
+        let tracker = ErrorBudgetTracker::new(&mut Registry::default());
         
         assert_eq!(tracker.calculate_status(1.0), SloStatus::Healthy);
         assert_eq!(tracker.calculate_status(0.6), SloStatus::Healthy);
