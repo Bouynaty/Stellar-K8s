@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [unreleased]
 
+### Added
+
+- Automated API documentation generation from code annotations and CRD schema with versioned docs-as-code and CI link checking (#1424)
+- Feature flag system for gradual rollouts with percentage bucketing, user/segment targeting, allow/deny lists, and ConfigMap hot-reloading (#1423)
+- Automated load testing pipeline in CI with k6, performance budgets, SLO targets, and trend tracking (#1422)
+- Distributed rate limiting across API gateway with Redis-backed counters, atomic Lua scripts, fail-open resilience, and Prometheus alerting (#1421)
+
 ## [0.1.0] - 2026-07-27
 
 ### Add
