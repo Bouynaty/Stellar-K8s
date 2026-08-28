@@ -42,6 +42,7 @@
 	license-headers check-license-headers \
 	check-api-contract check-api-coverage check-breaking-changes \
 	crd-benchmark \
+	compliance-test \
 	cleanup clean
 
 .DEFAULT_GOAL := help
@@ -175,6 +176,10 @@ security-report: ## Generate comprehensive security report
 shellcheck: ## Run shellcheck on all shell scripts
 	@echo "→ Running shellcheck..."
 	@find scripts -type f -name "*.sh" -print0 | xargs -0 shellcheck -S error || true
+
+compliance-test: ## Validate kube-bench compliance fixtures (CIS custom controls) (#1380)
+	@echo "→ Running kube-bench compliance static checks..."
+	@bash security/kube-bench/run-local.sh --check-only
 
 shell-safety: ## Static analysis gate for unsafe shell patterns (#1049)
 	@python3 scripts/check-shell-safety.py
