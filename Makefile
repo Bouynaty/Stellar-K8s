@@ -22,13 +22,15 @@
 	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-fix security-report \
 	build test ci-local quick watch \
 	docker-build docker-build-ci docker-multiarch \
-	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
+	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks health-check health-check-json health-check-fix pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint helm-unittest helm-upgrade-test link-check link-check-all changelog \
 	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
 	third-party-licenses check-third-party-licenses sort-manifests \
 	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
 	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
+	benchmark-crd benchmark-helm benchmark-api benchmark-reconciliation \
+	chaos-network-partition chaos-crash-recovery chaos-resource-exhaustion chaos-all \
 	compose-up compose-dev compose-down compose-logs \
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
@@ -512,22 +514,45 @@ helm-upgrade-test: ## Values-preservation check from the last supported producti
 # ── Development Setup ─────────────────────────────────────────────────────────
 
 dev-setup: dev-setup-rust dev-setup-tools dev-setup-hooks ## Setup dev environment
+	@echo ""
+	@echo "╔════════════════════════════════════════════════════════════════╗"
+	@echo "║         Development Environment Setup Complete ✓              ║"
+	@echo "╚════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Verify setup:  make health-check"
+	@echo "  2. Run preflight:  make preflight"
+	@echo "  3. Quick checks:   make quick"
+	@echo "  4. Build locally:  make build"
+	@echo ""
 
 dev-setup-rust: ## Install Rust toolchain and components
 	@echo "→ Setting up Rust toolchain..."
 	rustup update stable
 	rustup default stable
 	rustup component add clippy rustfmt
+	@echo "✓ Rust toolchain ready"
 
 dev-setup-tools: ## Install development tools
 	@echo "→ Installing development tools..."
 	cargo install cargo-audit cargo-watch
+	@echo "✓ Development tools installed"
 
 dev-setup-hooks: ## Install git hooks
 	@echo "→ Installing git hooks..."
 	@command -v pre-commit >/dev/null 2>&1 || pip install pre-commit
 	pre-commit install
 	pre-commit install --hook-type pre-push
+	@echo "✓ Git hooks installed"
+
+health-check: ## Full environment health check with detailed diagnostics
+	@bash scripts/health-check.sh
+
+health-check-json: ## Environment health check (JSON output)
+	@bash scripts/health-check.sh --json
+
+health-check-fix: ## Attempt to auto-fix missing components
+	@bash scripts/health-check.sh --fix
 
 # ── Watch ──────────────────────────────────────────────────────────────────────
 
@@ -555,12 +580,49 @@ benchmark-webhook-compare: ## Compare webhook results with baseline
 benchmark-webhook-save: ## Save current results as baseline
 	@./benchmarks/run-webhook-benchmark.sh save-baseline
 
-benchmark-all: benchmark benchmark-webhook ## Run all benchmarks
+benchmark-crd: ## CRD validation performance benchmark
+	@echo "→ Running CRD validation benchmarks..."
+	@python3 scripts/check-crd-performance.py \
+		--current results/crd-benchmark.json \
+		--baseline benchmarks/baselines/crd-performance-v0.1.0.json
+
+benchmark-helm: ## Helm rendering performance benchmark
+	@echo "→ Running Helm rendering benchmarks..."
+	@bash scripts/benchmark-helm.sh \
+		--chart charts/stellar-operator \
+		--baseline benchmarks/baselines/helm-rendering-v0.1.0.json
+
+benchmark-api: ## Operator API throughput benchmark (requires running operator)
+	@echo "→ Running operator API throughput benchmarks..."
+	@python3 scripts/benchmark-api.py \
+		--endpoint http://localhost:8080/api/v1 \
+		--requests 1000 \
+		--baseline benchmarks/baselines/operator-api-v0.1.0.json
+
+benchmark-reconciliation: ## Operator reconciliation latency benchmark
+	@echo "→ Running operator reconciliation benchmarks..."
+	@$(CARGO) test --bench reconciliation_benchmark --release -- --nocapture --test-threads=1
 
 benchmark-upgrade: ## Run upgrade load test with k6
 	@echo "→ Running upgrade load test..."
 	@command -v k6 >/dev/null 2>&1 || (echo "✗ k6 not installed. Install: https://k6.io/docs/get-started/installation/" && exit 1)
 	cd benchmarks && k6 run k6/upgrade-load-test.js
+
+benchmark-all: benchmark benchmark-webhook benchmark-crd benchmark-helm benchmark-upgrade ## Run all performance benchmarks
+
+chaos-network-partition: ## Run chaos test: network partition scenarios
+	@echo "→ Running network partition chaos tests..."
+	@$(CARGO) test --test network_partition_tests --release -- --nocapture --test-threads=1 --ignored
+
+chaos-crash-recovery: ## Run chaos test: pod crash and recovery
+	@echo "→ Running crash recovery chaos tests..."
+	@$(CARGO) test --test crash_recovery_tests --release -- --nocapture --test-threads=1 --ignored
+
+chaos-resource-exhaustion: ## Run chaos test: resource exhaustion scenarios
+	@echo "→ Running resource exhaustion chaos tests..."
+	@$(CARGO) test --path tests/chaos --release -- --nocapture --test-threads=1 --ignored
+
+chaos-all: chaos-network-partition chaos-crash-recovery chaos-resource-exhaustion ## Run all chaos engineering tests
 
 # ── Running the Operator ──────────────────────────────────────────────────────
 
