@@ -10,11 +10,12 @@ values-preservation upgrade check.
 make helm-lint
 make helm-unittest
 make helm-upgrade-test
-make yaml-validate
+make yaml-schema-validate
 ```
 
 CI runs the same targets from `.github/workflows/ci.yml` (`helm-lint`,
-`helm-test`, `yaml-validate`). Pin: Helm **3.14.0**, helm-unittest **v0.5.1**.
+`helm-upgrade-test`, `yaml-schema-validate`). Pin: Helm **3.14.0**,
+helm-unittest **v0.5.1**.
 
 ## Edge cases (issue #1289)
 
