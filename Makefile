@@ -41,6 +41,7 @@
 	check-pipeline-log-redaction \
 	license-headers check-license-headers \
 	gitleaks-secret-scan check-api-contract check-api-coverage check-breaking-changes \
+	test-api-contract test-api-contract-all validate-openapi-spec \
 	crd-benchmark crd-perf-regression-check \
 	cleanup clean
 
@@ -468,6 +469,20 @@ check-breaking-changes: ## Detect breaking API changes vs base branch (#1288)
 	@python3 scripts/check-api-contract.py breaking \
 		--base /tmp/base-openapi.yaml \
 		--head docs/api/openapi.yaml
+
+# ── Issue #1396: Comprehensive API contract testing ───────────────────────────
+
+test-api-contract: ## Run Rust API contract tests against OpenAPI spec (#1396)
+	@echo "→ Running API contract tests..."
+	@$(CARGO) test --test api_contract_tests \
+		--features "rest-api,metrics,k8s-v1-30" \
+		-- --nocapture
+
+test-api-contract-all: check-api-contract check-api-coverage test-api-contract ## Run all API contract checks (#1396)
+	@echo "✓ All API contract checks passed"
+
+validate-openapi-spec: generate-openapi-spec check-openapi-spec check-api-contract check-api-coverage ## Full OpenAPI spec validation suite (#1396)
+	@echo "✓ OpenAPI spec validation complete"
 
 # ── Completions ────────────────────────────────────────────────────────────────
 
