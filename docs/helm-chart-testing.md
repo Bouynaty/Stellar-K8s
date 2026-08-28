@@ -26,6 +26,8 @@ helm-unittest **v0.5.1**.
 - Affinity absent (default), node affinity, pod affinity, pod anti-affinity
 - REST API / log level / watch namespace
 - OpenTelemetry env injection when `otel.enabled=true`
+- `logShipper` renders nothing when disabled and a full DaemonSet + RBAC +
+  ConfigMap set when enabled (issue #1381)
 
 Invalid values that `values.schema.json` must reject (logLevel, service type,
 image pullPolicy) are asserted in the `helm-lint` CI job via `helm lint -f`.

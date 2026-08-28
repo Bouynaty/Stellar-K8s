@@ -747,6 +747,59 @@ otel:
         endpoint: "http://elasticsearch:9200"
         index: "stellar-logs"
 
+# --- Log shipper (per-node Fluent Bit DaemonSet) -----------------------------
+logShipper:
+  # Deploys a Fluent Bit DaemonSet that tails container logs on every node and
+  # forwards them to a central log store (Loki or Elasticsearch).
+  # DISABLED by default: the operator always writes structured JSON to stdout,
+  # so any aggregator (Loki + Promtail, Filebeat, ...) can consume it without
+  # this DaemonSet. Keep the rendered output stable by leaving it disabled in
+  # the committed drift goldens (issue #1381).
+  enabled: false
+
+  image:
+    repository: fluent/fluent-bit
+    tag: "3.2.5"
+    pullPolicy: IfNotPresent
+
+  # Attach pod/namespace labels to every forwarded record via the Kubernetes
+  # metadata filter.
+  kubernetesFilter: true
+
+  # Already-JSON logs are merged into structured fields (level, msg, span_id)
+  # by the "render log" processing step.
+  jsonParsing: true
+
+  # Fluent Bit's own log verbosity (info, warn, error, or debug).
+  logLevel: "warn"
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+  # Exactly one output backend should be enabled at a time. If none is enabled
+  # the shipper echoes structured JSON to stdout (useful for local testing).
+  loki:
+    enabled: false
+    host: "loki"
+    port: 3100
+    # Optional Loki multi-tenant ingestion ID.
+    tenantId: ""
+
+  elasticsearch:
+    enabled: false
+    host: "elasticsearch"
+    port: 9200
+    index: "stellar-logs"
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
 # SCP Analytics Pipeline Configuration
 # Real-time streaming of SCP messages to Kafka for network topology analysis
 scpAnalytics:
