@@ -30,7 +30,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "wave-security"
+          cache-key: "dep-wave-security"
           extra-tools: "cargo-audit cargo-deny"
 
       # A. Dependency vulnerability scanning (cargo-audit)
@@ -76,7 +76,7 @@ jobs:
           echo "| Dependency Vulnerabilities (cargo-audit) | ${{ steps.audit.outcome || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| License Compliance (cargo-deny) | ${{ steps.deny.outcome || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Secret Scanning (gitleaks) | ${{ steps.gitleaks.outcome || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Custom Secret Checks | ${{ steps.secrets.outcome || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Custom Secret Checks | ${{ steps.secrets.outcome || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY" # safe
           echo "| Third-Party Licenses | ${{ steps.licenses.outcome || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
 
   # ── Issue #1286: License Header Enforcement ─────────────────────────────────
@@ -171,7 +171,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key: "wave-crd-perf"
+          cache-key: "perf-wave-crd-perf"
 
       # A. Build and run Criterion benchmarks (compile check)
       - name: Build CRD benchmarks
