@@ -36,6 +36,12 @@ jobs:
       - name: Install PyYAML
         run: pip install pyyaml
 
+      - name: Install dyff
+        run: |
+          curl -sSL https://github.com/homeport/dyff/releases/download/v1.7.0/dyff_1.7.0_linux_amd64.tar.gz \
+            | tar xz -C /usr/local/bin dyff
+          dyff version
+
       - name: Run Helm Drift Detection
         run: |
-          bash scripts/check-helm-drift.sh --max-changed-lines 50
+          bash scripts/check-helm-drift.sh --max-changed-lines 50 --check-high-risk
