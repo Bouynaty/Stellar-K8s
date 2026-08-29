@@ -155,7 +155,18 @@ jobs:
   summary:
     name: Contract Testing Summary
     runs-on: ubuntu-latest
-    needs: [spec-validation, contract-check, coverage, rust-contract-tests]
+    # breaking-changes must be listed here too (issue #1366): `needs.<job>`
+    # is only valid in expressions for jobs actually declared as a
+    # dependency, and the step below already reads
+    # `needs.breaking-changes.result` for the summary table row.
+    needs:
+      [
+        spec-validation,
+        contract-check,
+        coverage,
+        breaking-changes,
+        rust-contract-tests,
+      ]
     if: always()
     steps:
       - name: Generate summary
@@ -175,9 +186,13 @@ jobs:
           echo "Response schemas are checked for required fields and correct types." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail if any check failed
+        # issue #1366: `breaking-changes` only runs on pull_request (see its
+        # own `if:`), so its result is legitimately 'skipped' on a push —
+        # that must not fail the gate. A real 'failure' must.
         if: |
           needs.spec-validation.result != 'success' ||
           needs.contract-check.result != 'success' ||
           needs.coverage.result != 'success' ||
-          needs.rust-contract-tests.result != 'success'
+          needs.rust-contract-tests.result != 'success' ||
+          needs.breaking-changes.result == 'failure'
         run: exit 1
