@@ -122,7 +122,11 @@ fn main() {
                 changelog.push_str(&format!(
                     "- **{}{}**: {} ({})\n",
                     commit.commit_type,
-                    commit.scope.map(|s| format!("({})", s)).unwrap_or_default(),
+                    commit
+                        .scope
+                        .as_ref()
+                        .map(|s| format!("({})", s))
+                        .unwrap_or_default(),
                     commit.description,
                     &commit.hash[..7]
                 ));
