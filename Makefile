@@ -22,7 +22,7 @@
 	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-fix security-report \
 	build test ci-local quick watch \
 	docker-build docker-build-ci docker-multiarch \
-	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks pre-commit pre-commit-install run run-local run-dev \
+	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks dev-setup-verify pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint helm-unittest helm-upgrade-test link-check link-check-all changelog \
 	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
@@ -511,7 +511,7 @@ helm-upgrade-test: ## Values-preservation check from the last supported producti
 
 # ── Development Setup ─────────────────────────────────────────────────────────
 
-dev-setup: dev-setup-rust dev-setup-tools dev-setup-hooks ## Setup dev environment
+dev-setup: dev-setup-rust dev-setup-tools dev-setup-hooks dev-setup-verify ## Setup dev environment (installs Rust/tools/hooks, then validates)
 
 dev-setup-rust: ## Install Rust toolchain and components
 	@echo "→ Setting up Rust toolchain..."
@@ -528,6 +528,10 @@ dev-setup-hooks: ## Install git hooks
 	@command -v pre-commit >/dev/null 2>&1 || pip install pre-commit
 	pre-commit install
 	pre-commit install --hook-type pre-push
+
+dev-setup-verify: ## Validate the dev environment (cross-platform, Windows-safe — no shell dependency)
+	@echo "→ Validating development environment..."
+	@$(CARGO) run --locked --bin stellar-bootstrap-verify
 
 # ── Watch ──────────────────────────────────────────────────────────────────────
 
