@@ -95,6 +95,12 @@ securityContext:
     drop:
       - ALL
 
+# mTLS configuration for inter-service communication.
+# When enabled, creates self-signed CA and certificates for
+# Stellar Core, Horizon, and Soroban RPC services.
+mtls:
+  enabled: false
+
 resources:
   limits:
     cpu: 500m
@@ -297,6 +303,17 @@ monitoring:
     ledgerCloseTimeThresholdSeconds: 10
     # Extra PrometheusRule rules, appended as-is under spec.groups[0].rules.
     additionalRules: []
+    # Certificate expiry alerts (requires cert-manager Prometheus metrics).
+    certAlerts:
+      enabled: false
+      warningDays: 30
+      criticalDays: 7
+    # Cost optimization anomaly alerts (requires cost metrics from the operator).
+    costAlerts:
+      enabled: false
+    # API rate limiting alerts (requires gateway rate limit metrics).
+    rateLimitAlerts:
+      enabled: false
 
   grafanaDashboards:
     enabled: true
@@ -394,6 +411,10 @@ certManagement:
   enabled: true
   # Backend to use: "cert-manager" (default), "vault-pki", or "local-ca".
   backend: "cert-manager"
+  # ACME account email for Let's Encrypt registration.
+  acmeEmail: "admin@stellar.org"
+  # Ingress class used by the HTTP-01 ACME solver.
+  ingressClass: "nginx"
   # Vault PKI backend settings (only used when backend == "vault-pki").
   vault:
     addr: "https://vault.stellar-system.svc:8200"
@@ -411,6 +432,92 @@ certManagement:
   defaultTtlHours: 2160
   # Days before expiry at which auto-renewal is triggered. Must be < defaultTtlHours/24.
   renewBeforeDays: 30
+  # TLS certificates to provision via cert-manager. Each entry creates a
+  # Certificate resource in the specified namespace.
+  certificates:
+    - name: horizon-tls
+      namespace: stellar
+      commonName: horizon.stellar.org
+      dnsNames:
+        - horizon.stellar.org
+        - api.stellar.org
+    - name: validator-tls
+      namespace: stellar
+      commonName: validator.stellar.org
+      dnsNames:
+        - validator.stellar.org
+        - stellar-validator-0.stellar.svc.cluster.local
+        - stellar-validator-1.stellar.svc.cluster.local
+        - stellar-validator-2.stellar.svc.cluster.local
+    - name: core-tls
+      namespace: stellar
+      commonName: core.stellar.org
+      dnsNames:
+        - core.stellar.org
+        - stellar-core.stellar.svc.cluster.local
+    - name: soroban-rpc-tls
+      namespace: stellar
+      commonName: soroban.stellar.org
+      dnsNames:
+        - soroban.stellar.org
+        - soroban-rpc.stellar.svc.cluster.local
+
+# =============================================================================
+# API Rate Limiting (issue #1384)
+# =============================================================================
+rateLimiting:
+  # Enable rate limiting middleware in the API gateway.
+  enabled: true
+  # Distributed rate limiting uses a shared Redis store so limits are
+  # enforced across all gateway replicas. When disabled, only process-local
+  # (per-replica) limits apply.
+  distributed:
+    enabled: false
+    # When true, requests proceed if Redis is unreachable (fail-open).
+    # Set to false to reject traffic when the shared store is down.
+    failOpen: true
+  # Redis connection for the distributed rate limiter.
+  redis:
+    address: "redis.stellar-system.svc:6379"
+    poolSize: 8
+    timeoutMs: 50
+    # Password for Redis authentication. Reference a Secret for production use.
+    # passwordSecretName: "redis-rate-limit-password"
+    # passwordSecretKey: "password"
+    # Enable TLS for Redis connections (recommended for production).
+    tls:
+      enabled: false
+  # Per-API-key rate limit tiers. Each tier defines request quotas.
+  tiers:
+    - name: free
+      requestsPerMinute: 60
+      requestsPerHour: 1000
+      requestsPerDay: 10000
+      burst: 10
+    - name: standard
+      requestsPerMinute: 100
+      requestsPerHour: 10000
+      requestsPerDay: 100000
+      burst: 20
+    - name: premium
+      requestsPerMinute: 200
+      requestsPerHour: 20000
+      requestsPerDay: 200000
+      burst: 50
+    - name: admin
+      requestsPerMinute: 500
+      requestsPerHour: 50000
+      requestsPerDay: 500000
+      burst: 100
+  # Endpoint-to-tier mapping. Keys are URL path prefixes.
+  endpointTiers:
+    "/health": "free"
+    "/healthz": "free"
+    "/readyz": "free"
+    "/livez": "free"
+    "/metrics": "free"
+    "/api/v1/nodes": "standard"
+    "/api/v1/debug": "admin"
 
 # Cross-region state synchronization. Only rendered when
 # featureFlags.enableDr is also true (see templates/cross-region-bridge.yaml).
