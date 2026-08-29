@@ -324,9 +324,9 @@ jobs:
   # DNS that does appear inside examples/ (e.g. stellar-core:11626) is excluded
   # by hostname pattern in `lychee.toml` instead of dropping the whole
   # directory. Excludes and accept-codes live in `lychee.toml`. Runs on every
-  # push/PR and on a weekly schedule (see the standalone
-  # .github/workflows/link-check.yml) to catch link rot.
-  # Local: `python3 scripts/check-links.py` remains available via make health.
+  # push/PR to catch link issues. Scheduled link-rot detection (weekly check) is
+  # not currently covered; local: `python3 scripts/check-links.py` remains
+  # available via make health for local validation.
   repo-wide-link-check:
     name: Repo-Wide Link Check (lychee)
     runs-on: ubuntu-latest
