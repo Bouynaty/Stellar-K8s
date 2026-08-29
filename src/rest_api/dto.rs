@@ -121,7 +121,12 @@ impl ErrorResponse {
         }
     }
 
-    pub fn degraded(code: ApiErrorCode, message: &str, details: serde_json::Value, correlation_id: Option<String>) -> Self {
+    pub fn degraded(
+        code: ApiErrorCode,
+        message: &str,
+        details: serde_json::Value,
+        correlation_id: Option<String>,
+    ) -> Self {
         Self {
             error: code.as_str().to_lowercase(),
             error_code: code.as_str().to_string(),
