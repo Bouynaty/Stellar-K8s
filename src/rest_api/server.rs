@@ -19,6 +19,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::extract::Extension;
 use axum::{middleware, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use rustls::server::WebPkiClientVerifier;
@@ -41,9 +42,11 @@ use super::handlers;
 use super::health_summary;
 use super::horizon_cache_handlers;
 use super::job_handlers;
+use super::profiling;
 use super::resource_optimization_handlers;
 use super::scp_topology;
 use super::stellar_metrics_server;
+use super::versioning::{self, VersionPolicy};
 
 /// Build a rustls ServerConfig from PEM data (cert, key, CA for client verification).
 /// Used for initial server setup and after certificate rotation to reload without restart.
@@ -108,18 +111,58 @@ pub async fn run_server(
     state: Arc<ControllerState>,
     rustls_config: Option<RustlsConfig>,
 ) -> Result<()> {
+    let app = build_router(state);
+
+    // Default to 9090 to match Prometheus scrape conventions and project docs.
+    let port: u16 = std::env::var("REST_API_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(9090);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+
+    if let Some(tls_config) = rustls_config {
+        info!("REST API server listening on {} with mTLS", addr);
+        let listener = std::net::TcpListener::bind(addr)?;
+        axum_server::from_tcp_rustls(listener, tls_config)
+            .serve(app.into_make_service())
+            .await
+            .map_err(|e| Error::ConfigError(format!("Server error: {e}")))?;
+    } else {
+        info!("REST API server listening on {} (insecure)", addr);
+        let listener = tokio::net::TcpListener::bind(addr)
+            .await
+            .map_err(|e| Error::ConfigError(format!("Failed to bind to {addr}: {e}")))?;
+
+        axum::serve(listener, app)
+            .await
+            .map_err(|e| Error::ConfigError(format!("Server error: {e}")))?;
+    }
+
+    Ok(())
+}
+
+/// Build the operator REST router (URL-path versioned `/api/vN` + probes).
+///
+/// Version policy is loaded from the environment once at construction time.
+/// See [`VersionPolicy::from_env`] and `docs/api/versioning.md`.
+pub fn build_router(state: Arc<ControllerState>) -> Router {
+    let policy = Arc::new(VersionPolicy::from_env());
+
     let public = Router::new()
         .route("/health", get(handlers::health))
         .route("/healthz", get(handlers::healthz))
         .route("/readyz", get(handlers::readyz))
         .route("/livez", get(handlers::livez))
+        // Unversioned catalog for coexistence / client discovery (#1333)
+        .route("/api/versions", get(versioning::list_versions))
         .with_state(state.clone());
 
     let protected = Router::new()
         .route("/leader", get(handlers::leader_status))
         .route("/api/v1/nodes", get(handlers::list_nodes))
         .route("/api/v1/nodes/:namespace/:name", get(handlers::get_node))
-        // Health summary API (Issue #552)
+        // Health summary API (Issue #552) — legacy `/v1/...` prefix (not `/api/vN`)
         .route("/v1/health/summary", get(health_summary::get_health_summary))
         .route("/v1/health/nodes", get(health_summary::get_node_health_status))
         .route("/v1/health/incidents", get(health_summary::get_health_incidents))
@@ -206,8 +249,11 @@ pub async fn run_server(
         .route("/api/v1/audit-log", get(audit_handlers::list_audit_log))
         .route("/api/v1/audit-log/search", get(audit_handlers::search_audit_log))
         .route("/api/v1/audit-log/stream", get(audit_handlers::audit_log_stream))
-        .route("/api/v1/audit-log/anomalies", get(audit_handlers::list_audit_anomalies))
-        // Custom metrics API
+        .route("/api/v1/audit-log/anomalies", get(audit_handlers::list_audit_anomalies));
+
+    // Optional CPU/heap profiling (#1330). Registered only with `--features profiling`
+    // and REST_API_PROFILING_ENABLED=true. Still behind api_reader + api_admin.
+    let protected = profiling::attach_profiling_routes(protected)
         // Custom metrics API (Kubernetes custom.metrics.k8s.io/v1beta2)
         // Discovery endpoint — required by the HPA aggregation layer
         .route(
@@ -239,31 +285,7 @@ pub async fn run_server(
         app = app.route("/metrics", get(metrics_handler));
     }
 
-    // Default to 9090 to match Prometheus scrape conventions and project docs.
-    let port: u16 = std::env::var("REST_API_PORT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(9090);
-
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-
-    if let Some(tls_config) = rustls_config {
-        info!("REST API server listening on {} with mTLS", addr);
-        let listener = std::net::TcpListener::bind(addr)?;
-        axum_server::from_tcp_rustls(listener, tls_config)
-            .serve(app.into_make_service())
-            .await
-            .map_err(|e| Error::ConfigError(format!("Server error: {e}")))?;
-    } else {
-        info!("REST API server listening on {} (insecure)", addr);
-        let listener = tokio::net::TcpListener::bind(addr)
-            .await
-            .map_err(|e| Error::ConfigError(format!("Failed to bind to {addr}: {e}")))?;
-
-        axum::serve(listener, app)
-            .await
-            .map_err(|e| Error::ConfigError(format!("Server error: {e}")))?;
-    }
-
-    Ok(())
+    // Extension is outermost so version middleware can extract VersionPolicy.
+    app.layer(middleware::from_fn(versioning::inject_api_version_headers))
+        .layer(Extension(policy))
 }

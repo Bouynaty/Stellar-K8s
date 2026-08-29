@@ -1095,6 +1095,30 @@ pub(crate) fn build_service(node: &StellarNode, enable_mtls: bool) -> Service {
     merge_service_metadata_labels(&mut labels, node);
     let name = node.name_any();
 
+    // Validator blue/green: Service must select only the active publishing color.
+    let mut selector = labels.clone();
+    if node.spec.node_type == NodeType::Validator
+        && node.spec.strategy.strategy_type == RolloutStrategyType::BlueGreen
+    {
+        let active = node
+            .status
+            .as_ref()
+            .and_then(|s| s.blue_green_active_color.as_deref())
+            .or_else(|| {
+                node.metadata
+                    .annotations
+                    .as_ref()
+                    .and_then(|a| a.get("stellar.org/bg-active-color"))
+                    .map(|s| s.as_str())
+            })
+            .unwrap_or("blue");
+        selector.insert(
+            "stellar.org/deployment-color".to_string(),
+            active.to_string(),
+        );
+        selector.insert("stellar.org/bg-role".to_string(), "active".to_string());
+    }
+
     let mut annotations = BTreeMap::new();
 
     // Collect ExternalDNS config from ValidatorConfig or LoadBalancerConfig
@@ -1187,7 +1211,7 @@ pub(crate) fn build_service(node: &StellarNode, enable_mtls: bool) -> Service {
             &None,
         ),
         spec: Some(ServiceSpec {
-            selector: Some(labels),
+            selector: Some(selector),
             ports: Some(ports),
             ..Default::default()
         }),

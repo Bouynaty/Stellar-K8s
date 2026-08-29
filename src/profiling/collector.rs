@@ -105,10 +105,7 @@ impl ProfileCollector {
     /// should be replaced with a proper async-signal-safe sampler (e.g.
     /// `pprof-rs`). The current implementation uses coarse timing information
     /// available without OS-specific APIs so it compiles on all targets.
-    pub async fn capture_cpu_profile(
-        &self,
-        duration: Duration,
-    ) -> CpuSample {
+    pub async fn capture_cpu_profile(&self, duration: Duration) -> CpuSample {
         let duration = duration.min(Duration::from_secs(self.config.max_cpu_duration_secs));
         let start = Instant::now();
         let captured_at = Utc::now();
@@ -155,8 +152,14 @@ impl ProfileCollector {
         // jemalloc's epoch-based stats API or the tracking allocator from
         // the `dhat` crate.
         let mut allocation_sites = HashMap::new();
-        allocation_sites.insert("stellar_k8s::crd::types (Vec<StellarNode>)".to_string(), rss_bytes / 4);
-        allocation_sites.insert("stellar_k8s::controller::metrics (Histogram)".to_string(), rss_bytes / 8);
+        allocation_sites.insert(
+            "stellar_k8s::crd::types (Vec<StellarNode>)".to_string(),
+            rss_bytes / 4,
+        );
+        allocation_sites.insert(
+            "stellar_k8s::controller::metrics (Histogram)".to_string(),
+            rss_bytes / 8,
+        );
 
         let heap_allocated_bytes = rss_bytes.saturating_add(1024 * 1024);
         let heap_freed_bytes = heap_allocated_bytes / 5;
@@ -227,14 +230,20 @@ fn read_proc_memory_stats() -> (u64, u64) {
             let mut vm_size = 0u64;
             for line in contents.lines() {
                 if let Some(rest) = line.strip_prefix("VmRSS:") {
-                    rss = rest.split_whitespace().next()
+                    rss = rest
+                        .split_whitespace()
+                        .next()
                         .and_then(|v| v.parse::<u64>().ok())
-                        .unwrap_or(0) * 1024;
+                        .unwrap_or(0)
+                        * 1024;
                 }
                 if let Some(rest) = line.strip_prefix("VmSize:") {
-                    vm_size = rest.split_whitespace().next()
+                    vm_size = rest
+                        .split_whitespace()
+                        .next()
                         .and_then(|v| v.parse::<u64>().ok())
-                        .unwrap_or(0) * 1024;
+                        .unwrap_or(0)
+                        * 1024;
                 }
             }
             return (rss, vm_size);
@@ -274,9 +283,7 @@ mod tests {
         };
         let collector = ProfileCollector::new(config);
         for _ in 0..5 {
-            collector
-                .capture_heap_profile()
-                .await;
+            collector.capture_heap_profile().await;
         }
         let recent = collector.recent_alloc_samples(10).await;
         assert_eq!(recent.len(), 3);

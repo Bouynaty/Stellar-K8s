@@ -132,17 +132,29 @@ impl RateLimitHeaders {
     /// Convert to HTTP header tuples
     pub fn to_header_tuples(&self) -> Vec<(&str, String)> {
         let mut headers = vec![
-            ("X-RateLimit-Limit-Minute", self.x_ratelimit_limit_minute.to_string()),
-            ("X-RateLimit-Remaining-Minute", self.x_ratelimit_remaining_minute.to_string()),
+            (
+                "X-RateLimit-Limit-Minute",
+                self.x_ratelimit_limit_minute.to_string(),
+            ),
+            (
+                "X-RateLimit-Remaining-Minute",
+                self.x_ratelimit_remaining_minute.to_string(),
+            ),
             ("X-RateLimit-Reset", self.x_ratelimit_reset.to_string()),
-            ("X-RateLimit-Limit-Hour", self.x_ratelimit_limit_hour.to_string()),
-            ("X-RateLimit-Remaining-Hour", self.x_ratelimit_remaining_hour.to_string()),
+            (
+                "X-RateLimit-Limit-Hour",
+                self.x_ratelimit_limit_hour.to_string(),
+            ),
+            (
+                "X-RateLimit-Remaining-Hour",
+                self.x_ratelimit_remaining_hour.to_string(),
+            ),
         ];
-        
+
         if let Some(retry) = self.retry_after {
             headers.push(("Retry-After", retry.to_string()));
         }
-        
+
         headers
     }
 }
@@ -282,9 +294,18 @@ impl RateLimiter {
 
     pub fn from_config(config: &RateLimitConfig) -> Self {
         let mut tier_limits = HashMap::new();
-        tier_limits.insert(EndpointTier::Public, EndpointTier::Public.rate_limit_config());
-        tier_limits.insert(EndpointTier::Standard, EndpointTier::Standard.rate_limit_config());
-        tier_limits.insert(EndpointTier::Premium, EndpointTier::Premium.rate_limit_config());
+        tier_limits.insert(
+            EndpointTier::Public,
+            EndpointTier::Public.rate_limit_config(),
+        );
+        tier_limits.insert(
+            EndpointTier::Standard,
+            EndpointTier::Standard.rate_limit_config(),
+        );
+        tier_limits.insert(
+            EndpointTier::Premium,
+            EndpointTier::Premium.rate_limit_config(),
+        );
         tier_limits.insert(EndpointTier::Admin, EndpointTier::Admin.rate_limit_config());
 
         Self {
@@ -337,17 +358,24 @@ impl RateLimiter {
     }
 
     /// Check rate limit for a specific endpoint tier
-    pub async fn check_tier(&self, client_id: &str, tier: EndpointTier) -> Result<RateLimitHeaders, RateLimitError> {
+    pub async fn check_tier(
+        &self,
+        client_id: &str,
+        tier: EndpointTier,
+    ) -> Result<RateLimitHeaders, RateLimitError> {
         let tier_config = {
             let tier_limits = self.tier_limits.read().await;
-            tier_limits.get(&tier).cloned().unwrap_or_else(|| tier.rate_limit_config())
+            tier_limits
+                .get(&tier)
+                .cloned()
+                .unwrap_or_else(|| tier.rate_limit_config())
         };
 
         let mut limits = self.client_limits.write().await;
         let client_key = format!("{}:{:?}", client_id, tier);
-        let client = limits.entry(client_key).or_insert_with(|| {
-            ClientRateLimit::new(&tier_config)
-        });
+        let client = limits
+            .entry(client_key)
+            .or_insert_with(|| ClientRateLimit::new(&tier_config));
 
         if !client.check() {
             let info = client.get_limit_info(&tier_config);
@@ -365,18 +393,29 @@ impl RateLimiter {
     /// Get rate limit info for a client
     pub async fn get_limit_info(&self, client_id: &str) -> Option<RateLimitInfo> {
         let limits = self.client_limits.read().await;
-        limits.get(client_id).map(|c| c.get_limit_info(&self.config))
+        limits
+            .get(client_id)
+            .map(|c| c.get_limit_info(&self.config))
     }
 
     /// Get rate limit info for a client and tier
-    pub async fn get_tier_limit_info(&self, client_id: &str, tier: EndpointTier) -> Option<RateLimitInfo> {
+    pub async fn get_tier_limit_info(
+        &self,
+        client_id: &str,
+        tier: EndpointTier,
+    ) -> Option<RateLimitInfo> {
         let limits = self.client_limits.read().await;
         let client_key = format!("{}:{:?}", client_id, tier);
         let tier_config = {
             let tier_limits = self.tier_limits.read().await;
-            tier_limits.get(&tier).cloned().unwrap_or_else(|| tier.rate_limit_config())
+            tier_limits
+                .get(&tier)
+                .cloned()
+                .unwrap_or_else(|| tier.rate_limit_config())
         };
-        limits.get(&client_key).map(|c| c.get_limit_info(&tier_config))
+        limits
+            .get(&client_key)
+            .map(|c| c.get_limit_info(&tier_config))
     }
 
     /// Add custom rate limit for a client
@@ -622,8 +661,11 @@ mod tests {
     async fn test_rate_limit_headers() {
         let limiter = RateLimiter::new(100, 10);
 
-        let headers = limiter.check_tier("client1", EndpointTier::Standard).await.unwrap();
-        
+        let headers = limiter
+            .check_tier("client1", EndpointTier::Standard)
+            .await
+            .unwrap();
+
         assert_eq!(headers.x_ratelimit_limit_minute, 100);
         assert!(headers.x_ratelimit_remaining_minute <= 100);
         assert!(headers.x_ratelimit_reset > 0);

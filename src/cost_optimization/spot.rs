@@ -15,9 +15,9 @@
 //! Provides spot instance scheduling, interruption handling, and cost analysis
 //! for non-critical workloads.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 /// Spot instance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,7 +155,11 @@ impl SpotManager {
             return Err("Spot instances disabled".to_string());
         }
 
-        if !self.config.instance_types.contains(&instance_type.to_string()) {
+        if !self
+            .config
+            .instance_types
+            .contains(&instance_type.to_string())
+        {
             return Err(format!(
                 "Instance type {} not in allowed list",
                 instance_type
@@ -187,10 +191,7 @@ impl SpotManager {
     }
 
     /// Handle spot interruption notice
-    pub async fn handle_interruption(
-        &mut self,
-        request_id: &str,
-    ) -> Result<(), String> {
+    pub async fn handle_interruption(&mut self, request_id: &str) -> Result<(), String> {
         let request = self
             .active_requests
             .get_mut(request_id)
@@ -201,10 +202,7 @@ impl SpotManager {
 
         match &self.config.interruption_handling.preemption_strategy {
             PreemptionStrategy::GracefulDrain => {
-                tracing::info!(
-                    "Graceful drain initiated for spot instance {}",
-                    request_id
-                );
+                tracing::info!("Graceful drain initiated for spot instance {}", request_id);
                 // Would trigger workload migration
             }
             PreemptionStrategy::SnapshotAndTerminate => {
@@ -215,10 +213,7 @@ impl SpotManager {
                 // Would save state and terminate
             }
             PreemptionStrategy::WaitForDeadline => {
-                tracing::info!(
-                    "Waiting for deadline on spot instance {}",
-                    request_id
-                );
+                tracing::info!("Waiting for deadline on spot instance {}", request_id);
                 // Would wait then force terminate
             }
         }
@@ -248,7 +243,7 @@ impl SpotManager {
             },
             interruption_count,
             avg_instance_lifetime_hours: 24.0, // Would calculate from history
-            utilization_percent: 85.0,          // Would calculate from metrics
+            utilization_percent: 85.0,         // Would calculate from metrics
         }
     }
 
@@ -262,8 +257,9 @@ impl SpotManager {
             if analysis.savings_percent < 50.0 {
                 recommendations.push(SpotRecommendation {
                     recommendation_type: SpotRecommendationType::IncreaseSpotUsage,
-                    description: "Consider increasing spot instance usage for non-critical workloads"
-                        .to_string(),
+                    description:
+                        "Consider increasing spot instance usage for non-critical workloads"
+                            .to_string(),
                     estimated_savings_usd: analysis.total_ondemand_cost_usd * 0.3,
                     priority: RecommendationPriority::High,
                 });
@@ -272,8 +268,8 @@ impl SpotManager {
             if analysis.interruption_count > 10 {
                 recommendations.push(SpotRecommendation {
                     recommendation_type: SpotRecommendationType::DiversifyInstanceTypes,
-                    description:
-                        "Diversify instance types to reduce interruption frequency".to_string(),
+                    description: "Diversify instance types to reduce interruption frequency"
+                        .to_string(),
                     estimated_savings_usd: 0.0,
                     priority: RecommendationPriority::Medium,
                 });

@@ -603,7 +603,9 @@ pub struct LocalCaBackend {
 
 impl LocalCaBackend {
     pub fn new(issuer_cn: impl Into<String>) -> Self {
-        Self { issuer_cn: issuer_cn.into() }
+        Self {
+            issuer_cn: issuer_cn.into(),
+        }
     }
 }
 
@@ -622,8 +624,8 @@ impl PkiBackend for LocalCaBackend {
         dn.push(DnType::CommonName, request.common_name.clone());
         params.distinguished_name = dn;
 
-        let key_pair = KeyPair::generate()
-            .map_err(|e| CertRotationError::Backend(e.to_string()))?;
+        let key_pair =
+            KeyPair::generate().map_err(|e| CertRotationError::Backend(e.to_string()))?;
         let cert = params
             .self_signed(&key_pair)
             .map_err(|e| CertRotationError::Backend(e.to_string()))?;
@@ -792,8 +794,7 @@ mod tests {
     #[tokio::test]
     async fn controller_renews_due_certificate() {
         let backend = Arc::new(LocalCaBackend::new("Test CA"));
-        let controller =
-            CertRotationController::new(backend, ExpiryMonitorConfig::default());
+        let controller = CertRotationController::new(backend, ExpiryMonitorConfig::default());
 
         // Register a cert that is due for renewal (expires in 20 days, threshold 30).
         controller.register(make_record("horizon", 20, 30)).await;
@@ -807,8 +808,7 @@ mod tests {
     #[tokio::test]
     async fn controller_skips_cert_not_due() {
         let backend = Arc::new(LocalCaBackend::new("Test CA"));
-        let controller =
-            CertRotationController::new(backend, ExpiryMonitorConfig::default());
+        let controller = CertRotationController::new(backend, ExpiryMonitorConfig::default());
 
         // Cert expires in 60 days with 30-day threshold — not due.
         controller.register(make_record("soroban", 60, 30)).await;
@@ -820,8 +820,7 @@ mod tests {
     #[tokio::test]
     async fn controller_emits_alerts_for_expiring_certs() {
         let backend = Arc::new(LocalCaBackend::new("Test CA"));
-        let controller =
-            CertRotationController::new(backend, ExpiryMonitorConfig::default());
+        let controller = CertRotationController::new(backend, ExpiryMonitorConfig::default());
 
         controller.register(make_record("horizon", 5, 30)).await;
 

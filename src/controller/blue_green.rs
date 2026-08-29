@@ -901,8 +901,7 @@ pub async fn monitor_and_auto_rollback(
     let api: Api<Deployment> = Api::namespaced(client.clone(), &namespace);
 
     let mut counter = RollbackCounter::new(policy.failure_threshold);
-    let deadline = std::time::Instant::now()
-        + Duration::from_secs(policy.observation_window_secs);
+    let deadline = std::time::Instant::now() + Duration::from_secs(policy.observation_window_secs);
     let check_interval = Duration::from_secs(10);
 
     info!(
@@ -931,10 +930,7 @@ pub async fn monitor_and_auto_rollback(
             counter.record_failure();
             warn!(
                 "Green deployment {}/{} health check failed ({}/{} threshold)",
-                namespace,
-                green_name,
-                counter.failures,
-                policy.failure_threshold
+                namespace, green_name, counter.failures, policy.failure_threshold
             );
 
             if counter.should_rollback() {

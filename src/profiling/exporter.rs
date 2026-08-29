@@ -42,8 +42,9 @@ impl ProfileExporter {
         format: ProfileFormat,
     ) -> Result<Value, ProfilingError> {
         match format {
-            ProfileFormat::Json => serde_json::to_value(sample)
-                .map_err(|e| ProfilingError::Export(e.to_string())),
+            ProfileFormat::Json => {
+                serde_json::to_value(sample).map_err(|e| ProfilingError::Export(e.to_string()))
+            }
             ProfileFormat::Pprof => {
                 // Placeholder — a real implementation would serialize to the
                 // pprof proto3 binary format and base64-encode for JSON transport.
@@ -61,8 +62,9 @@ impl ProfileExporter {
         format: ProfileFormat,
     ) -> Result<Value, ProfilingError> {
         match format {
-            ProfileFormat::Json => serde_json::to_value(sample)
-                .map_err(|e| ProfilingError::Export(e.to_string())),
+            ProfileFormat::Json => {
+                serde_json::to_value(sample).map_err(|e| ProfilingError::Export(e.to_string()))
+            }
             ProfileFormat::Pprof => Err(ProfilingError::Export(
                 "pprof binary format not yet implemented; use format=json".to_string(),
             )),

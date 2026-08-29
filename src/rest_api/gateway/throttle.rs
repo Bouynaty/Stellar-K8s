@@ -61,22 +61,42 @@ pub struct TierLimits {
 impl TierLimits {
     /// Conservative public tier — generous to avoid blocking legitimate traffic.
     pub fn public() -> Self {
-        Self { rps: 50.0, burst: 200, daily_cap: Some(500_000), include_retry_after: true }
+        Self {
+            rps: 50.0,
+            burst: 200,
+            daily_cap: Some(500_000),
+            include_retry_after: true,
+        }
     }
 
     /// Standard authenticated tier.
     pub fn standard() -> Self {
-        Self { rps: 20.0, burst: 60, daily_cap: Some(100_000), include_retry_after: true }
+        Self {
+            rps: 20.0,
+            burst: 60,
+            daily_cap: Some(100_000),
+            include_retry_after: true,
+        }
     }
 
     /// Premium / privileged tier.
     pub fn premium() -> Self {
-        Self { rps: 100.0, burst: 300, daily_cap: Some(1_000_000), include_retry_after: false }
+        Self {
+            rps: 100.0,
+            burst: 300,
+            daily_cap: Some(1_000_000),
+            include_retry_after: false,
+        }
     }
 
     /// Admin endpoints — tight limit on individual keys.
     pub fn admin() -> Self {
-        Self { rps: 5.0, burst: 20, daily_cap: Some(10_000), include_retry_after: true }
+        Self {
+            rps: 5.0,
+            burst: 20,
+            daily_cap: Some(10_000),
+            include_retry_after: true,
+        }
     }
 }
 
@@ -123,7 +143,10 @@ impl EndpointTierTable {
 
     /// Apply a per-key override to the resolved limits (only overrides rps/burst
     /// when the key specifies a tighter or looser policy).
-    pub fn apply_key_override(limits: &TierLimits, key_override: Option<&KeyRateOverride>) -> TierLimits {
+    pub fn apply_key_override(
+        limits: &TierLimits,
+        key_override: Option<&KeyRateOverride>,
+    ) -> TierLimits {
         match key_override {
             None => limits.clone(),
             Some(o) => TierLimits {
@@ -190,8 +213,7 @@ impl Bucket {
         // Daily cap check first.
         if let Some(cap) = self.daily_cap {
             if self.daily_used >= cap {
-                let reset_secs =
-                    86_400u64.saturating_sub(self.day_start.elapsed().as_secs());
+                let reset_secs = 86_400u64.saturating_sub(self.day_start.elapsed().as_secs());
                 return (false, 0.0, Some(reset_secs));
             }
         }
@@ -252,7 +274,13 @@ impl AbuseTracker {
         if *streak >= 30 {
             // 30 consecutive rejections → 60-second ban
             let duration = Duration::from_secs(60);
-            self.bans.insert(id.to_string(), BanEntry { imposed_at: Instant::now(), duration });
+            self.bans.insert(
+                id.to_string(),
+                BanEntry {
+                    imposed_at: Instant::now(),
+                    duration,
+                },
+            );
             *streak = 0;
             Some(60)
         } else {
@@ -311,9 +339,18 @@ impl RateLimitOutcome {
     /// can pro-actively back off.
     pub fn headers(&self) -> Vec<(String, String)> {
         let mut h = vec![
-            ("X-RateLimit-Limit".to_string(), format!("{:.0}", self.limit)),
-            ("X-RateLimit-Remaining".to_string(), format!("{:.0}", self.remaining)),
-            ("X-RateLimit-Reset".to_string(), self.reset_at.timestamp().to_string()),
+            (
+                "X-RateLimit-Limit".to_string(),
+                format!("{:.0}", self.limit),
+            ),
+            (
+                "X-RateLimit-Remaining".to_string(),
+                format!("{:.0}", self.remaining),
+            ),
+            (
+                "X-RateLimit-Reset".to_string(),
+                self.reset_at.timestamp().to_string(),
+            ),
         ];
         if let Some(ra) = self.retry_after_secs {
             h.push(("Retry-After".to_string(), ra.to_string()));
@@ -347,7 +384,8 @@ impl PerEndpointRateLimiter {
 
     /// Register a per-key rate limit override.
     pub fn add_key_override(&mut self, override_cfg: KeyRateOverride) {
-        self.key_overrides.insert(override_cfg.api_key_id.clone(), override_cfg);
+        self.key_overrides
+            .insert(override_cfg.api_key_id.clone(), override_cfg);
     }
 
     /// Check whether an API request is allowed.
@@ -355,12 +393,7 @@ impl PerEndpointRateLimiter {
     /// - `path`: Request path (used to resolve tier).
     /// - `key_id`: Authenticated API key ID (empty string for anonymous).
     /// - `client_ip`: Client IP address (used for IP-level limiting).
-    pub async fn check(
-        &self,
-        path: &str,
-        key_id: &str,
-        client_ip: &str,
-    ) -> RateLimitOutcome {
+    pub async fn check(&self, path: &str, key_id: &str, client_ip: &str) -> RateLimitOutcome {
         let base_limits = self.tier_table.resolve(path);
         let key_override = self.key_overrides.get(key_id);
         let effective_limits = EndpointTierTable::apply_key_override(base_limits, key_override);
@@ -459,10 +492,14 @@ mod tests {
         let limiter = make_limiter();
         // Exhaust burst.
         for _ in 0..60 {
-            limiter.check("/api/v1/nodes", "key-burst", "10.0.0.2").await;
+            limiter
+                .check("/api/v1/nodes", "key-burst", "10.0.0.2")
+                .await;
         }
         // Next should be denied.
-        let out = limiter.check("/api/v1/nodes", "key-burst", "10.0.0.2").await;
+        let out = limiter
+            .check("/api/v1/nodes", "key-burst", "10.0.0.2")
+            .await;
         assert!(!out.allowed);
         assert!(out.retry_after_secs.is_some());
         assert!(out.throttle_body.is_some());
@@ -487,7 +524,11 @@ mod tests {
     async fn admin_tier_resolved_for_admin_path() {
         let table = EndpointTierTable::default();
         let limits = table.resolve("/api/v1/admin/keys");
-        assert!(limits.rps <= 5.0, "admin tier should have low rps: {}", limits.rps);
+        assert!(
+            limits.rps <= 5.0,
+            "admin tier should have low rps: {}",
+            limits.rps
+        );
     }
 
     #[tokio::test]

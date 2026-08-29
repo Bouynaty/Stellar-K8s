@@ -59,6 +59,8 @@
 //!     enableHistoryArchive: true
 //! ```
 
+#[cfg(test)]
+mod blue_green_schema_test;
 mod cnpg;
 pub mod dr_policy;
 pub mod federation;

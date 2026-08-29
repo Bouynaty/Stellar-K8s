@@ -1549,12 +1549,26 @@ pub(crate) fn apply_stellar_node(
                             None
                         };
 
-                        resources::ensure_statefulset(&client, &node, ctx.enable_mtls,
-                            seed_injection.as_ref(),
-                            &propagated_labels,
-                            ctx.dry_run,
-                        )
-                        .await?;
+                        if super::blue_green_core::should_take_over_validator_workload(&node) {
+                            super::blue_green_core::reconcile_validator_blue_green(
+                                &client,
+                                &node,
+                                ctx.enable_mtls,
+                                seed_injection.as_ref(),
+                                ctx.dry_run,
+                            )
+                            .await?;
+                        } else {
+                            resources::ensure_statefulset(
+                                &client,
+                                &node,
+                                ctx.enable_mtls,
+                                seed_injection.as_ref(),
+                                &propagated_labels,
+                                ctx.dry_run,
+                            )
+                            .await?;
+                        }
                         kms_secret::reconcile_vault_secret_rotation(&client, &node, seed_injection.as_ref(),
                         )
                         .await?;
@@ -1999,7 +2013,7 @@ pub(crate) fn apply_stellar_node(
         {
             let dry_run = ctx.dry_run;
             if let Err(e) =
-                secret_watcher::handle_passphrase_secret_rotation(&client, &node, dry_run).await
+                secret_watcher::handle_passphrase_secret_rotation(&client, &node, dry_run, &ctx.audit_log).await
             {
                 warn!(
                     "Passphrase secret rotation check failed for {}/{}: {}",
@@ -2007,7 +2021,7 @@ pub(crate) fn apply_stellar_node(
                 );
             }
             if let Err(e) =
-                secret_watcher::handle_seed_secret_rotation(&client, &node, dry_run).await
+                secret_watcher::handle_seed_secret_rotation(&client, &node, dry_run, &ctx.audit_log).await
             {
                 warn!(
                     "Seed secret rotation check failed for {}/{}: {}",

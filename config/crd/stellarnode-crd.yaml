@@ -1461,8 +1461,51 @@ spec:
               strategy:
                 default:
                   type: rollingUpdate
-                description: Rollout strategy for updates (RollingUpdate or Canary)
+                description: Rollout strategy for updates (RollingUpdate, Canary, or BlueGreen).
+                  Validators support RollingUpdate and BlueGreen; Canary is rejected.
                 properties:
+                  blueGreen:
+                    description: Blue/green settings for Validator (Stellar Core) rollouts.
+                      Ignored for Horizon/SorobanRpc (those use the Horizon migration path).
+                    nullable: true
+                    properties:
+                      maxLedgerLag:
+                        default: 5
+                        description: Maximum allowed ledger lag of green behind blue (or network
+                          reference). Matches the repository's read-replica freshness default of
+                          5.
+                        format: int64
+                        type: integer
+                      postCutoverSuccessThreshold:
+                        default: 3
+                        description: Consecutive successful post-cutover health evaluations before
+                          blue may be retired.
+                        format: int32
+                        type: integer
+                      readyTimeoutSeconds:
+                        default: 3600
+                        description: Maximum seconds to wait for green to become sync-eligible before
+                          failing closed.
+                        format: int32
+                        type: integer
+                      requireVolumeSnapshot:
+                        default: true
+                        description: When true (default), green PVC must be provisioned from a CSI
+                          VolumeSnapshot of blue. When false, green may start from an empty PVC and
+                          catch up from history archives.
+                        type: boolean
+                      rollbackWindowSeconds:
+                        default: 3600
+                        description: Seconds to retain scaled-down blue after successful cutover for
+                          instant rollback.
+                        format: int32
+                        type: integer
+                      volumeSnapshotClassName:
+                        description: Optional VolumeSnapshotClass for the cutover snapshot. If unset,
+                          the cluster default is used.
+                        nullable: true
+                        type: string
+                    type: object
                   canary:
                     description: Configuration for Canary rollout
                     nullable: true
@@ -1481,6 +1524,7 @@ spec:
                     enum:
                     - rollingUpdate
                     - canary
+                    - blueGreen
                     type: string
                 required:
                 - type
@@ -1831,6 +1875,31 @@ spec:
               up'
             nullable: true
             properties:
+              blueGreenActiveColor:
+                description: Active deployment color for Validator blue/green (`blue`
+                  or `green`).
+                nullable: true
+                type: string
+              blueGreenMessage:
+                description: Human-readable message for the current Validator blue/green
+                  rollout.
+                nullable: true
+                type: string
+              blueGreenPhase:
+                description: Validator blue/green rollout phase (e.g. `BlueActive`,
+                  `WaitingForGreen`, `GreenActive`).
+                nullable: true
+                type: string
+              blueGreenSnapshotName:
+                description: VolumeSnapshot used to seed the green Validator PVC (if
+                  any).
+                nullable: true
+                type: string
+              blueGreenTargetVersion:
+                description: Target Core version for an in-progress Validator blue/green
+                  rollout.
+                nullable: true
+                type: string
               bgpStatus:
                 description: BGP advertisement status (when using BGP mode)
                 nullable: true

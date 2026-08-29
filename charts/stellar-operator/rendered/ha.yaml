@@ -520,6 +520,27 @@ spec:
                 type: object
               strategy:
                 properties:
+                  blueGreen:
+                    description: Validator (Stellar Core) blue/green rollout settings
+                    properties:
+                      maxLedgerLag:
+                        default: 5
+                        type: integer
+                      postCutoverSuccessThreshold:
+                        default: 3
+                        type: integer
+                      readyTimeoutSeconds:
+                        default: 3600
+                        type: integer
+                      requireVolumeSnapshot:
+                        default: true
+                        type: boolean
+                      rollbackWindowSeconds:
+                        default: 3600
+                        type: integer
+                      volumeSnapshotClassName:
+                        type: string
+                    type: object
                   canary:
                     properties:
                       checkIntervalSeconds:
@@ -533,6 +554,12 @@ spec:
                     type: object
                   rollingUpdate:
                     type: object
+                  type:
+                    enum:
+                    - rollingUpdate
+                    - canary
+                    - blueGreen
+                    type: string
                 type: object
               suspended:
                 default: false
@@ -623,6 +650,26 @@ spec:
             type: object
           status:
             properties:
+              blueGreenActiveColor:
+                description: Active deployment color (blue or green).
+                nullable: true
+                type: string
+              blueGreenMessage:
+                description: Human-readable blue/green progress message.
+                nullable: true
+                type: string
+              blueGreenPhase:
+                description: Validator blue/green rollout phase.
+                nullable: true
+                type: string
+              blueGreenSnapshotName:
+                description: VolumeSnapshot used to seed the green Validator PVC.
+                nullable: true
+                type: string
+              blueGreenTargetVersion:
+                description: Target Core version for an in-progress blue/green rollout.
+                nullable: true
+                type: string
               canaryReadyReplicas:
                 type: integer
               canaryVersion:
@@ -1085,6 +1132,31 @@ spec:
         runAsUser: 65532
       serviceAccountName: stellar-operator
   ttlSecondsAfterFinished: 300
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app.kubernetes.io/instance: stellar-operator
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: stellar-operator
+    app.kubernetes.io/version: 0.1.0
+    helm.sh/chart: stellar-operator-0.1.0
+  name: stellar-operator-default-deny
+  namespace: stellar-system
+spec:
+  egress:
+  - {}
+  ingress:
+  - ports:
+    - port: 9090
+      protocol: TCP
+    - port: 8080
+      protocol: TCP
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
 ---
 apiVersion: v1
 kind: Pod

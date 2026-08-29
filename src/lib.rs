@@ -79,6 +79,19 @@
 //!     enableHistoryArchive: true
 //! ```
 
+// When the `profiling` feature is enabled, use jemalloc so heap profiles can be
+// exported via jemalloc_pprof (see docs/operations/profiling-runbook.md).
+#[cfg(feature = "profiling")]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+// Enable jemalloc profiling machinery; sampling stays inactive until
+// `activate_jemalloc_profiling` (heap endpoint) or MALLOC_CONF overrides this.
+#[cfg(feature = "profiling")]
+#[allow(non_upper_case_globals)]
+#[export_name = "malloc_conf"]
+static MALLOC_CONF: &[u8] = b"prof:true,prof_active:false,lg_prof_sample:19\0";
+
 pub mod api_gateway;
 pub mod backup;
 pub mod benchmark_compare;
@@ -103,15 +116,15 @@ pub mod deployment_strategy;
 pub mod error;
 pub mod error_budget;
 pub mod event_processing;
-pub mod federation;
 pub mod feature_flags;
+pub mod federation;
 pub mod fork_detector;
 pub mod incident;
 pub mod infra;
 pub mod load_balancer;
 pub mod load_modeling;
-pub mod log_scrub;
 pub mod log_aggregation;
+pub mod log_scrub;
 pub mod logging;
 pub mod message_queue;
 pub mod network_observability;

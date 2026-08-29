@@ -1,4 +1,5 @@
 # Dependabot configuration for automated dependency updates
+# Approval and merge process: docs/security/dependency-updates.md
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
 # Issue #1418 — Automated dependency update and security patching.

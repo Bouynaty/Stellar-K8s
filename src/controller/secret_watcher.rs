@@ -74,6 +74,7 @@ pub async fn handle_passphrase_secret_rotation(
     client: &Client,
     node: &StellarNode,
     dry_run: bool,
+    audit_log: &crate::controller::audit_log::AuditLog,
 ) -> Result<bool> {
     let Some(secret_ref) = &node.spec.passphrase_secret_ref else {
         return Ok(false);
@@ -95,22 +96,53 @@ pub async fn handle_passphrase_secret_rotation(
         Err(e) => return Err(Error::KubeError(e).into()),
     };
 
+    // Secret access audit log
+    audit_log.record(crate::controller::audit_log::AuditEntry::new(
+        crate::controller::audit_log::AdminAction::Other("secret_access".to_string()),
+        "stellar-operator",
+        secret_ref.clone(),
+        &namespace,
+        Some(&format!(
+            "Accessed passphrase secret {}/{}",
+            namespace, secret_ref
+        )),
+    ));
+
     let current_rv = secret.resource_version();
     let observed_rv = node
         .status
         .as_ref()
         .and_then(|s| s.observed_passphrase_secret_version.as_deref());
 
-    // If versions match, no rotation needed
-    if !secret_rotation_needed(current_rv.as_deref(), observed_rv) {
+    let rotated = secret_rotation_needed(current_rv.as_deref(), observed_rv);
+    let mut expired = false;
+
+    // Check expiration timestamp annotation
+    if let Some(expires_at_str) = secret
+        .metadata
+        .annotations
+        .as_ref()
+        .and_then(|a| a.get("stellar.org/expires-at"))
+    {
+        if let Ok(expires_at) = chrono::DateTime::parse_from_rfc3339(expires_at_str) {
+            let expires_at_utc = expires_at.with_timezone(&chrono::Utc);
+            if expires_at_utc <= chrono::Utc::now() + chrono::Duration::days(1) {
+                expired = true;
+            }
+        }
+    }
+
+    // If versions match and not expired, no rotation needed
+    if !rotated && !expired {
         return Ok(false);
     }
 
     info!(
-        "Passphrase secret {} was rotated (rv: {:?} -> {:?}), triggering rolling restart for {}/{}",
+        "Passphrase secret {} needs rotation (rv: {:?} -> {:?}, expired: {}), triggering rolling restart for {}/{}",
         secret_ref,
         observed_rv,
         current_rv,
+        expired,
         namespace,
         node.name_any()
     );
@@ -123,6 +155,23 @@ pub async fn handle_passphrase_secret_rotation(
         );
         return Ok(true);
     }
+
+    // Secret rotation audit log
+    audit_log.record(crate::controller::audit_log::AuditEntry::new(
+        crate::controller::audit_log::AdminAction::Other("secret_rotation".to_string()),
+        "stellar-operator",
+        secret_ref.clone(),
+        &namespace,
+        Some(&format!(
+            "Secret rotation triggered rolling restart for node {} due to: {}",
+            node.name_any(),
+            if expired {
+                "expiration"
+            } else {
+                "version change"
+            }
+        )),
+    ));
 
     // Trigger rolling restart via pod template annotation
     let restart_annotation = PASSPHRASE_ROTATION_ANNOTATION;
@@ -185,6 +234,7 @@ pub async fn handle_seed_secret_rotation(
     client: &Client,
     node: &StellarNode,
     dry_run: bool,
+    audit_log: &crate::controller::audit_log::AuditLog,
 ) -> Result<bool> {
     // Only applicable to validators
     if node.spec.node_type != NodeType::Validator {
@@ -216,22 +266,53 @@ pub async fn handle_seed_secret_rotation(
         Err(e) => return Err(Error::KubeError(e).into()),
     };
 
+    // Secret access audit log
+    audit_log.record(crate::controller::audit_log::AuditEntry::new(
+        crate::controller::audit_log::AdminAction::Other("secret_access".to_string()),
+        "stellar-operator",
+        validator_config.seed_secret_ref.clone(),
+        &namespace,
+        Some(&format!(
+            "Accessed seed secret {}/{}",
+            namespace, validator_config.seed_secret_ref
+        )),
+    ));
+
     let current_rv = secret.resource_version();
     let observed_rv = node
         .status
         .as_ref()
         .and_then(|s| s.observed_seed_secret_version.as_deref());
 
-    // If versions match, no rotation needed
-    if !secret_rotation_needed(current_rv.as_deref(), observed_rv) {
+    let rotated = secret_rotation_needed(current_rv.as_deref(), observed_rv);
+    let mut expired = false;
+
+    // Check expiration timestamp annotation
+    if let Some(expires_at_str) = secret
+        .metadata
+        .annotations
+        .as_ref()
+        .and_then(|a| a.get("stellar.org/expires-at"))
+    {
+        if let Ok(expires_at) = chrono::DateTime::parse_from_rfc3339(expires_at_str) {
+            let expires_at_utc = expires_at.with_timezone(&chrono::Utc);
+            if expires_at_utc <= chrono::Utc::now() + chrono::Duration::days(1) {
+                expired = true;
+            }
+        }
+    }
+
+    // If versions match and not expired, no rotation needed
+    if !rotated && !expired {
         return Ok(false);
     }
 
     info!(
-        "Seed secret {} was rotated (rv: {:?} -> {:?}), triggering rolling restart for {}/{}",
+        "Seed secret {} needs rotation (rv: {:?} -> {:?}, expired: {}), triggering rolling restart for {}/{}",
         validator_config.seed_secret_ref,
         observed_rv,
         current_rv,
+        expired,
         namespace,
         node.name_any()
     );
@@ -244,6 +325,23 @@ pub async fn handle_seed_secret_rotation(
         );
         return Ok(true);
     }
+
+    // Secret rotation audit log
+    audit_log.record(crate::controller::audit_log::AuditEntry::new(
+        crate::controller::audit_log::AdminAction::Other("secret_rotation".to_string()),
+        "stellar-operator",
+        validator_config.seed_secret_ref.clone(),
+        &namespace,
+        Some(&format!(
+            "Secret rotation triggered rolling restart for node {} due to: {}",
+            node.name_any(),
+            if expired {
+                "expiration"
+            } else {
+                "version change"
+            }
+        )),
+    ));
 
     // Trigger rolling restart via pod template annotation
     let restart_annotation = SEED_ROTATION_ANNOTATION;

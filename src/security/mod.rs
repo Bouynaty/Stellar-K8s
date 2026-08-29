@@ -27,7 +27,7 @@ pub mod secret_rotation;
 pub mod secret_sync;
 pub mod vulnerability;
 
-pub use cert_manager::{CertManager, CertificateInfo, CertStatus, CertMetrics, RenewalConfig};
+pub use cert_manager::{CertManager, CertMetrics, CertStatus, CertificateInfo, RenewalConfig};
 pub use cert_rotation::{
     CertExpiryAlert, CertIssuanceRequest, CertIssuanceResponse, CertRecord, CertRotationController,
     CertRotationError, ExpiryMonitor, ExpiryMonitorConfig, ExpirySeverity, LocalCaBackend,

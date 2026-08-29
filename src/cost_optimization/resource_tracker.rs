@@ -116,10 +116,10 @@ pub struct RightSizingConfig {
 impl Default for RightSizingConfig {
     fn default() -> Self {
         Self {
-            window_size: 336,              // 2 weeks of hourly samples
-            headroom_factor: 1.20,         // 20% headroom
-            over_provision_threshold: 0.5, // flag when using <50% of request
-            cpu_cost_per_m_hour: 0.000_048, // ~$35/vCPU/month
+            window_size: 336,                // 2 weeks of hourly samples
+            headroom_factor: 1.20,           // 20% headroom
+            over_provision_threshold: 0.5,   // flag when using <50% of request
+            cpu_cost_per_m_hour: 0.000_048,  // ~$35/vCPU/month
             mem_cost_per_gb_hour: 0.000_006, // ~$4.32/GB/month
         }
     }
@@ -192,8 +192,8 @@ impl ResourceTracker {
         // Estimate savings: (provisioned - recommended) × cost rate × hours/month
         let hours_per_month = 730.0_f64;
         let cpu_freed_m = last.cpu_request_m.saturating_sub(rec_cpu) as f64;
-        let mem_freed_gb = (last.memory_request_bytes.saturating_sub(rec_mem)) as f64
-            / (1024.0 * 1024.0 * 1024.0);
+        let mem_freed_gb =
+            (last.memory_request_bytes.saturating_sub(rec_mem)) as f64 / (1024.0 * 1024.0 * 1024.0);
         let savings = (cpu_freed_m * self.config.cpu_cost_per_m_hour
             + mem_freed_gb * self.config.mem_cost_per_gb_hour)
             * hours_per_month;
