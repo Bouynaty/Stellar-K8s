@@ -207,7 +207,6 @@ async fn verify_backup_integrity(backup_path: &str) -> Result<()> {
 
     Ok(())
 }
-}
 
 pub async fn run_restore(args: RestoreArgs) -> Result<()> {
     println!("Restoring backup {} to {:?}", args.backup, args.destination);
