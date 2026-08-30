@@ -120,8 +120,8 @@ mod tests {
             "security-report target must exist"
         );
         assert!(
-            makefile.contains("security-fix:"),
-            "security-fix target must exist"
+            makefile.contains("security-scan:"),
+            "security-scan target must exist"
         );
     }
 

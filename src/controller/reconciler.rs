@@ -1486,13 +1486,30 @@ pub(crate) fn apply_stellar_node(
             ActionType::Update,
             "mTLS certificates",
             clones: [namespace],
-            move |client: Client, _ctx: Arc<ControllerState>, node: Arc<StellarNode>| async move {
+            move |client: Client, ctx: Arc<ControllerState>, node: Arc<StellarNode>| async move {
                 mtls::ensure_ca(&client, &namespace).await?;
                 mtls::ensure_node_cert(&client, &node).await?;
                 // If cert-manager is configured, also create the Certificate CR so
                 // cert-manager takes over issuance and rotation going forward.
                 if let Some(cm_cfg) = &node.spec.cert_manager {
                     mtls::ensure_cert_manager_certificate(&client, &node, cm_cfg).await?;
+                }
+                // Detect whether the node's TLS Secret (cert-manager-issued or
+                // operator-issued self-signed) rotated since the previous
+                // reconcile and, if so, roll the workload's pods so they pick
+                // up the new certificate. This is what makes certificate
+                // rotation actually take effect without manual intervention;
+                // without it, pods keep serving with the stale in-memory cert
+                // even after the Secret contents change underneath them.
+                if let Err(e) =
+                    mtls::check_and_restart_on_cert_rotation(&client, &node, ctx.dry_run).await
+                {
+                    warn!(
+                        "Failed to check/trigger cert-rotation restart for {}/{}: {}",
+                        namespace,
+                        node.name_any(),
+                        e
+                    );
                 }
                 Ok(())
             }

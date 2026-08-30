@@ -120,6 +120,11 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
             .collect(),
     };
 
+    let backup_path = PathBuf::from(&args.destination).join(format!(
+        "backup-{}.tar.gz",
+        metadata.timestamp.format("%Y%m%d%H%M%S")
+    ));
+
     // Storage backend handling - only file and s3 are supported
     match args.backend.as_str() {
         "file" => backup_to_file(&args, &metadata, &files).await?,
@@ -169,6 +174,16 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
         };
         verify_backup_integrity(&verify_target.to_string_lossy()).await?;
         println!("✓ Backup verification passed");
+        if args.backend == "file" {
+            println!("Verifying backup...");
+            verify_backup_integrity(&backup_path.to_string_lossy()).await?;
+            println!("✓ Backup verification passed");
+        } else {
+            println!(
+                "Skipping local verification: backend {:?} does not produce a local archive",
+                args.backend
+            );
+        }
     }
 
     Ok(())
@@ -176,7 +191,7 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
 
 /// Verify backup integrity with checksum and structure validation
 async fn verify_backup_integrity(backup_path: &str) -> Result<()> {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
     use std::fs::File;
     use std::io::Read;
 
@@ -302,7 +317,8 @@ pub async fn run_list(args: ListArgs) -> Result<()> {
 }
 
 pub async fn run_cleanup(args: CleanupArgs) -> Result<()> {
-    println!("Cleaning up backups at {}, keeping last {}",
+    println!(
+        "Cleaning up backups at {}, keeping last {}",
         args.location, args.keep
     );
 

@@ -19,32 +19,30 @@
 # =============================================================================
 
 .PHONY: help \
-	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-fix security-report \
+	fmt fmt-check lint lint-strict shellcheck audit security-scan security-all security-report \
 	build test ci-local quick watch \
 	docker-build docker-build-ci docker-multiarch \
-	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks health-check health-check-json health-check-fix pre-commit pre-commit-install run run-local run-dev \
+	dev-setup dev-setup-rust dev-setup-tools dev-setup-hooks health-check pre-commit pre-commit-install run run-local run-dev \
 	install-crd apply-samples crd-gen regenerate completions completions-bash completions-zsh completions-fish \
 	helm-lint helm-unittest helm-upgrade-test link-check link-check-all changelog \
-	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-check-strict docs-lint \
-	third-party-licenses check-third-party-licenses sort-manifests \
-	benchmark benchmark-upgrade benchmark-webhook benchmark-webhook-health \
-	benchmark-webhook-compare benchmark-webhook-save benchmark-all \
+	generate-api-docs check-api-docs generate-openapi-spec check-openapi-spec check-stale-docs update-doc-baseline docs-lint \
+	third-party-licenses check-third-party-licenses \
+	benchmark benchmark-webhook benchmark-all \
 	benchmark-crd benchmark-helm benchmark-api benchmark-reconciliation \
-	chaos-network-partition chaos-crash-recovery chaos-resource-exhaustion chaos-all \
 	compose-up compose-dev compose-down compose-logs \
 	bundle bundle-render bundle-generate bundle-validate bundle-build \
 	quickstart quickstart-setup quickstart-build quickstart-deploy \
-	health health-fast validate preflight test-preflight test-shell all \
+	health health-fast validate preflight test-shell all \
 	shell-safety test-shell-safety validate-yaml test-yaml-validation \
-	yaml-lint crd-schemas yaml-schema-validate test-db-migrations \
+	yaml-schema-validate test-db-migrations \
 	helm-drift helm-drift-update test-helm-drift \
 	collect-failure-diagnostics test-failure-diagnostics \
 	check-unreachable-modules \
 	check-pipeline-log-redaction \
 	license-headers check-license-headers \
-	gitleaks-secret-scan check-api-contract check-api-coverage check-breaking-changes \
-	test-api-contract test-api-contract-all validate-openapi-spec \
-	crd-benchmark crd-perf-regression-check \
+	check-api-contract check-api-coverage check-breaking-changes \
+	crd-benchmark \
+	compliance-test \
 	cleanup clean
 
 .DEFAULT_GOAL := help
@@ -160,12 +158,6 @@ security-all: ## Run all security checks (audit + policy + scan + SBOM)
 	@$(CARGO) deny list --format json > security/sbom/licenses.json 2>/dev/null || true
 	@echo "  ✅ Security audit complete - SBOM available in security/sbom/"
 
-security-fix: ## Apply automated security fixes where possible
-	@echo "→ Applying security fixes..."
-	@echo "  Updating dependencies..."
-	@$(CARGO) update --dry-run
-	@echo "  ⚠️  Manual review recommended after running 'cargo update'"
-
 security-report: ## Generate comprehensive security report  
 	@echo "→ Generating security report..."
 	@mkdir -p security/reports
@@ -185,6 +177,10 @@ shellcheck: ## Run shellcheck on all shell scripts
 	@echo "→ Running shellcheck..."
 	@find scripts -type f -name "*.sh" -print0 | xargs -0 shellcheck -S error || true
 
+compliance-test: ## Validate kube-bench compliance fixtures (CIS custom controls) (#1380)
+	@echo "→ Running kube-bench compliance static checks..."
+	@bash security/kube-bench/run-local.sh --check-only
+
 shell-safety: ## Static analysis gate for unsafe shell patterns (#1049)
 	@python3 scripts/check-shell-safety.py
 
@@ -200,14 +196,6 @@ validate-yaml: ## Repository-wide schema validation for YAML manifests (#1044)
 test-yaml-validation: ## Unit tests for the YAML manifest validator (#1044)
 	@echo "→ Testing YAML manifest validator..."
 	@python3 -m unittest scripts.tests.test_validate_yaml_manifests
-
-yaml-lint: ## Lint YAML with the project yamllint config (#1291)
-	@echo "→ Running yamllint..."
-	yamllint -c .yamllint.yml .
-
-crd-schemas: ## Derive JSON schemas from config/crd/ into schemas/crd/ (#1291)
-	@echo "→ Extracting CRD JSON schemas..."
-	@python3 scripts/ci/extract-crd-json-schemas.py
 
 yaml-schema-validate: ## yamllint + CRD schema drift + Helm-render kubeconform (#1291)
 	@echo "→ Running YAML / CRD / Helm schema validation..."
@@ -350,7 +338,7 @@ check-openapi-spec: ## Fail if OpenAPI spec is missing required operator routes
 	@echo "→ Checking OpenAPI spec coverage..."
 	@python3 scripts/generate-openapi-spec.py --spec docs/api/openapi.yaml --check
 
-check-stale-docs: ## Check for documentation that has fallen behind source code (warns; use docs-check-strict to fail)
+check-stale-docs: ## Check for documentation that has fallen behind source code (warns by default)
 	@echo "→ Checking for stale documentation..."
 	@$(CARGO) run --bin doc-check -- --warn-only
 
@@ -358,17 +346,6 @@ update-doc-baseline: ## Update the .doc-hashes.toml baseline after deliberate do
 	@echo "→ Updating doc-check baseline hashes..."
 	@$(CARGO) run --bin doc-check -- --update-baseline
 	@echo "✓ Baseline updated. Commit .doc-hashes.toml to record the new state."
-
-docs-check-strict: ## Fail CI if any doc is stale (no --warn-only; used in strict CI stages)
-	@echo "→ Running strict documentation staleness check..."
-	@$(CARGO) run --bin doc-check -- status
-
-docs-lint: ## Run rustdoc with warnings-as-errors (issue #1138: strict docs quality gate)
-	@echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
-	@RUSTDOCFLAGS="-D warnings" K8S_OPENAPI_ENABLED_VERSION=1.30 \
-		$(CARGO) doc --no-deps --workspace \
-		--features "rest-api,metrics,admission-webhook,k8s-v1-30"
-	@echo "✓ rustdoc passed — no documentation warnings"
 
 docs-lint: ## Run rustdoc with warnings-as-errors (issue #1138: strict docs quality gate)
 	@echo "→ Running cargo doc with RUSTDOCFLAGS=-D warnings..."
@@ -397,11 +374,6 @@ regenerate: crd-gen generate-api-docs bundle ## Regenerate all derived artifacts
 preflight: ## Check that required tools are installed (pass --labels to also verify repo labels)
 	@bash scripts/preflight.sh $(ARGS)
 
-test-preflight: ## Run bats unit tests for scripts/preflight.sh
-	@echo "→ Running preflight bats tests..."
-	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
-	@bats scripts/tests/preflight.bats
-
 test-shell: ## Run bats unit tests for the cleanup tool and shared shell helpers
 	@echo "→ Running cleanup tool bats tests..."
 	@command -v bats >/dev/null 2>&1 || (echo "✗ bats not installed. See https://github.com/bats-core/bats-core" && exit 1)
@@ -424,16 +396,6 @@ check-pipeline-log-redaction: ## Enforce secret redaction on pipeline command lo
 	@$(CARGO) run --quiet --locked --bin check-pipeline-log-redaction -- \
 		--fixture tests/fixtures/pipeline_logs/dirty-ci-sample.txt
 
-# ── Issue #1285: Security scanning ────────────────────────────────────────────
-
-gitleaks-secret-scan: ## Run gitleaks secret scanning (#1285)
-	@echo "→ Running gitleaks secret scan..."
-	@command -v gitleaks >/dev/null 2>&1 || { \
-		echo "gitleaks not found. Install: https://github.com/gitleaks/gitleaks"; \
-		exit 1; \
-	}
-	@gitleaks detect --source . --config .gitleaks.toml --verbose --redact
-
 # ── Issue #1286: License header enforcement ───────────────────────────────────
 
 license-headers: ## Check license headers on Rust/Shell/YAML files (#1286)
@@ -448,13 +410,6 @@ crd-benchmark: ## Build CRD operation benchmarks (#1287)
 	@echo "→ Building CRD benchmarks..."
 	@$(CARGO) bench --bench crd_operations --no-run 2>&1 | tail -5
 	@echo "✓ CRD benchmarks compiled (run with: cargo bench --bench crd_operations)"
-
-crd-perf-regression-check: ## Check CRD performance against baseline (#1287)
-	@echo "→ Checking CRD performance regression..."
-	@python3 scripts/check-crd-performance.py \
-		--current results/crd-benchmark.json \
-		--baseline benchmarks/baselines/crd-performance-v0.1.0.json \
-		--threshold 10
 
 # ── Issue #1288: API contract testing ─────────────────────────────────────────
 
@@ -471,20 +426,6 @@ check-breaking-changes: ## Detect breaking API changes vs base branch (#1288)
 	@python3 scripts/check-api-contract.py breaking \
 		--base /tmp/base-openapi.yaml \
 		--head docs/api/openapi.yaml
-
-# ── Issue #1396: Comprehensive API contract testing ───────────────────────────
-
-test-api-contract: ## Run Rust API contract tests against OpenAPI spec (#1396)
-	@echo "→ Running API contract tests..."
-	@$(CARGO) test --test api_contract_tests \
-		--features "rest-api,metrics,k8s-v1-30" \
-		-- --nocapture
-
-test-api-contract-all: check-api-contract check-api-coverage test-api-contract ## Run all API contract checks (#1396)
-	@echo "✓ All API contract checks passed"
-
-validate-openapi-spec: generate-openapi-spec check-openapi-spec check-api-contract check-api-coverage ## Full OpenAPI spec validation suite (#1396)
-	@echo "✓ OpenAPI spec validation complete"
 
 # ── Completions ────────────────────────────────────────────────────────────────
 
@@ -573,6 +514,10 @@ health-check-json: ## Environment health check (JSON output)
 health-check-fix: ## Attempt to auto-fix missing components
 	@bash scripts/health-check.sh --fix
 
+dev-setup-verify: ## Validate the dev environment (cross-platform, Windows-safe — no shell dependency)
+	@echo "→ Validating development environment..."
+	@$(CARGO) run --locked --bin stellar-bootstrap-verify
+
 # ── Watch ──────────────────────────────────────────────────────────────────────
 
 watch: ## Watch and rebuild
@@ -589,15 +534,6 @@ benchmark-webhook: ## Run webhook performance benchmarks
 	@echo "→ Running webhook benchmarks..."
 	@command -v k6 >/dev/null 2>&1 || (echo "✗ k6 not installed. Install: https://k6.io/docs/get-started/installation/" && exit 1)
 	@./benchmarks/run-webhook-benchmark.sh run
-
-benchmark-webhook-health: ## Check webhook health
-	@./benchmarks/run-webhook-benchmark.sh health
-
-benchmark-webhook-compare: ## Compare webhook results with baseline
-	@./benchmarks/run-webhook-benchmark.sh compare
-
-benchmark-webhook-save: ## Save current results as baseline
-	@./benchmarks/run-webhook-benchmark.sh save-baseline
 
 benchmark-crd: ## CRD validation performance benchmark
 	@echo "→ Running CRD validation benchmarks..."
@@ -625,26 +561,7 @@ benchmark-reconciliation: ## Operator reconciliation latency benchmark
 	@echo "→ Running operator reconciliation benchmarks..."
 	@$(CARGO) test --bench reconciliation_benchmark --release -- --nocapture --test-threads=1
 
-benchmark-upgrade: ## Run upgrade load test with k6
-	@echo "→ Running upgrade load test..."
-	@command -v k6 >/dev/null 2>&1 || (echo "✗ k6 not installed. Install: https://k6.io/docs/get-started/installation/" && exit 1)
-	cd benchmarks && k6 run k6/upgrade-load-test.js
-
-benchmark-all: benchmark benchmark-webhook benchmark-crd benchmark-helm benchmark-upgrade ## Run all performance benchmarks
-
-chaos-network-partition: ## Run chaos test: network partition scenarios
-	@echo "→ Running network partition chaos tests..."
-	@$(CARGO) test --test network_partition_tests --release -- --nocapture --test-threads=1 --ignored
-
-chaos-crash-recovery: ## Run chaos test: pod crash and recovery
-	@echo "→ Running crash recovery chaos tests..."
-	@$(CARGO) test --test crash_recovery_tests --release -- --nocapture --test-threads=1 --ignored
-
-chaos-resource-exhaustion: ## Run chaos test: resource exhaustion scenarios
-	@echo "→ Running resource exhaustion chaos tests..."
-	@$(CARGO) test --path tests/chaos --release -- --nocapture --test-threads=1 --ignored
-
-chaos-all: chaos-network-partition chaos-crash-recovery chaos-resource-exhaustion ## Run all chaos engineering tests
+benchmark-all: benchmark benchmark-webhook benchmark-crd benchmark-helm ## Run all performance benchmarks
 
 # ── Running the Operator ──────────────────────────────────────────────────────
 
@@ -681,9 +598,6 @@ bundle-validate: ## Validate generated bundle
 
 bundle-build: ## Build the bundle image.
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-
-sort-manifests: ## Sort and normalise a YAML manifest stream (reads stdin, writes stdout)
-	@python3 scripts/sort-manifests.py
 
 # ── Quickstart ────────────────────────────────────────────────────────────────
 

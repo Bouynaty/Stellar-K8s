@@ -24,7 +24,6 @@ KUBECONFORM_VERSION = "v0.6.4"
 # These are excluded from kubeconform validation (but still checked for
 # valid YAML syntax in the structure pass).
 NON_K8S_YAML_EXCLUDES = [
-    "bundle/metadata/annotations.yaml",
     "config/operator-config.yaml",
     "config/yaml-validation.yaml",
     "config/stellar-bench.yaml",
@@ -135,6 +134,13 @@ def collect_manifest_files(root_dir):
         os.path.join(root_dir, "config", "*.yaml"),
         # Gatekeeper constraints and templates
         os.path.join(root_dir, "config", "manifests", "gatekeeper", "*.yaml"),
+        # OLM ClusterServiceVersion base (issue #1364: this is a real
+        # apiVersion/kind manifest — operators.coreos.com/v1alpha1
+        # ClusterServiceVersion — that kustomization.yaml assembles into the
+        # bundle, but it lived outside every validated path: bundle/ only
+        # ships metadata/annotations.yaml (excluded, non-manifest), so the
+        # actual CSV source was never kubeconform-checked.
+        os.path.join(root_dir, "config", "manifests", "bases", "*.yaml"),
         # CR samples and example CRs
         os.path.join(root_dir, "config", "samples", "*.yaml"),
         # Example manifests (mix of CRs and standard resources)
