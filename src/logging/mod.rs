@@ -245,6 +245,7 @@ mod tests {
             k8s_node: Some("node-1".to_string()),
             k8s_namespace: Some("default".to_string()),
             reconcile_id: Some("rec-123".to_string()),
+            correlation_id: Some("corr-456".to_string()),
             extras,
         };
 
@@ -278,6 +279,7 @@ mod tests {
             k8s_node: None,
             k8s_namespace: None,
             reconcile_id: None,
+            correlation_id: None,
             extras,
         };
 

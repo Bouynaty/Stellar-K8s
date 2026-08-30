@@ -120,6 +120,11 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
             .collect(),
     };
 
+    let backup_path = PathBuf::from(&args.destination).join(format!(
+        "backup-{}.tar.gz",
+        metadata.timestamp.format("%Y%m%d%H%M%S")
+    ));
+
     // Storage backend handling - only file and s3 are supported
     match args.backend.as_str() {
         "file" => backup_to_file(&args, &metadata, &files).await?,
@@ -154,9 +159,16 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
     println!("Backup completed in {:?}", start.elapsed());
 
     if args.verify {
-        println!("Verifying backup...");
-        verify_backup_integrity(&backup_path).await?;
-        println!("✓ Backup verification passed");
+        if args.backend == "file" {
+            println!("Verifying backup...");
+            verify_backup_integrity(&backup_path.to_string_lossy()).await?;
+            println!("✓ Backup verification passed");
+        } else {
+            println!(
+                "Skipping local verification: backend {:?} does not produce a local archive",
+                args.backend
+            );
+        }
     }
 
     Ok(())
@@ -206,7 +218,6 @@ async fn verify_backup_integrity(backup_path: &str) -> Result<()> {
     }
 
     Ok(())
-}
 }
 
 pub async fn run_restore(args: RestoreArgs) -> Result<()> {

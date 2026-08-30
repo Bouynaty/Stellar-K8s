@@ -2182,12 +2182,13 @@ mod tests {
         ready: bool,
         reachable: bool,
     ) -> CoreInfoSnapshot {
+        let raw_state = Some(format!("{sync:?}"));
         CoreInfoSnapshot {
             sync_state: sync,
             ledger,
             pod_ready: ready,
             reachable,
-            raw_state: Some(format!("{sync:?}")),
+            raw_state,
         }
     }
 
