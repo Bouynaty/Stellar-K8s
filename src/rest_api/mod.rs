@@ -57,7 +57,7 @@ mod compliance_handlers;
 pub mod custom_metrics;
 mod dashboard_dto;
 mod dashboard_handlers;
-mod dto;
+pub mod dto;
 mod handlers;
 mod health_summary;
 mod horizon_cache_handlers;
