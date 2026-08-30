@@ -199,6 +199,10 @@ pub fn build_router(state: Arc<ControllerState>) -> Router {
             get(dashboard_handlers::dashboard_metrics),
         )
         .route(
+            "/api/v1/dashboard/monitoring-status",
+            get(dashboard_handlers::monitoring_status),
+        )
+        .route(
             "/api/v1/analytics/logs",
             get(dashboard_handlers::log_analytics),
         )
