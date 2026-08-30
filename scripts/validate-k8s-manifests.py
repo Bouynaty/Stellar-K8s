@@ -24,7 +24,6 @@ KUBECONFORM_VERSION = "v0.6.4"
 # These are excluded from kubeconform validation (but still checked for
 # valid YAML syntax in the structure pass).
 NON_K8S_YAML_EXCLUDES = [
-    "bundle/metadata/annotations.yaml",
     "config/operator-config.yaml",
     "config/yaml-validation.yaml",
     "config/stellar-bench.yaml",

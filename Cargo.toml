@@ -215,6 +215,8 @@ serde_yaml = "0.9"
 k8s-openapi = { version = "0.22", default-features = false, features = [
     "v1_30",
 ] }
+# CRD validation micro-benchmarks (benches/crd_operations.rs, #1390)
+criterion = "0.5"
 
 [[bin]]
 name = "stellar-scaffold"
@@ -298,6 +300,10 @@ required-features = ["rest-api", "metrics"]
 name = "stellar-health-sidecar"
 path = "src/bin/stellar-health-sidecar.rs"
 required-features = ["rest-api"]
+
+[[bench]]
+name = "crd_operations"
+harness = false
 
 [workspace]
 
