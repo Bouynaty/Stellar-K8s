@@ -1,11 +1,11 @@
 //! `stellar-bootstrap-verify` — cross-platform developer bootstrap verifier.
 //!
-//! `scripts/preflight.sh`, `scripts/setup-linux.sh`, and `scripts/setup-mac.sh`
-//! are bash scripts, so they don't run on a plain Windows machine (no WSL, no
-//! Git Bash). This binary is pure Rust — every check runs through
-//! `std::process::Command` directly rather than a shell — so it builds and
-//! runs unmodified on Linux, macOS, and Windows via `cargo run --bin
-//! stellar-bootstrap-verify`.
+//! `scripts/preflight.sh` is a bash script, so it doesn't run on a plain
+//! Windows machine (no WSL, no Git Bash). This binary is pure Rust — every
+//! check runs through `std::process::Command` directly rather than a shell —
+//! so it builds and runs unmodified on Linux, macOS, and Windows via `cargo
+//! run --bin stellar-bootstrap-verify`, or via `make dev-setup` /
+//! `make dev-setup-verify`.
 //!
 //! It checks: presence and version of every required local tool (docker,
 //! kind, kubectl, helm, cargo, gh), the `rustc` version, whether the current

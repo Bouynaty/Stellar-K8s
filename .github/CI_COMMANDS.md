@@ -107,6 +107,11 @@ body:
 **Verification:** `make help` — all targets declared in `.PHONY` now have a
 corresponding recipe and description.
 
+> **Note:** `docs-check-strict` and `sort-manifests` were later pruned as
+> unused in #1177. The detector still hard-fails via `make check-stale-docs`,
+> and `scripts/sort-manifests.py` remains wired directly into
+> `.github/workflows/ci.yml` and `scripts/check-helm-drift.sh`.
+
 ### #1138 — Add strict failure-on-warning policy for Rust lint and docs stages
 
 Two changes enforce a zero-tolerance warning policy:

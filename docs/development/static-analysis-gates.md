@@ -165,7 +165,7 @@ Zero errors. 233 warnings, all recorded in `known_deviations`:
 
 ---
 
-## Helm template drift detection (#1045)
+## Helm template drift detection (#1045, enhanced #1395)
 
 `scripts/check-helm-drift.sh` renders the chart across five value profiles,
 normalises each render through `scripts/sort-manifests.py`, and diffs the
@@ -181,6 +181,12 @@ the same file.) It has been removed.
 Storing goldens in git means a template change that alters rendered output
 shows up as a concrete manifest diff in the pull request, reviewable like any
 other file.
+
+### Enhanced features (#1395)
+
+- **YAML-aware diffing**: When [dyff](https://github.com/homeport/dyff) is installed, the script uses `dyff between` for diffs that handle key reordering and formatting noise gracefully. Falls back to `diff -u` if dyff is not available.
+- **High-risk field detection**: The `--check-high-risk` flag detects changes to critical fields (image tags, replicas, resources, RBAC, secrets) and emits elevated alerts.
+- **$GITHUB_STEP_SUMMARY**: When running in GitHub Actions, a summary is written to the job summary for better visibility.
 
 ### Profiles
 
@@ -198,6 +204,7 @@ other file.
 make helm-drift                                  # verify
 make helm-drift-update                           # regenerate goldens
 scripts/check-helm-drift.sh --profile production # one profile
+scripts/check-helm-drift.sh --check-high-risk    # detect high-risk field changes
 scripts/check-helm-drift.sh --list
 make test-helm-drift                             # bats tests
 ```

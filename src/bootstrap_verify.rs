@@ -1,12 +1,14 @@
 //! Cross-platform developer bootstrap verifier
 //!
-//! `scripts/preflight.sh`, `scripts/setup-linux.sh`, and `scripts/setup-mac.sh`
-//! are bash scripts, so a Windows developer without WSL or Git Bash has no
-//! equivalent way to check that their machine is ready to build and run the
-//! operator. This module fills that gap: every check goes through
-//! [`std::process::Command`] directly (never a shell), so the exact same
-//! logic — and the `stellar-bootstrap-verify` binary built from it — runs
-//! unmodified on Linux, macOS, and Windows.
+//! `scripts/preflight.sh` is a bash script, so a Windows developer without
+//! WSL or Git Bash has no equivalent way to check that their machine is
+//! ready to build and run the operator. This module fills that gap: every
+//! check goes through [`std::process::Command`] directly (never a shell), so
+//! the exact same logic — and the `stellar-bootstrap-verify` binary built
+//! from it — runs unmodified on Linux, macOS, and Windows. It is wired into
+//! `make dev-setup` (via the `dev-setup-verify` target) as the final step,
+//! so a fresh clone ends with a clear pass/fail report of the local
+//! environment.
 //!
 //! Checks performed:
 //! - Presence and reported version of every tool in
@@ -22,7 +24,12 @@ use std::process::Command;
 use crate::preflight::{CheckResult, CheckSeverity, REQUIRED_LOCAL_TOOLS};
 
 /// Minimum supported Rust compiler version `(major, minor)`.
-pub const MIN_RUST_VERSION: (u32, u32) = (1, 75);
+///
+/// Kept in sync with the CI-enforced minimum in
+/// `scripts/lib/versions.sh` (`RUST_TOOLCHAIN`) and the `lint` job's
+/// pinned toolchain in `.github/workflows/ci.yml` — bump all three
+/// together.
+pub const MIN_RUST_VERSION: (u32, u32) = (1, 92);
 
 /// Run the full cross-platform bootstrap verification suite.
 ///
