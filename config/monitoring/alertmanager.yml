@@ -1,0 +1,52 @@
+# AlertManager Configuration for Stellar-K8s Development
+global:
+  resolve_timeout: 5m
+
+# Default route and routing tree
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'node_name']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  routes:
+    # Critical alerts
+    - match:
+        severity: critical
+      receiver: 'critical'
+      repeat_interval: 5m
+    
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'warning'
+      repeat_interval: 1h
+
+# Receivers (notification channels)
+receivers:
+  - name: 'default'
+    # Webhook for development
+    webhook_configs:
+      - url: 'http://localhost:5001/alert'
+        send_resolved: true
+
+  - name: 'critical'
+    # Critical alerts logged to stdout
+    webhook_configs:
+      - url: 'http://localhost:5001/alert/critical'
+        send_resolved: true
+
+  - name: 'warning'
+    # Warning alerts to webhook
+    webhook_configs:
+      - url: 'http://localhost:5001/alert/warning'
+        send_resolved: true
+
+# Inhibition rules to suppress certain alerts
+inhibit_rules:
+  # Suppress warning if critical for same instance exists
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['node_name', 'cluster']
