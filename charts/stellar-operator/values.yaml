@@ -320,6 +320,21 @@ monitoring:
     # Standard label used by the Grafana sidecar dashboard-loader to auto-discover ConfigMaps.
     labels:
       grafana_dashboard: "1"
+    # Dashboards to deploy as ConfigMaps (issue #1389).
+    # Each entry becomes a ConfigMap in the release namespace.
+    dashboards:
+      clusterOverview:
+        enabled: true
+        file: "grafana-cluster-overview.json"
+        title: "Stellar Core — Cluster Overview"
+      perNodeStats:
+        enabled: true
+        file: "grafana-per-node-stats.json"
+        title: "Stellar Core — Per-Node Stats"
+      alerting:
+        enabled: true
+        file: "grafana-alerting.json"
+        title: "Stellar Core — Alerting"
 
 # Default resource requests/limits for managed StellarNode pods.
 # Precedence: StellarNode spec.resources > Helm defaults > operator hardcoded fallback.
