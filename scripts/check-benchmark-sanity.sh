@@ -20,11 +20,9 @@ TEMP_DIR=$(mktemp -d)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REGRESSION_THRESHOLD=10  # Percent regression threshold
 ERRORS=0
 WARNINGS=0
 
@@ -56,7 +54,6 @@ cd "$BENCHMARK_DIR"
 
 # Run a quick benchmark (lower iteration count for CI)
 BENCHMARK_OUTPUT="$TEMP_DIR/benchmark-output.txt"
-BENCHMARK_RESULTS="$TEMP_DIR/benchmark-results.json"
 
 if ! cargo test --release --lib reconciler::benchmarks -- --nocapture 2>&1 | tee "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Benchmark execution failed"
@@ -104,6 +101,7 @@ if [[ -f "$BASELINE_FILE" ]]; then
         # Check for significant deviations (simplified check)
         if [[ $LINE_RATIO -lt 80 ]] || [[ $LINE_RATIO -gt 120 ]]; then
             echo -e "  ${YELLOW}⚠${NC}  Significant deviation detected (>20% change)"
+            ((WARNINGS++))
             # Assignment form, not `((WARNINGS++))`: a bare `((expr))` command
             # exits nonzero when the *pre*-increment value is 0, which would
             # trip `set -e` and abort the script on the very first warning.
@@ -127,6 +125,7 @@ echo "→ Running sanity checks..."
 # Check 1: No panics in benchmark output
 if grep -qi "panic" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Panic detected in benchmark output"
+    ((ERRORS++))
     ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${GREEN}✓${NC} No panics detected"
@@ -137,6 +136,7 @@ if grep -qi "test result: ok" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${GREEN}✓${NC} All benchmark tests passed"
 elif grep -qi "test result: FAILED" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Benchmark tests failed"
+    ((ERRORS++))
     ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${YELLOW}⚠${NC}  Could not determine test result"

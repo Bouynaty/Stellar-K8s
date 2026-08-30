@@ -319,7 +319,7 @@ cargo audit  # Uses .cargo/audit.toml config
 - **Primary CI gate:** `repo-wide-link-check` (lychee) in `ci.yml`.
 - Removed overlapping PR jobs: `markdown-link-check` and `docs-link-check`.
 - Local/checklist: `python3 scripts/check-links.py` (via `make health`) still works.
-- Scheduled link rot: standalone `.github/workflows/link-check.yml`.
+- Scheduled link rot: currently not covered (link-check.yml was deleted as part of cleanup wave).
 
 ### CRD backward-compatibility (choose one PR path)
 - **Canonical PR gate:** Python `crd_migration_lint` in
@@ -349,7 +349,7 @@ cargo audit  # Uses .cargo/audit.toml config
 
 ### Maintenance workflow
 - **Unique job only:** `maintenance.yml` → stale-artifact regression tests.
-- Scheduled cargo-audit / docs link checks live in `security-audit.yml` / `link-check.yml`.
+- Scheduled cargo-audit lives in `security-audit.yml` (scheduled workflow).
 
 ### Issue templates
 - **Single maintenance/chore template:** `.github/ISSUE_TEMPLATE/maintenance.yml`
