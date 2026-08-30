@@ -223,6 +223,34 @@ git add charts/stellar-operator/rendered
 Reviewing that diff is the point: it shows exactly which manifests a template
 edit changes.
 
+### Unintentional drift (issue #1365)
+
+If CI fails here on a PR that didn't knowingly touch chart templates, the
+change usually came from somewhere less obvious than
+`charts/stellar-operator/templates/`:
+
+1. **A values default changed.** `values.yaml`, `examples/values-*.yaml`, or
+   a Helm library dependency version bump can shift rendered output without
+   a single line of template code changing. `git diff charts/stellar-operator/rendered`
+   after `make helm-drift-update` (run it in a scratch branch, don't commit
+   yet) shows exactly which fields moved and from what.
+2. **It's flagged high-risk.** `--check-high-risk` specifically watches RBAC
+   rules, `securityContext`, and resource `limits`/`requests` — fields where
+   an unreviewed change has real blast radius (privilege escalation, pods
+   evicted under memory pressure, etc.). Treat a high-risk hit as needing a
+   second reviewer's sign-off before regenerating goldens, not a rubber-stamp
+   `make helm-drift-update`.
+3. **The PR didn't mean to change the chart at all.** If `git diff` on the
+   rendered goldens shows nothing you can attribute to your own change, check
+   whether `Chart.yaml`'s dependency versions or the pinned Helm version in
+   this workflow (`azure/setup-helm@v4`, currently v3.14.0) moved underneath
+   you — either can shift template function output (e.g. `include`
+   ordering, `lookup` behavior) with no diff in this repo's own files.
+
+Once the cause is understood and the change is confirmed intentional,
+regenerate goldens as in the section above; if it isn't, fix the template
+or values regression instead of updating goldens to match it.
+
 ### What it caught
 
 `charts/stellar-operator/examples/values-production.yaml` did not render at
