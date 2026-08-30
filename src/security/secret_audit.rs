@@ -13,6 +13,7 @@ use std::sync::Mutex;
 pub enum SecretAuditAction {
     Encrypt,
     Decrypt,
+    Access,
     Rotate,
     Sync,
     Rollback,
@@ -202,5 +203,32 @@ mod tests {
         }
         let anomalies = log.detect_anomalies(60, 5);
         assert_eq!(anomalies.len(), 1);
+    }
+
+    #[test]
+    fn records_access_and_rotation_events() {
+        let log = SecretAuditLog::new();
+        log.record(
+            SecretAuditAction::Access,
+            "validator-seed",
+            "stellar",
+            "stellar-operator",
+            3,
+            true,
+            Some("read secret for validation".to_string()),
+        );
+        log.record(
+            SecretAuditAction::Rotate,
+            "validator-seed",
+            "stellar",
+            "stellar-operator",
+            4,
+            true,
+            Some("rotation triggered by expiry".to_string()),
+        );
+
+        assert_eq!(log.entries().len(), 2);
+        assert!(log.entries().iter().any(|e| e.action == SecretAuditAction::Access));
+        assert!(log.entries().iter().any(|e| e.action == SecretAuditAction::Rotate));
     }
 }
