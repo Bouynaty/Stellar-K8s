@@ -530,6 +530,9 @@ helm-upgrade-test: ## Values-preservation check from the last supported producti
 
 dev-setup: dev-setup-rust dev-setup-tools dev-setup-hooks ## Setup dev environment
 	@echo ""
+	@echo "→ Validating toolchain after setup..."
+	@bash scripts/health-check.sh || true
+	@echo ""
 	@echo "╔════════════════════════════════════════════════════════════════╗"
 	@echo "║         Development Environment Setup Complete ✓              ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
@@ -540,6 +543,7 @@ dev-setup: dev-setup-rust dev-setup-tools dev-setup-hooks ## Setup dev environme
 	@echo "  3. Quick checks:   make quick"
 	@echo "  4. Build locally:  make build"
 	@echo ""
+	@echo "If health-check reports missing tools, see docs/development/setup-prerequisites.md#troubleshooting"
 
 dev-setup-rust: ## Install Rust toolchain and components
 	@echo "→ Setting up Rust toolchain..."
@@ -597,21 +601,24 @@ benchmark-webhook-save: ## Save current results as baseline
 
 benchmark-crd: ## CRD validation performance benchmark
 	@echo "→ Running CRD validation benchmarks..."
-	@python3 scripts/check-crd-performance.py \
-		--current results/crd-benchmark.json \
-		--baseline benchmarks/baselines/crd-performance-v0.1.0.json
+	@python3 scripts/benchmark-crd-validation.py \
+		--manifests 500 \
+		--baseline benchmarks/baselines/crd-performance-v0.1.0.json \
+		--output results/crd-benchmark.json
 
 benchmark-helm: ## Helm rendering performance benchmark
 	@echo "→ Running Helm rendering benchmarks..."
 	@bash scripts/benchmark-helm.sh \
 		--chart charts/stellar-operator \
-		--baseline benchmarks/baselines/helm-rendering-v0.1.0.json
+		--baseline benchmarks/baselines/helm-rendering-v0.1.0.json \
+		--output results/helm-benchmark.json
 
 benchmark-api: ## Operator API throughput benchmark (requires running operator)
 	@echo "→ Running operator API throughput benchmarks..."
 	@python3 scripts/benchmark-api.py \
 		--endpoint http://localhost:8080/api/v1 \
 		--requests 1000 \
+		--output results/api-benchmark.json \
 		--baseline benchmarks/baselines/operator-api-v0.1.0.json
 
 benchmark-reconciliation: ## Operator reconciliation latency benchmark
