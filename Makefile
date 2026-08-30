@@ -504,6 +504,16 @@ dev-setup-hooks: ## Install git hooks
 health-check: ## Full environment health check with detailed diagnostics
 	@bash scripts/health-check.sh
 
+health-check-json: ## Environment health check (JSON output)
+	@bash scripts/health-check.sh --json
+
+health-check-fix: ## Attempt to auto-fix missing components
+	@bash scripts/health-check.sh --fix
+
+dev-setup-verify: ## Validate the dev environment (cross-platform, Windows-safe — no shell dependency)
+	@echo "→ Validating development environment..."
+	@$(CARGO) run --locked --bin stellar-bootstrap-verify
+
 # ── Watch ──────────────────────────────────────────────────────────────────────
 
 watch: ## Watch and rebuild

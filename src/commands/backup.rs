@@ -176,7 +176,7 @@ pub async fn run_backup(args: BackupArgs) -> Result<()> {
 
 /// Verify backup integrity with checksum and structure validation
 async fn verify_backup_integrity(backup_path: &str) -> Result<()> {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
     use std::fs::File;
     use std::io::Read;
 
@@ -302,7 +302,8 @@ pub async fn run_list(args: ListArgs) -> Result<()> {
 }
 
 pub async fn run_cleanup(args: CleanupArgs) -> Result<()> {
-    println!("Cleaning up backups at {}, keeping last {}",
+    println!(
+        "Cleaning up backups at {}, keeping last {}",
         args.location, args.keep
     );
 
