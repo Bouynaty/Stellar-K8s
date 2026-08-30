@@ -115,6 +115,11 @@ pub const TRACE_ID: &str = "trace_id";
 /// W3C span ID, injected by `OtelTraceIdLayer` (`span_id`).
 pub const SPAN_ID: &str = "span_id";
 
+// ── Correlation ──────────────────────────────────────────────────────────────────
+
+/// Request correlation ID propagated across service boundaries (`correlation_id`).
+pub const CORRELATION_ID: &str = "correlation_id";
+
 // ── CI-specific ────────────────────────────────────────────────────────────────
 
 /// CI pipeline step or job name (`ci_step`).
@@ -148,6 +153,7 @@ pub const ALL_FIELDS: &[&str] = &[
     SCRUB_PATTERN,
     TRACE_ID,
     SPAN_ID,
+    CORRELATION_ID,
     CI_STEP,
     GIT_SHA,
     FEATURES,
