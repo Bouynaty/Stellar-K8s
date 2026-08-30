@@ -102,6 +102,10 @@ if [[ -f "$BASELINE_FILE" ]]; then
         if [[ $LINE_RATIO -lt 80 ]] || [[ $LINE_RATIO -gt 120 ]]; then
             echo -e "  ${YELLOW}⚠${NC}  Significant deviation detected (>20% change)"
             ((WARNINGS++))
+            # Assignment form, not `((WARNINGS++))`: a bare `((expr))` command
+            # exits nonzero when the *pre*-increment value is 0, which would
+            # trip `set -e` and abort the script on the very first warning.
+            WARNINGS=$((WARNINGS + 1))
         else
             echo -e "  ${GREEN}✓${NC} Within acceptable range (±20%)"
         fi
@@ -122,6 +126,7 @@ echo "→ Running sanity checks..."
 if grep -qi "panic" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Panic detected in benchmark output"
     ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${GREEN}✓${NC} No panics detected"
 fi
@@ -132,6 +137,7 @@ if grep -qi "test result: ok" "$BENCHMARK_OUTPUT"; then
 elif grep -qi "test result: FAILED" "$BENCHMARK_OUTPUT"; then
     echo -e "  ${RED}✗${NC} Benchmark tests failed"
     ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
 else
     echo -e "  ${YELLOW}⚠${NC}  Could not determine test result"
 fi

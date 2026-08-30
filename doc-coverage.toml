@@ -317,3 +317,15 @@ src = [
     "src/rest_api/server.rs",
 ]
 
+# ── Structured Logging ─────────────────────────────────────────────────────────
+[[entry]]
+doc = "docs/structured-logging.md"
+src = [
+    "src/bin/stellar-logs.rs",
+    "src/bin/sidecar.rs",
+    "src/bin/stellar-watcher.rs",
+    "src/logging/subscriber.rs",
+    "charts/stellar-operator/templates/log-shipper.yaml",
+    "monitoring/log-alerts.yaml",
+]
+

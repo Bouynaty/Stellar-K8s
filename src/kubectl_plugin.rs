@@ -65,7 +65,7 @@ struct Cli {
     dry_run: bool,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum Commands {
     /// Show version information for the plugin and operator
     Version,

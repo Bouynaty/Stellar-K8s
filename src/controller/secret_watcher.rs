@@ -29,6 +29,22 @@ pub(crate) fn secret_rotation_needed(current_rv: Option<&str>, observed_rv: Opti
     observed_rv != current_rv
 }
 
+/// Returns true when a secret is within the configured expiry warning window.
+pub(crate) fn secret_expires_soon(
+    expires_at: Option<&str>,
+    warning_window: chrono::Duration,
+) -> bool {
+    let Some(expires_at) = expires_at else {
+        return false;
+    };
+
+    let Ok(expires_at) = chrono::DateTime::parse_from_rfc3339(expires_at) else {
+        return false;
+    };
+
+    expires_at.with_timezone(&chrono::Utc) <= chrono::Utc::now() + warning_window
+}
+
 /// Build the merge patch that triggers a rolling restart via pod template annotation.
 pub(crate) fn rolling_restart_patch(
     annotation_key: &str,
@@ -103,22 +119,15 @@ pub async fn handle_passphrase_secret_rotation(
         .and_then(|s| s.observed_passphrase_secret_version.as_deref());
 
     let rotated = secret_rotation_needed(current_rv.as_deref(), observed_rv);
-    let mut expired = false;
-
-    // Check expiration timestamp annotation
-    if let Some(expires_at_str) = secret
-        .metadata
-        .annotations
-        .as_ref()
-        .and_then(|a| a.get("stellar.org/expires-at"))
-    {
-        if let Ok(expires_at) = chrono::DateTime::parse_from_rfc3339(expires_at_str) {
-            let expires_at_utc = expires_at.with_timezone(&chrono::Utc);
-            if expires_at_utc <= chrono::Utc::now() + chrono::Duration::days(1) {
-                expired = true;
-            }
-        }
-    }
+    let expired = secret_expires_soon(
+        secret
+            .metadata
+            .annotations
+            .as_ref()
+            .and_then(|a| a.get("stellar.org/expires-at"))
+            .map(String::as_str),
+        chrono::Duration::days(1),
+    );
 
     // If versions match and not expired, no rotation needed
     if !rotated && !expired {
@@ -273,22 +282,15 @@ pub async fn handle_seed_secret_rotation(
         .and_then(|s| s.observed_seed_secret_version.as_deref());
 
     let rotated = secret_rotation_needed(current_rv.as_deref(), observed_rv);
-    let mut expired = false;
-
-    // Check expiration timestamp annotation
-    if let Some(expires_at_str) = secret
-        .metadata
-        .annotations
-        .as_ref()
-        .and_then(|a| a.get("stellar.org/expires-at"))
-    {
-        if let Ok(expires_at) = chrono::DateTime::parse_from_rfc3339(expires_at_str) {
-            let expires_at_utc = expires_at.with_timezone(&chrono::Utc);
-            if expires_at_utc <= chrono::Utc::now() + chrono::Duration::days(1) {
-                expired = true;
-            }
-        }
-    }
+    let expired = secret_expires_soon(
+        secret
+            .metadata
+            .annotations
+            .as_ref()
+            .and_then(|a| a.get("stellar.org/expires-at"))
+            .map(String::as_str),
+        chrono::Duration::days(1),
+    );
 
     // If versions match and not expired, no rotation needed
     if !rotated && !expired {
@@ -412,6 +414,13 @@ mod tests {
     fn passphrase_rotation_skips_without_secret_ref() {
         let secret_ref: Option<String> = None;
         assert!(secret_ref.is_none());
+    }
+
+    #[test]
+    fn expiration_warning_detected_when_secret_expires_soon() {
+        let expiry = (chrono::Utc::now() + chrono::Duration::hours(12)).to_rfc3339();
+        assert!(secret_expires_soon(Some(&expiry), chrono::Duration::days(1)));
+        assert!(!secret_expires_soon(Some(&(chrono::Utc::now() + chrono::Duration::days(2)).to_rfc3339()), chrono::Duration::days(1)));
     }
 
     #[test]
