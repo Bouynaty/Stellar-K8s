@@ -181,7 +181,7 @@ fn parse_window_duration(value: &str) -> chrono::Duration {
     chrono::Duration::hours(2)
 }
 
-fn is_time_in_window(config: &DbMaintenanceConfig, now: NaiveTime) -> bool {
+pub fn is_time_in_window(config: &DbMaintenanceConfig, now: NaiveTime) -> bool {
     let start = NaiveTime::parse_from_str(&config.window_start, "%H:%M")
         .or_else(|_| NaiveTime::parse_from_str(&config.window_start, "%H:%M:%S"))
         .unwrap_or_else(|_| NaiveTime::from_hms_opt(2, 0, 0).unwrap());
