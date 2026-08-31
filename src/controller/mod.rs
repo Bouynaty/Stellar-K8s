@@ -97,7 +97,7 @@ mod health_test;
 pub mod kms_secret;
 #[cfg(feature = "metrics")]
 pub mod metrics;
-pub mod mtls;
+pub mod security;
 pub mod mtls_rotation;
 pub mod oci_snapshot;
 pub mod operator_config;
