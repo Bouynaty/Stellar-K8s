@@ -21,6 +21,7 @@ use crate::controller::ControllerState;
 use crate::{Error, Result};
 
 use super::audit_handlers;
+use super::alert_test;
 use super::auth;
 use super::custom_metrics;
 use super::dashboard_handlers;
@@ -100,6 +101,7 @@ pub async fn run_server(
         .route("/leader", get(handlers::leader_status))
         .route("/api/v1/nodes", get(handlers::list_nodes))
         .route("/api/v1/nodes/:namespace/:name", get(handlers::get_node))
+        .route("/api/v1/alerts/test", axum::routing::post(alert_test::test_alert_expr))
         // Health summary API (Issue #552)
         .route("/v1/health/summary", get(health_summary::get_health_summary))
         .route("/v1/health/nodes", get(health_summary::get_node_health_status))

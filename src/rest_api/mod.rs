@@ -46,6 +46,7 @@
 //! ```
 
 mod audit_handlers;
+mod alert_test;
 mod auth;
 mod custom_metrics;
 mod dashboard_dto;
@@ -59,6 +60,7 @@ mod scp_topology;
 mod server;
 mod sustainability;
 
+pub use alert_test::test_alert_expr;
 pub use auth::{check_rbac_permission, k8s_rbac_auth};
 pub use health_summary::{get_health_incidents, get_health_summary, get_node_health_status};
 pub use oidc::{oidc_auth, require_admin, require_reader, ApiRole, OidcConfig};

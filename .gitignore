@@ -65,3 +65,5 @@ rendered-output.yaml
 # Temporary Test Files
 test_*.rs
 starfield.html
+node_modules/
+dist/
