@@ -78,6 +78,12 @@ pub enum JobKind {
     CrossClusterCheck,
     /// Webhook delivery retry.
     WebhookDelivery,
+    /// mTLS certificate generation (internal CA).
+    MtlsCertificateGeneration,
+    /// mTLS secret synchronization to Kubernetes.
+    MtlsSecretSync,
+    /// mTLS hot-reload of active node containers.
+    MtlsHotReload,
     /// Any other job not covered above.
     Other(String),
 }
@@ -306,6 +312,9 @@ impl JobRegistry {
                         JobKind::BlueGreenRollout => "blue_green_rollout",
                         JobKind::CrossClusterCheck => "cross_cluster_check",
                         JobKind::WebhookDelivery => "webhook_delivery",
+                        JobKind::MtlsCertificateGeneration => "mtls_certificate_generation",
+                        JobKind::MtlsSecretSync => "mtls_secret_sync",
+                        JobKind::MtlsHotReload => "mtls_hot_reload",
                         JobKind::Other(s) => s.as_str(),
                     };
                     kind_str == k
