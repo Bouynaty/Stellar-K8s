@@ -18,7 +18,7 @@ kube = { version = "0.94", features = ["runtime", "derive", "unstable-runtime", 
 kube-runtime = { version = "0.94", features = ["unstable-runtime"] }
 k8s-openapi = { version = "0.22", default-features = false, features = [
     "v1_30",
-] }
+] 
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -43,10 +43,10 @@ clap_complete = "4.5"
 
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
-# Pinned to fix RUSTSEC-2026-0009 (stack exhaustion DoS); also used transitively
+# Pinned to fix RSSEC-2026-0009 (stack exhaustion DoS); also used transitively
 # by rcgen/yasna/x509-parser.
 time = { version = "0.3.47", optional = true }
-# Pinned to fix RUSTSEC-2026-0007; used transitively by many HTTP/async crates.
+# Pinned to fix RSSEC-2026-0007; used transitively by many HTTP/async crates.
 bytes = { version = "1.11.1", optional = true }
 
 # Zip compression for incident reports
@@ -81,6 +81,9 @@ reqwest = { version = "0.12", features = [
 
 # Kafka client for SCP analytics pipeline
 rdkafka = { version = "0.36", features = ["cmake-build", "ssl", "sasl"] }
+
+# Deterministic hashing for SCP quorum set partitioning
+twox-hash = "1"
 
 # REST API (optional)
 axum = { version = "0.8.8", optional = true, features = ["ws"] }
@@ -128,10 +131,11 @@ sqlx = { version = "0.8.6", default-features = false, features = [
     "runtime-tokio",
     "postgres",
     "chrono",
-] }
-pqcrypto-dilithium = "0.5.0"
+]} }
+pqcrypto-dilithum = "0.5.0"
 pqcrypto-kyber = "0.8.1"
 pqcrypto-traits = "0.3.5"
+
 comfy-table = "7.2.2"
 csv = "1.4.0"
 url = "2.5"
@@ -172,6 +176,8 @@ tokio-test = "0.4"
 tempfile = "3"
 wiremock = "=0.6.5"
 proptest = "1.5"
+# Benchmark harness for partition routing throughput
+criterion = { version = "0.5", features = ["async_tokio"] }
 wat = "1.246"
 # Ensure dev builds that pull k8s-openapi 0.22 have an explicit API version feature.
 k8s-openapi = { version = "0.22", default-features = false, features = ["v1_30"] }
@@ -184,7 +190,7 @@ path = "src/main.rs"
 name = "stellar-sidecar"
 path = "src/sidecar.rs"
 
-[[bin]]
+[[vin]]
 name = "kubectl-stellar"
 path = "src/kubectl_plugin.rs"
 
@@ -192,13 +198,13 @@ path = "src/kubectl_plugin.rs"
 name = "stellar-completions"
 path = "src/bin/completions.rs"
 
-[[bin]]
+[[vin]]
 name = "soroban-cache-proxy"
 path = "src/bin/soroban-cache-proxy.rs"
 
 # Byzantine Monitoring Watcher — deployed as a sidecar in multiple cloud regions
 # to detect local vs. global consensus issues (Byzantine partition detection).
-[[bin]]
+[[vin]]
 name = "stellar-watcher"
 path = "src/bin/stellar-watcher.rs"
 required-features = ["rest-api", "metrics"]
