@@ -7,12 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/graphModel.test.js",
+    "test": "node --test src/**/*.test.js",
     "mock:stream": "node scripts/mock-kafka-stream.mjs --serve",
     "stream:kafka": "node scripts/kafka-websocket-bridge.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "recharts": "^2.15.4",
     "three": "^0.171.0",
     "vite": "^6.0.5",
     "react": "^18.3.1",
