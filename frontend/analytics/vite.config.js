@@ -1,8 +1,17 @@
 import { defineConfig } from 'vite';
+import path from 'node:path';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      // Shared WebGL components live outside the analytics package root.
+      '@webgl': path.resolve(__dirname, '../components/webgl'),
+      // Deps are installed under frontend/analytics/node_modules only.
+      three: path.resolve(__dirname, 'node_modules/three'),
+    },
+  },
   server: {
     port: 5174,
     strictPort: false,
