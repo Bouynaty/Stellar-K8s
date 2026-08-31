@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v1.1.1 (2026-08-31) [patch]
+
+• Merge pull request #1460 from olalois/fix-issue-1198-delete-obsolete-CI-cache-keys-and-normalize-cache-usage
+🐛 fix: issue-1198-delete-obsolete-CI-cache-keys-and-normalize-cache-usage
+🐛 fix: relove issues 1197 & 1198
+🐛 fix: issue-1198-delete-obsolete-CI-cache-keys-and-normalize-cache-usage
+
+
 ## Chart v1.1.0 (2026-08-30) [minor]
 
 • Merge pull request #1457 from Divine-designs/feat/stellar-wave-dr-ha
