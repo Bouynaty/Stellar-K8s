@@ -267,10 +267,6 @@ name = "conventional-commit-check"
 path = "src/bin/conventional-commit-check.rs"
 
 [[bin]]
-name = "changelog-gen"
-path = "src/bin/changelog-gen.rs"
-
-[[bin]]
 name = "backup-verify"
 path = "src/bin/backup-verify.rs"
 
