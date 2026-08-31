@@ -1,6 +1,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
+import HeatmapGrid from './components/heatmap/HeatmapGrid.jsx';
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
 import './styles.css';
 
@@ -10,6 +11,9 @@ const sourceFromQuery = query.get('source');
 const bridgeUrl = query.get('ws') || 'localhost:8787';
 const initialSource = sourceFromQuery === 'mock' || sourceFromQuery === 'kafka' ? sourceFromQuery : 'live';
 
+// Tab driven by ?view= query param so links are shareable.
+const initialView = query.get('view') === 'heatmap' ? 'heatmap' : 'topology';
+
 function streamUrl(source) {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
   if (source === 'mock' || source === 'kafka') return `${protocol}://${bridgeUrl}`;
@@ -17,6 +21,7 @@ function streamUrl(source) {
 }
 
 function App() {
+  const [view, setView] = useState(initialView);
   const [source, setSource] = useState(initialSource);
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
@@ -27,6 +32,7 @@ function App() {
   const renderFrameRef = useRef(null);
 
   useEffect(() => {
+    if (view !== 'topology') return; // don't open WS if not on topology view
     streamStateRef.current = createStreamState();
     setGraph(EMPTY_GRAPH);
     setSelected(null);
@@ -68,7 +74,7 @@ function App() {
         renderFrameRef.current = null;
       }
     };
-  }, [source]);
+  }, [source, view]);
 
   const counts = useMemo(() => {
     const values = graph.nodes.map(statusForNode);
@@ -87,54 +93,89 @@ function App() {
       <header className="topbar">
         <div className="brand-block">
           <span className="eyebrow">STELLAR / OBSERVABILITY</span>
-          <h1>Network topology</h1>
-          <p>Multi-cluster quorum health.</p>
+          <h1>{view === 'heatmap' ? 'Resource Saturation' : 'Network Topology'}</h1>
+          <p>{view === 'heatmap' ? 'Worker node CPU &amp; Memory heatmap.' : 'Multi-cluster quorum health.'}</p>
         </div>
-        <div className="toolbar" role="toolbar" aria-label="Topology controls">
-          <label className="select-wrap">
-            <span>Data source</span>
-            <select value={source} onChange={(event) => setSource(event.target.value)}>
-              <option value="live">Live operator stream</option>
-              <option value="kafka">Kafka WebSocket bridge</option>
-              <option value="mock">Mock Kafka stream</option>
-            </select>
-          </label>
-          <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
-            {paused ? 'Resume motion' : 'Pause motion'}
-          </button>
+        <div className="toolbar" role="toolbar" aria-label="View controls">
+          {/* View switcher */}
+          <div className="view-tabs" role="tablist" aria-label="Dashboard views">
+            <button
+              role="tab"
+              className={`tool-button${view === 'topology' ? ' tool-button--active' : ''}`}
+              aria-selected={view === 'topology'}
+              onClick={() => setView('topology')}
+              type="button"
+            >
+              Topology
+            </button>
+            <button
+              role="tab"
+              className={`tool-button${view === 'heatmap' ? ' tool-button--active' : ''}`}
+              aria-selected={view === 'heatmap'}
+              onClick={() => setView('heatmap')}
+              type="button"
+            >
+              Heatmap
+            </button>
+          </div>
+
+          {/* Topology-specific controls */}
+          {view === 'topology' && (
+            <>
+              <label className="select-wrap">
+                <span>Data source</span>
+                <select value={source} onChange={(event) => setSource(event.target.value)}>
+                  <option value="live">Live operator stream</option>
+                  <option value="kafka">Kafka WebSocket bridge</option>
+                  <option value="mock">Mock Kafka stream</option>
+                </select>
+              </label>
+              <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
+                {paused ? 'Resume motion' : 'Pause motion'}
+              </button>
+            </>
+          )}
         </div>
       </header>
 
-      <section className="metric-strip" aria-label="Network summary">
-        <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
-        <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
-        <Metric label="Degraded" value={counts.degraded.toLocaleString()} detail="Prepare or confirm" tone="amber" />
-        <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
-      </section>
+      {view === 'topology' ? (
+        <>
+          <section className="metric-strip" aria-label="Network summary">
+            <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
+            <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
+            <Metric label="Degraded" value={counts.degraded.toLocaleString()} detail="Prepare or confirm" tone="amber" />
+            <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
+          </section>
 
-      <section className="workspace">
-        <div className="graph-panel">
-          <div className="panel-heading">
-            <div>
-              <span className={`status-dot ${connection}`} />
-              <strong>{sourceLabel}</strong>
-              <span className="muted">{lastUpdate ? `updated ${lastUpdate.toLocaleTimeString()}` : 'waiting for telemetry'}</span>
+          <section className="workspace">
+            <div className="graph-panel">
+              <div className="panel-heading">
+                <div>
+                  <span className={`status-dot ${connection}`} />
+                  <strong>{sourceLabel}</strong>
+                  <span className="muted">{lastUpdate ? `updated ${lastUpdate.toLocaleTimeString()}` : 'waiting for telemetry'}</span>
+                </div>
+                <span className="muted">Live graph</span>
+              </div>
+              <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
+              <div className="legend" aria-label="Node health legend">
+                <Legend color="green" label="Synced" />
+                <Legend color="amber" label="Degraded" />
+                <Legend color="red" label="Falling behind" />
+              </div>
             </div>
-            <span className="muted">Live graph</span>
-          </div>
-          <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
-          <div className="legend" aria-label="Node health legend">
-            <Legend color="green" label="Synced" />
-            <Legend color="amber" label="Degraded" />
-            <Legend color="red" label="Falling behind" />
-          </div>
-        </div>
 
-        <aside className="inspector" aria-live="polite">
-          <span className="eyebrow">NODE INSPECTOR</span>
-          {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
-        </aside>
-      </section>
+            <aside className="inspector" aria-live="polite">
+              <span className="eyebrow">NODE INSPECTOR</span>
+              {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
+            </aside>
+          </section>
+        </>
+      ) : (
+        <section className="heatmap-section">
+          <HeatmapGrid prometheusUrl="/api/prometheus" />
+        </section>
+      )}
     </main>
   );
 }
