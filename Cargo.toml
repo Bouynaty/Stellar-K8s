@@ -211,7 +211,7 @@ path = "src/bin/stellar-fork-detector.rs"
 required-features = ["rest-api", "metrics"]
 
 [workspace]
-members = ["wasm-plugins"]
+members = ["wasm-plugins", "contracts/gov-queue"]
 
 [profile.release.package.stellar-wasm-cache]
 opt-level = "z"
