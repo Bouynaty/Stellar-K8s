@@ -1,15 +1,3 @@
-// Copyright 2024 Stellar-K8s Contributors
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 //! Shared types for Stellar node specifications
 //!
 //! These types are used across the CRD definitions and controller logic.
@@ -143,17 +131,6 @@ impl StellarNetwork {
                 name.hash(&mut h);
                 format!("custom-{:x}", h.finish())
             }
-        }
-    }
-}
-
-impl std::fmt::Display for StellarNetwork {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            StellarNetwork::Mainnet => write!(f, "mainnet"),
-            StellarNetwork::Testnet => write!(f, "testnet"),
-            StellarNetwork::Futurenet => write!(f, "futurenet"),
-            StellarNetwork::Custom(name) => write!(f, "custom-{}", name),
         }
     }
 }
@@ -552,75 +529,6 @@ pub struct VpaConfig {
     pub container_policies: Vec<VpaContainerPolicy>,
 }
 
-// ── Security Context ─────────────────────────────────────────────────────────
-
-/// Capabilities to add/drop at the container level.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ContainerCapabilities {
-    /// Capabilities to add (avoid unless absolutely necessary under PSS baseline).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub add: Vec<String>,
-    /// Capabilities to drop. Defaults to `["ALL"]` when using restricted PSS.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub drop: Vec<String>,
-}
-
-/// Seccomp profile override for pods/containers.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct SeccompProfileOverride {
-    /// `RuntimeDefault`, `Localhost`, or `Unconfined`.
-    pub type_: String,
-    /// Path relative to the kubelet seccomp profile root (only for `Localhost`).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub localhost_profile: Option<String>,
-}
-
-/// Security context overrides for StellarNode pods and containers.
-///
-/// When unset the operator enforces PSS `restricted` defaults.
-/// Any field explicitly set here overrides the corresponding default.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct StellarSecurityContext {
-    /// Run as non-root user. Defaults to `true`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub run_as_non_root: Option<bool>,
-
-    /// UID to run the container process as.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub run_as_user: Option<i64>,
-
-    /// GID to run the container process as.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub run_as_group: Option<i64>,
-
-    /// fsGroup for the pod's volume ownership. Defaults to `10000`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fs_group: Option<i64>,
-
-    /// Mount root filesystem read-only. Defaults to `true`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub read_only_root_filesystem: Option<bool>,
-
-    /// Prevent privilege escalation. Defaults to `false` (escalation blocked).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub allow_privilege_escalation: Option<bool>,
-
-    /// Run as privileged. **Never enable in production.** Defaults to `false`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub privileged: Option<bool>,
-
-    /// Linux capabilities override.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub capabilities: Option<ContainerCapabilities>,
-
-    /// Seccomp profile override. Defaults to `RuntimeDefault`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub seccomp_profile: Option<SeccompProfileOverride>,
-}
-
 /// Configuration for the durable log-to-S3 sidecar.
 ///
 /// When set, the operator injects a `stellar-log-shipper` sidecar into every
@@ -997,6 +905,65 @@ pub struct CaptiveCoreConfig {
     pub additional_config: Option<String>,
 }
 
+/// Bounded cache configuration for read-only Soroban RPC state requests.
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SorobanCacheConfig {
+    /// Enable the fail-open cache proxy sidecar.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Lifetime of a cached response in seconds.
+    #[serde(default = "default_cache_ttl_secs")]
+    pub ttl_secs: u64,
+    /// Maximum number of cached responses.
+    #[serde(default = "default_cache_max_entries")]
+    #[schemars(range(min = 1, max = 10000))]
+    pub max_entries: usize,
+    /// Maximum aggregate response bytes held by the cache.
+    #[serde(default = "default_cache_max_bytes")]
+    #[schemars(range(min = 1, max = 67108864))]
+    pub max_bytes: usize,
+    /// Optional image containing the `soroban-cache-proxy` binary.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
+}
+
+fn default_cache_ttl_secs() -> u64 {
+    stellar_wasm_cache::DEFAULT_TTL_SECS
+}
+
+fn default_cache_max_entries() -> usize {
+    stellar_wasm_cache::DEFAULT_MAX_ENTRIES
+}
+
+fn default_cache_max_bytes() -> usize {
+    stellar_wasm_cache::DEFAULT_MAX_BYTES
+}
+
+impl Default for SorobanCacheConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ttl_secs: default_cache_ttl_secs(),
+            max_entries: default_cache_max_entries(),
+            max_bytes: default_cache_max_bytes(),
+            image: None,
+        }
+    }
+}
+
+impl SorobanCacheConfig {
+    pub fn validate(&self) -> Result<(), String> {
+        stellar_wasm_cache::CacheConfig {
+            ttl_secs: self.ttl_secs,
+            max_entries: self.max_entries,
+            max_bytes: self.max_bytes,
+        }
+        .validate()
+        .map_err(|error| format!("invalid Soroban cache configuration: {error:?}"))
+    }
+}
+
 /// Soroban RPC server configuration
 #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -1014,11 +981,9 @@ pub struct SorobanConfig {
     pub enable_preflight: bool,
     #[serde(default = "default_max_events")]
     pub max_events_per_request: u32,
-    /// Multi-layered cache configuration (L1 in-memory LRU + L2 local-SSD).
-    /// When set, the operator provisions an emptyDir volume and injects cache
-    /// path / size env vars into the Soroban RPC container.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cache_config: Option<crate::controller::soroban_cache::SorobanCacheConfig>,
+    /// Optional bounded fail-open cache for read-only state RPC methods.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache: Option<SorobanCacheConfig>,
 }
 
 /// External database configuration for managed Postgres databases
@@ -1041,35 +1006,6 @@ pub struct SecretKeyRef {
     pub key: String,
 }
 
-/// NGINX ingress rate-limiting configuration.
-///
-/// Maps directly to the `nginx.ingress.kubernetes.io/limit-*` annotation family.
-/// All fields are optional; omitting a field leaves the corresponding annotation unset.
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct RateLimitConfig {
-    /// Maximum number of requests per second per client IP.
-    /// Sets `nginx.ingress.kubernetes.io/limit-rps`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub requests_per_second: Option<u32>,
-    /// Maximum number of requests per minute per client IP.
-    /// Sets `nginx.ingress.kubernetes.io/limit-rpm`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub requests_per_minute: Option<u32>,
-    /// Maximum number of concurrent connections per client IP.
-    /// Sets `nginx.ingress.kubernetes.io/limit-connections`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub connections: Option<u32>,
-    /// Burst multiplier applied on top of the per-second limit (NGINX `burst` parameter).
-    /// Sets `nginx.ingress.kubernetes.io/limit-burst-multiplier`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub burst_multiplier: Option<u32>,
-    /// Comma-separated list of CIDRs that are exempt from rate limiting.
-    /// Sets `nginx.ingress.kubernetes.io/limit-whitelist`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub whitelist_cidrs: Option<String>,
-}
-
 /// Ingress configuration
 #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -1088,9 +1024,6 @@ pub struct IngressConfig {
     /// ExternalDNS configuration for automated record management
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_dns: Option<ExternalDNSConfig>,
-    /// NGINX rate-limiting configuration for public-facing Horizon/SorobanRpc nodes.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub rate_limit: Option<RateLimitConfig>,
 }
 
 /// Ingress host entry
@@ -1135,23 +1068,8 @@ fn default_max_events() -> u32 {
 pub struct AutoscalingConfig {
     pub min_replicas: i32,
     pub max_replicas: i32,
-    /// Target average CPU utilisation across all replicas (0–100).
-    /// When set, the HPA scales to keep CPU at this percentage.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_cpu_utilization_percentage: Option<i32>,
-    /// Target average memory utilisation across all replicas (0–100).
-    /// When set, the HPA adds a `Resource` metric for `memory`.
-    /// Requires the metrics-server to be installed in the cluster.
-    ///
-    /// # Example — memory-based scaling for Soroban RPC
-    /// ```yaml
-    /// autoscaling:
-    ///   minReplicas: 2
-    ///   maxReplicas: 10
-    ///   targetMemoryUtilizationPercentage: 70
-    /// ```
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_memory_utilization_percentage: Option<i32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub custom_metrics: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1271,7 +1189,7 @@ impl Condition {
 #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkPolicyConfig {
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub enabled: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub allow_namespaces: Vec<String>,
@@ -1292,10 +1210,7 @@ fn default_monitoring_namespace() -> String {
 impl Default for NetworkPolicyConfig {
     fn default() -> Self {
         Self {
-            // Default to enabled so every StellarNode gets strict NetworkPolicy
-            // enforcement out of the box. Set `enabled: false` in the CRD spec
-            // to opt out (e.g. when the CNI doesn't support NetworkPolicy).
-            enabled: true,
+            enabled: false,
             allow_namespaces: Vec::new(),
             allow_pod_selector: None,
             allow_cidrs: Vec::new(),
@@ -1312,7 +1227,6 @@ pub enum RolloutStrategyType {
     #[default]
     RollingUpdate,
     Canary,
-    BlueGreen,
 }
 
 /// Rollout strategy for updates
@@ -1323,10 +1237,6 @@ pub struct RolloutStrategy {
     pub strategy_type: RolloutStrategyType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub canary: Option<CanaryConfig>,
-    /// Blue/green settings for Validator (Stellar Core) rollouts.
-    /// Ignored for Horizon/SorobanRpc (those use the Horizon migration path).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub blue_green: Option<BlueGreenStrategyConfig>,
 }
 
 impl RolloutStrategy {
@@ -1337,86 +1247,6 @@ impl RolloutStrategy {
             None
         }
     }
-
-    pub fn blue_green(&self) -> Option<&BlueGreenStrategyConfig> {
-        if let RolloutStrategyType::BlueGreen = self.strategy_type {
-            self.blue_green.as_ref()
-        } else {
-            None
-        }
-    }
-
-    /// Effective blue/green config (defaults when type is BlueGreen but config omitted).
-    pub fn blue_green_or_default(&self) -> BlueGreenStrategyConfig {
-        self.blue_green()
-            .cloned()
-            .unwrap_or_else(BlueGreenStrategyConfig::default)
-    }
-}
-
-/// Configuration for Validator (Stellar Core) blue/green rollouts.
-///
-/// Distinct from Horizon Deployment blue/green: this controls StatefulSet + PVC
-/// isolation, sync/ledger gates, and fail-closed cutover/rollback.
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct BlueGreenStrategyConfig {
-    /// Maximum allowed ledger lag of green behind blue (or network reference).
-    /// Matches the repository's read-replica freshness default of 5.
-    #[serde(default = "default_bg_max_ledger_lag")]
-    pub max_ledger_lag: u64,
-
-    /// Maximum seconds to wait for green to become sync-eligible before failing closed.
-    #[serde(default = "default_bg_ready_timeout_seconds")]
-    pub ready_timeout_seconds: u32,
-
-    /// Seconds to retain scaled-down blue after successful cutover for instant rollback.
-    #[serde(default = "default_bg_rollback_window_seconds")]
-    pub rollback_window_seconds: u32,
-
-    /// Consecutive successful post-cutover health evaluations before blue may be retired.
-    #[serde(default = "default_bg_post_cutover_success_threshold")]
-    pub post_cutover_success_threshold: u32,
-
-    /// When true (default), green PVC must be provisioned from a CSI VolumeSnapshot of blue.
-    /// When false, green may start from an empty PVC and catch up from history archives.
-    #[serde(default = "default_true")]
-    pub require_volume_snapshot: bool,
-
-    /// Optional VolumeSnapshotClass for the cutover snapshot. If unset, the cluster default is used.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub volume_snapshot_class_name: Option<String>,
-}
-
-impl Default for BlueGreenStrategyConfig {
-    fn default() -> Self {
-        Self {
-            max_ledger_lag: default_bg_max_ledger_lag(),
-            ready_timeout_seconds: default_bg_ready_timeout_seconds(),
-            rollback_window_seconds: default_bg_rollback_window_seconds(),
-            post_cutover_success_threshold: default_bg_post_cutover_success_threshold(),
-            require_volume_snapshot: true,
-            volume_snapshot_class_name: None,
-        }
-    }
-}
-
-fn default_bg_max_ledger_lag() -> u64 {
-    // Same convention as `traffic.rs` freshness threshold for Core ledger lag.
-    5
-}
-
-fn default_bg_ready_timeout_seconds() -> u32 {
-    // Catch-up after snapshot is usually minutes; archive catch-up can be longer.
-    3600
-}
-
-fn default_bg_rollback_window_seconds() -> u32 {
-    3600
-}
-
-fn default_bg_post_cutover_success_threshold() -> u32 {
-    3
 }
 
 /// Configuration for Canary rollout
@@ -1736,10 +1566,6 @@ pub struct DisasterRecoveryConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drill_schedule: Option<DRDrillScheduleConfig>,
 
-    /// Reference to a DisasterRecoveryPolicy
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub policy_ref: Option<String>,
-
     /// Configuration for history archive integrity checks
     #[serde(skip_serializing_if = "Option::is_none")]
     pub archive_integrity_config: Option<ArchiveIntegrityConfig>,
@@ -1794,10 +1620,6 @@ pub enum DRSyncStrategy {
     Consensus,
     PeerTracking,
     ArchiveSync,
-    /// Continuously stream captive core ledger state via a sidecar container.
-    /// Publishes a [`LedgerStateSnapshot`] ConfigMap every second, enabling
-    /// zero-RPO cross-region synchronization.
-    StreamingLedger,
 }
 
 /// Configuration for multi-region ledger replication
@@ -1875,38 +1697,14 @@ pub struct PeeringConfig {
 #[serde(rename_all = "camelCase")]
 pub struct DisasterRecoveryStatus {
     pub current_role: Option<DRRole>,
-    /// Active peer cluster (primary or standby target)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub active_peer_cluster_id: Option<String>,
     pub peer_health: Option<String>,
-    /// Per-peer health status for multi-region DR
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub peer_health_map: Option<Vec<DRPeerHealth>>,
     pub last_peer_contact: Option<String>,
     pub sync_lag: Option<u64>,
     pub failover_active: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_failover_time: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_failover_reason: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_check_time: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_drill_time: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_drill_result: Option<DRDrillResult>,
-}
-
-/// Health status for a DR peer cluster.
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DRPeerHealth {
-    pub cluster_id: String,
-    pub health: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_contact: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub priority: Option<u32>,
 }
 
 /// Configuration for automated DR drill scheduling
@@ -1918,9 +1716,6 @@ pub struct DRDrillScheduleConfig {
     /// Whether to actually perform failover or just simulate it (dry-run)
     #[serde(default)]
     pub dry_run: bool,
-    /// Type of failure to simulate
-    #[serde(default = "default_failure_type")]
-    pub failure_type: DRFailureType,
     /// Maximum time to wait for failover to complete (seconds)
     #[serde(default = "default_drill_timeout")]
     pub timeout_seconds: u32,
@@ -1930,21 +1725,6 @@ pub struct DRDrillScheduleConfig {
     /// Rollback delay after drill completion (seconds)
     #[serde(default = "default_drill_rollback_delay")]
     pub rollback_delay_seconds: u32,
-}
-
-/// Types of synthetic failures for DR drills
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum DRFailureType {
-    #[default]
-    PodKill,
-    NetworkLatency,
-    DiskPressure,
-    RegionOutage,
-}
-
-fn default_failure_type() -> DRFailureType {
-    DRFailureType::PodKill
 }
 
 fn default_drill_timeout() -> u32 {
@@ -2075,9 +1855,6 @@ pub struct CrossClusterConfig {
     pub service_mesh: Option<CrossClusterServiceMeshConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_name: Option<ExternalNameConfig>,
-    /// Federation configuration for CRD synchronization
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub federation: Option<FederationConfig>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub peer_clusters: Vec<PeerClusterConfig>,
     #[serde(default = "default_latency_threshold")]
@@ -2099,27 +1876,12 @@ impl Default for CrossClusterConfig {
             mode: CrossClusterMode::default(),
             service_mesh: None,
             external_name: None,
-            federation: None,
             peer_clusters: Vec::new(),
             latency_threshold_ms: default_latency_threshold(),
             auto_discovery: false,
             health_check: None,
         }
     }
-}
-
-/// Federation configuration for cross-cluster CRD synchronization
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct FederationConfig {
-    #[serde(default)]
-    pub enabled: bool,
-    #[serde(default = "default_true")]
-    pub sync_crds: bool,
-    #[serde(default = "default_true")]
-    pub sync_stellarnodes: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_namespace: Option<String>,
 }
 
 /// Cross-cluster networking mode
@@ -2211,19 +1973,6 @@ pub struct PeerClusterConfig {
     pub port: Option<u16>,
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Secret containing kubeconfig for federation sync
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub kubeconfig_secret_ref: Option<String>,
-    /// Key in the kubeconfig secret data (default: "kubeconfig")
-    #[serde(default = "default_kubeconfig_key")]
-    pub kubeconfig_secret_key: String,
-    /// Optional namespace override for federated resources
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target_namespace: Option<String>,
-}
-
-fn default_kubeconfig_key() -> String {
-    "kubeconfig".to_string()
 }
 
 fn default_peer_priority() -> u32 {
@@ -2434,11 +2183,9 @@ pub struct DbMaintenanceConfig {
 
     /// Maintenance window start time (24h format, e.g., "02:00")
     /// Maintenance will only trigger during this window
-    #[serde(default = "default_window_start")]
     pub window_start: String,
 
     /// Maintenance window duration (e.g., "2h")
-    #[serde(default = "default_window_duration")]
     pub window_duration: String,
 
     /// Bloat threshold percentage to trigger VACUUM FULL (default: 30)
@@ -2449,18 +2196,6 @@ pub struct DbMaintenanceConfig {
     #[serde(default = "default_true")]
     pub auto_reindex: bool,
 
-    /// Automatically profile slow SQL and suggest indexes during maintenance.
-    #[serde(default = "default_false")]
-    pub enable_query_profiling: bool,
-
-    /// Automatically create missing indexes for slow queries.
-    #[serde(default = "default_false")]
-    pub auto_index_maintenance: bool,
-
-    /// Slow query threshold in milliseconds used to identify candidate queries.
-    #[serde(default = "default_slow_query_threshold_ms")]
-    pub slow_query_threshold_ms: u32,
-
     /// Coordination with read-pool for zero-downtime
     #[serde(default = "default_true")]
     pub read_pool_coordination: bool,
@@ -2468,22 +2203,6 @@ pub struct DbMaintenanceConfig {
 
 fn default_bloat_threshold() -> u32 {
     30
-}
-
-fn default_window_start() -> String {
-    "02:00".to_string()
-}
-
-fn default_window_duration() -> String {
-    "2h".to_string()
-}
-
-fn default_slow_query_threshold_ms() -> u32 {
-    100
-}
-
-fn default_false() -> bool {
-    false
 }
 
 fn default_pooler_replicas() -> i32 {
@@ -3139,120 +2858,4 @@ pub struct GasAutoscalingConfig {
     /// Polling interval in seconds (default: 6, matching average ledger close time).
     #[serde(default = "default_poll_interval_seconds")]
     pub poll_interval_seconds: u32,
-}
-
-// =============================================================================
-// RBAC, Audit Logging, and Policy Configuration
-// =============================================================================
-
-/// Fine-grained operator roles for RBAC
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "PascalCase")]
-pub enum OperatorRole {
-    /// Full access to all resources and actions
-    SuperAdmin,
-    /// Can perform operational tasks but not modify security settings
-    Operator,
-    /// Read-only access to audit logs and system status
-    Auditor,
-    /// Read-only access to system status
-    Viewer,
-}
-
-/// RBAC configuration for operator-level permissions
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct RbacConfig {
-    #[serde(default)]
-    pub enabled: bool,
-    /// Map of Kubernetes subjects (users/groups/SAs) to Operator roles
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub role_bindings: Vec<RoleBinding>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct RoleBinding {
-    /// Kind of the subject: "User", "Group", or "ServiceAccount"
-    pub subject_kind: String,
-    /// Name of the subject
-    pub subject_name: String,
-    /// Role assigned to this subject
-    pub role: OperatorRole,
-}
-
-/// Audit logging configuration
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AuditConfig {
-    #[serde(default)]
-    pub enabled: bool,
-    /// Where to send audit logs
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub sinks: Vec<AuditSinkConfig>,
-    /// Retention policy for audit logs
-    #[serde(default)]
-    pub retention: AuditRetentionPolicy,
-    /// Field-level encryption for sensitive data
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub encryption: Option<FieldLevelEncryptionConfig>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AuditSinkConfig {
-    #[serde(rename = "type")]
-    pub type_: AuditSinkType,
-    /// Optional endpoint for the sink (e.g. S3 URL, Database DSN)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub endpoint: Option<String>,
-    /// Optional credentials for the sink
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub credentials_secret_ref: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-pub enum AuditSinkType {
-    Stdout,
-    File,
-    Database,
-    ExternalAggregator,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AuditRetentionPolicy {
-    /// Maximum age of audit logs in days
-    pub max_age_days: u32,
-    /// Maximum size of audit logs in MB before rotation
-    pub max_size_mb: u32,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct FieldLevelEncryptionConfig {
-    pub enabled: bool,
-    /// Reference to a KMS key for encryption
-    pub kms_key_ref: String,
-}
-
-/// Policy-based authorization (OPA/Gatekeeper)
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct PolicyConfig {
-    #[serde(default)]
-    pub enabled: bool,
-    /// Open Policy Agent (OPA) configuration
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub opa: Option<OPAConfig>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct OPAConfig {
-    /// OPA server endpoint
-    pub endpoint: String,
-    /// If true, allows the action if OPA is unreachable
-    #[serde(default)]
-    pub fail_open: bool,
 }

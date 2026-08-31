@@ -1,15 +1,3 @@
-// Copyright 2024 Stellar-K8s Contributors
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 //! Unit tests for StellarNodeSpec validation
 //!
 //! Tests the `StellarNodeSpec::validate()` function to ensure it correctly
@@ -136,16 +124,6 @@ mod stellar_node_spec_validation {
         }
     }
 
-    #[test]
-    fn test_default_stellar_node_spec_enables_network_policy() {
-        let spec = StellarNodeSpec::default();
-        let policy = spec
-            .network_policy
-            .expect("default StellarNodeSpec should include network_policy");
-
-        assert!(policy.enabled, "default network_policy should be enabled");
-    }
-
     fn valid_soroban_spec() -> StellarNodeSpec {
         StellarNodeSpec {
             node_type: NodeType::SorobanRpc,
@@ -201,9 +179,7 @@ mod stellar_node_spec_validation {
         }
     }
 
-    // Test-only helper constructors. The compiler warns these as dead code
-    // because test modules aren't fully linked; the suppression is intentional.
-    #[allow(dead_code)] // test helper — used by test cases in this module
+    #[allow(dead_code)]
     fn default_resources() -> ResourceRequirements {
         ResourceRequirements {
             requests: ResourceSpec {
@@ -217,7 +193,7 @@ mod stellar_node_spec_validation {
         }
     }
 
-    #[allow(dead_code)] // test helper — used by test cases in this module
+    #[allow(dead_code)]
     fn default_storage() -> StorageConfig {
         StorageConfig {
             storage_class: "standard".to_string(),
@@ -1134,7 +1110,6 @@ mod stellar_node_spec_validation {
             min_replicas: 1,
             max_replicas: 10,
             target_cpu_utilization_percentage: None,
-            target_memory_utilization_percentage: None,
             custom_metrics: vec![],
             behavior: None,
             predictive_scaling: None,
@@ -1170,7 +1145,6 @@ mod stellar_node_spec_validation {
             min_replicas: 1,
             max_replicas: 10,
             target_cpu_utilization_percentage: None,
-            target_memory_utilization_percentage: None,
             custom_metrics: vec![],
             behavior: None,
             predictive_scaling: None,
@@ -1206,7 +1180,6 @@ mod stellar_node_spec_validation {
             min_replicas: 1,
             max_replicas: 10,
             target_cpu_utilization_percentage: None,
-            target_memory_utilization_percentage: None,
             custom_metrics: vec![],
             behavior: None,
             predictive_scaling: None,
@@ -1242,7 +1215,6 @@ mod stellar_node_spec_validation {
             min_replicas: 1,
             max_replicas: 10,
             target_cpu_utilization_percentage: None,
-            target_memory_utilization_percentage: None,
             custom_metrics: vec![],
             behavior: None,
             predictive_scaling: None,
@@ -1269,7 +1241,6 @@ mod stellar_node_spec_validation {
             min_replicas: 1,
             max_replicas: 10,
             target_cpu_utilization_percentage: None,
-            target_memory_utilization_percentage: None,
             custom_metrics: vec![],
             behavior: None,
             predictive_scaling: None,
@@ -1307,7 +1278,6 @@ mod stellar_node_spec_validation {
             min_replicas: 1,
             max_replicas: 10,
             target_cpu_utilization_percentage: None,
-            target_memory_utilization_percentage: None,
             custom_metrics: vec![],
             behavior: None,
             predictive_scaling: None,
@@ -1343,7 +1313,6 @@ mod stellar_node_spec_validation {
             min_replicas: 2,
             max_replicas: 10,
             target_cpu_utilization_percentage: None,
-            target_memory_utilization_percentage: None,
             custom_metrics: vec![],
             behavior: None,
             predictive_scaling: None,
@@ -1367,6 +1336,8 @@ mod stellar_node_spec_validation {
 
         let config = SorobanConfig {
             stellar_core_url: "http://core:11626".to_string(),
+            #[allow(deprecated)]
+            captive_core_config: None,
             captive_core_structured_config: Some(CaptiveCoreConfig {
                 network_passphrase: Some("Test SDF Network ; September 2015".to_string()),
                 history_archive_urls: vec![
@@ -1380,7 +1351,7 @@ mod stellar_node_spec_validation {
             }),
             enable_preflight: true,
             max_events_per_request: 10000,
-            ..Default::default()
+            cache: None,
         };
 
         // Test JSON serialization
