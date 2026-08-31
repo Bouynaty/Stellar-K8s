@@ -2,6 +2,8 @@ import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'r
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
+import Flamegraph from './profiler/flamegraph/Flamegraph.jsx';
+import DrCommandCenter from './dr/command_center/DrCommandCenter.jsx';
 import './styles.css';
 
 const EMPTY_GRAPH = materialize(createStreamState());
@@ -134,6 +136,16 @@ function App() {
           <span className="eyebrow">NODE INSPECTOR</span>
           {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
         </aside>
+      </section>
+
+      <section className="dr-command-center">
+        <h3>DR Command Center</h3>
+        <DrCommandCenter clusters={['cluster-1', 'cluster-2', 'cluster-3']} />
+      </section>
+
+      <section className="profiler-panel">
+        <h3>Soroban Profiler</h3>
+        <Flamegraph traces={[]} />
       </section>
     </main>
   );
