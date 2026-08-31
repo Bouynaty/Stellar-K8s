@@ -254,10 +254,20 @@ impl Batch {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::registry()
+    // Same OTel wiring `stellar_k8s::logging::init_binary_subscriber` gives
+    // every other sidecar (issue #1369) — kept inline here to preserve the
+    // existing `EnvFilter::from_default_env()` behavior exactly.
+    let use_otel = env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok();
+    let registry = tracing_subscriber::registry()
         .with(fmt::layer().json())
-        .with(EnvFilter::from_default_env())
-        .init();
+        .with(EnvFilter::from_default_env());
+    if use_otel {
+        let otel_layer = stellar_k8s::telemetry::init_telemetry(&registry);
+        let trace_id_layer = stellar_k8s::telemetry::trace_id_layer();
+        registry.with(otel_layer).with(trace_id_layer).init();
+    } else {
+        registry.init();
+    }
 
     let cfg = Config::from_env()?;
     info!(

@@ -242,7 +242,7 @@ async fn monitor_ebpf_metrics(events: Api<Event>, pod_name: String, namespace: S
     loop {
         if let Ok(resp) = {
             let mut headers = reqwest::header::HeaderMap::new();
-            crate::telemetry::inject_trace_headers(&mut headers);
+            stellar_k8s::telemetry::inject_trace_headers(&mut headers);
             client
                 .get("http://localhost:9435/metrics")
                 .headers(headers)

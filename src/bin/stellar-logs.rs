@@ -415,7 +415,7 @@ async fn cmd_search(region: &str, args: &SearchArgs) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::registry()
-        .with(fmt::layer())
+        .with(fmt::layer().json())
         .with(EnvFilter::from_default_env())
         .init();
 

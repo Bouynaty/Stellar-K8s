@@ -35,11 +35,13 @@ jobs:
 
       # A. Dependency vulnerability scanning (cargo-audit)
       - name: Run cargo audit
+        id: audit
         run: cargo audit
         continue-on-error: false
 
       # B. License compliance (cargo-deny)
       - name: Run cargo deny (license + bans + advisories)
+        id: deny
         run: cargo deny check
         continue-on-error: false
 
@@ -53,16 +55,19 @@ jobs:
           gitleaks version
 
       - name: Run gitleaks secret scan
+        id: gitleaks
         run: gitleaks detect --source . --config .gitleaks.toml --verbose --redact
 
       # D. Additional secret pattern checks (existing custom scanner)
       - name: Run custom secret-handling checks
+        id: secrets
         run: |
           chmod +x scripts/check-secrets.sh
           bash scripts/check-secrets.sh
 
       # E. Third-party license drift check
       - name: Verify third-party licenses are up to date
+        id: licenses
         run: make check-third-party-licenses
 
       # F. Security report summary

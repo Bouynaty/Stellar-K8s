@@ -1,0 +1,50 @@
+# Chaos Experiment 13 — Resource Exhaustion Recovery (issue #1388)
+#
+# Validates the operator's behaviour when Stellar Core pods experience
+# simultaneous CPU and memory pressure, simulating cloud spot-instance
+# throttling or noisy-neighbour scenarios.
+#
+# Scenario:
+#   1. CPU stress: 4 workers at 80% CPU for 90s on the validator pod
+#   2. Memory stress: 512 MB memory consumed on the validator pod simultaneously
+#   3. Operator must NOT kill the pod or delete the PVC during stress
+#   4. Operator must mark the node as Degraded (not Failed) during stress
+#   5. After stress ends, node must recover to Ready within SLO
+#
+# Success criteria:
+#   1. PVC is NOT deleted during experiment
+#   2. Operator does not restart the pod unless Kubernetes OOMKills it
+#   3. After stress: StellarNode Ready within SLO (300s)
+#   4. Ledger sequence advances after recovery
+#
+# SLO: 300s recovery after resource stress ends
+# Severity: 🟠 High
+# Category: resource-exhaustion
+#
+# Usage:
+#   kubectl apply -f tests/chaos/13-resource-exhaustion-recovery.yaml \
+#     --namespace=chaos-testing
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: stellar-core-resource-exhaustion
+  namespace: chaos-testing
+  labels:
+    chaos.stellar.org/experiment: "13"
+    chaos.stellar.org/category: resource-exhaustion
+    chaos.stellar.org/severity: high
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - stellar-system
+    labelSelectors:
+      app.kubernetes.io/component: validator
+  stressors:
+    cpu:
+      workers: 4
+      load: 80
+    memory:
+      workers: 2
+      size: "512MB"
+  duration: "90s"

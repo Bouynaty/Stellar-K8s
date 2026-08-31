@@ -28,6 +28,7 @@ pub async fn run_webhook(args: WebhookArgs) -> Result<(), Error> {
     init_subscriber(SubscriberConfig {
         level: log_level,
         format: log_format,
+        otel: true,
         ..Default::default()
     });
 

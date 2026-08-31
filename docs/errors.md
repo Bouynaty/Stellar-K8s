@@ -52,13 +52,86 @@ Non-retriable variants (such as `ConfigError` or `ValidationError`) require manu
 ### Status Reporting: `Error::status_message()`
 Delegates directly to the `Display` implementation (`self.to_string()`), serving as a single source of truth for updating `StellarNode` custom resource status conditions.
 
+## REST API Error Codes & Structured Responses
+
+All REST endpoints return consistently formatted JSON errors with correlation IDs for cross-service tracing.
+
+### Error Response Schema
+
+```json
+{
+  "error": "err_not_found",
+  "error_code": "ERR_NOT_FOUND",
+  "message": "Node stellar/my-validator not found",
+  "correlation_id": "req-1714400000000-000042",
+  "details": null,
+  "degraded": false,
+  "timestamp": "2026-08-29T22:00:00Z"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `error_code` | Stable `SCREAMING_SNAKE_CASE` code (see table below) |
+| `message` | Human-readable detail |
+| `correlation_id` | Request ID echoed from `X-Correlation-ID` header or generated; forward to support |
+| `degraded` | `true` when response is partial (HTTP 207) |
+| `details` | Optional structured payload for degraded/validation errors |
+
+### REST Error Codes (issue #1363)
+
+| Code | HTTP | Meaning | Endpoints |
+|------|------|---------|-----------|
+| `ERR_NOT_FOUND` | 404 | Resource not found | `GET /api/v1/nodes/:ns/:name`, `GET /v1/health/nodes` |
+| `ERR_BAD_REQUEST` | 400 | Validation failed | `POST /api/v1/nodes`, `POST /config/log-level`, all create/update |
+| `ERR_UNAUTHORIZED` | 401 | Missing/invalid auth | All protected routes when `Authorization` absent |
+| `ERR_FORBIDDEN` | 403 | RBAC / network isolation violation | `POST /v1/dashboard/nodes/:ns/:name/actions`, `NetworkSafetyViolation` |
+| `ERR_INTERNAL_SERVER_ERROR` | 500 | Unexpected failure | Any endpoint on internal error |
+| `ERR_SERVICE_UNAVAILABLE` | 503 | K8s API / dependency down | `GET /api/v1/nodes` when kube API unavailable |
+| `ERR_PARTIAL_DEGRADATION` | 207 | Partial success | `GET /api/v1/nodes`, `GET /api/v1/dashboard/overview` when subset fails |
+| `ERR_RECONCILE_STALLED` | 503 | Reconciler queue stalled | `GET /healthz` `readyz` when queue depth > threshold |
+
+### Correlation IDs & Structured Logging
+
+- Every request gets `X-Correlation-ID` (reuse client-supplied `X-Correlation-ID`/`X-Request-ID` or generate `req-<millis>-<counter>`).
+- Middleware `correlation_middleware` stores it in `request.extensions`, echoes it in response headers, and injects `correlation_id` into the tracing span (`logging::fields::CORRELATION_ID`).
+- All operator logs include `correlation_id` so a single ID links REST → controller → k8s API calls.
+- Downstream HTTP calls MUST forward `X-Correlation-ID` for end-to-end tracing.
+
+```bash
+curl -H "X-Correlation-ID: my-trace-123" https://operator:9090/api/v1/nodes -i
+# response header: X-Correlation-ID: my-trace-123
+```
+
+### Graceful Degradation (Partial Failures)
+
+When a request fans out (e.g. listing nodes across namespaces), failures in a subset return `207 Multi-Status` instead of `500`:
+
+```json
+{
+  "error": "err_partial_degradation",
+  "error_code": "ERR_PARTIAL_DEGRADATION",
+  "message": "2 of 3 namespaces succeeded; failures in stellar-prod",
+  "correlation_id": "req-...",
+  "details": {"failed":["stellar-prod"],"succeeded":["stellar-dev","stellar-staging"],"degraded":true},
+  "degraded": true
+}
+```
+
+Callers should treat `degraded:true` as warning, not fatal.
+
+### HTTP Code Mapping
+
+`src/middleware/degradation.rs::map_error_to_api_code` and `src/rest_api/dto.rs::ApiErrorCode::http_status()` are the single sources of truth. All handlers MUST use `ErrorResponse::structured(code, msg, correlation_id)` or `ErrorResponse::degraded(...)`.
+
 ## General Troubleshooting
 When encountering these errors, the primary source of detailed insight will be the operator logs. You can fetch them with:
 ```bash
 kubectl logs -n stellar-system deploy/stellar-operator
 ```
 Look for the `[SK8S-XXX]` prefix in the logging output for rapid filtering.
+Filter by correlation ID: `kubectl logs -n stellar-system deploy/stellar-operator | grep "correlation_id=req-..."`.
 
 ---
 
-*Last verified: 2026-07-29 (pipeline log redaction + rustfmt CI wave).*
+*Last verified: 2026-08-29 (structured error handling + mTLS + benchmark suites wave).*

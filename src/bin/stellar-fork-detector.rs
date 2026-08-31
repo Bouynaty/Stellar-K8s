@@ -108,10 +108,22 @@ struct Args {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    tracing_subscriber::registry()
+    // Same OTel wiring `stellar_k8s::logging::init_binary_subscriber` gives
+    // every other sidecar (issue #1369) — kept inline here, rather than
+    // switching to that helper, so the existing `--log-level` filter string
+    // (which may be a full directive like "info,foo=debug", not just a bare
+    // level) keeps working exactly as before.
+    let use_otel = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok();
+    let registry = tracing_subscriber::registry()
         .with(fmt::layer().json())
-        .with(EnvFilter::new(&args.log_level))
-        .init();
+        .with(EnvFilter::new(&args.log_level));
+    if use_otel {
+        let otel_layer = stellar_k8s::telemetry::init_telemetry(&registry);
+        let trace_id_layer = stellar_k8s::telemetry::trace_id_layer();
+        registry.with(otel_layer).with(trace_id_layer).init();
+    } else {
+        registry.init();
+    }
 
     // Use default anchors if none provided.
     let anchor_endpoints = if args.anchors.is_empty() {

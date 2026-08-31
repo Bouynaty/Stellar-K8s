@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v1.1.0 (2026-08-30) [minor]
+
+• Merge pull request #1457 from Divine-designs/feat/stellar-wave-dr-ha
+✨ feat: DR/HA wave — chaos drills, log aggregation, compliance scanning, federation (#1412 #1411 #1410 #1409)
+• Merge pull request #1458 from euniceotowo/feat/1258-metrics-monitoring-dashboards
+✨ feat(monitoring): implement comprehensive metrics and monitoring dashboards
+✨ feat: add multi-cluster federation sample, secret sync, and failover runbook (#1409)
+✨ feat: add organisational compliance policies and standard CSV compliance reports (#1410)
+🐛 fix: define and mount the CRI parser so the Fluent Bit log shipper starts (#1411)
+✨ feat: honour scheduled CronJob env vars in chaos drills and add results tracking (#1412)
+✨ feat(monitoring): implement comprehensive metrics and monitoring dashboards
+• - Add monitoring setup guide with local dev and production deployment
+• - Add operational runbook with health checks and troubleshooting
+• - Implement monitoring status endpoint with health indicators
+• - Add docker-compose monitoring stack overlay
+• - Create Prometheus, Grafana, AlertManager configurations
+• - Add monitoring status DTOs and handlers
+• - Add comprehensive dashboard integration tests
+• - Update REST API with monitoring health check route
+• Closes #1258
+
+
+## Chart v1.0.0 (2026-08-30) [major]
+
+
+
+
 ## [unreleased]
 
 ### Added

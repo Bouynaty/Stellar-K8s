@@ -92,6 +92,20 @@ impl ApiErrorCode {
             Self::ErrReconcileStalled => "ERR_RECONCILE_STALLED",
         }
     }
+
+    /// HTTP status for each error code — ensures consistent mapping across all REST endpoints
+    pub fn http_status(&self) -> axum::http::StatusCode {
+        match self {
+            Self::ErrNotFound => axum::http::StatusCode::NOT_FOUND,
+            Self::ErrBadRequest => axum::http::StatusCode::BAD_REQUEST,
+            Self::ErrUnauthorized => axum::http::StatusCode::UNAUTHORIZED,
+            Self::ErrForbidden => axum::http::StatusCode::FORBIDDEN,
+            Self::ErrInternalServerError => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ErrServiceUnavailable => axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            Self::ErrPartialDegradation => axum::http::StatusCode::MULTI_STATUS,
+            Self::ErrReconcileStalled => axum::http::StatusCode::SERVICE_UNAVAILABLE,
+        }
+    }
 }
 
 /// Structured error response for all REST API endpoints
@@ -133,7 +147,12 @@ impl ErrorResponse {
         }
     }
 
-    pub fn degraded(code: ApiErrorCode, message: &str, details: serde_json::Value, correlation_id: Option<String>) -> Self {
+    pub fn degraded(
+        code: ApiErrorCode,
+        message: &str,
+        details: serde_json::Value,
+        correlation_id: Option<String>,
+    ) -> Self {
         Self {
             error: code.as_str().to_lowercase(),
             error_code: code.as_str().to_string(),

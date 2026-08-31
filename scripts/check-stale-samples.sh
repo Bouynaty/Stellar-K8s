@@ -129,7 +129,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 if [[ $ERRORS -gt 0 ]]; then
     echo ""
     echo "❌ Sample manifest check FAILED"
-    echo "   Fix the errors above or run: make regenerate-samples"
+    echo "   Fix the errors above and update the affected sample manifest under config/samples/"
     exit 1
 elif [[ $WARNINGS -gt 0 ]]; then
     echo ""

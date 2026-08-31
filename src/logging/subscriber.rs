@@ -74,23 +74,41 @@ fn env_filter_for(config: &SubscriberConfig) -> EnvFilter {
 fn init_simple(config: &SubscriberConfig) {
     let env_filter = env_filter_for(config);
     let redacting = RedactingFields::new();
+    // Same gate `init_operator_stack` uses: opt-in via config, and only
+    // active once an OTLP collector endpoint is actually configured, so
+    // binaries that don't set OTEL_EXPORTER_OTLP_ENDPOINT see no behavior
+    // change (see issue #1369 — every long-running service binary, not
+    // just the reconciler, now requests this via `init_binary_subscriber`).
+    let use_otel = config.otel && std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok();
     match config.format {
         LogOutputFormat::Json => {
             let fmt_layer = fmt::layer().json().with_target(true).fmt_fields(redacting);
-            tracing_subscriber::registry()
+            let registry = tracing_subscriber::registry()
                 .with(env_filter)
-                .with(fmt_layer)
-                .init();
+                .with(fmt_layer);
+            if use_otel {
+                let otel_layer = crate::telemetry::init_telemetry(&registry);
+                let trace_id_layer = crate::telemetry::trace_id_layer();
+                registry.with(otel_layer).with(trace_id_layer).init();
+            } else {
+                registry.init();
+            }
         }
         LogOutputFormat::Pretty => {
             let fmt_layer = fmt::layer()
                 .pretty()
                 .with_target(true)
                 .fmt_fields(redacting);
-            tracing_subscriber::registry()
+            let registry = tracing_subscriber::registry()
                 .with(env_filter)
-                .with(fmt_layer)
-                .init();
+                .with(fmt_layer);
+            if use_otel {
+                let otel_layer = crate::telemetry::init_telemetry(&registry);
+                let trace_id_layer = crate::telemetry::trace_id_layer();
+                registry.with(otel_layer).with(trace_id_layer).init();
+            } else {
+                registry.init();
+            }
         }
     }
 }
@@ -213,6 +231,7 @@ pub fn init_binary_subscriber(level: Level, format: LogOutputFormat) -> Subscrib
     init_subscriber(SubscriberConfig {
         level,
         format,
+        otel: true,
         ..Default::default()
     })
 }

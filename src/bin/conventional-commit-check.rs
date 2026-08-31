@@ -23,13 +23,12 @@
 //!   conventional-commit-check "fix(auth): prevent race condition in login"
 //!   conventional-commit-check --file .git/COMMIT_EDITMSG
 
+use regex::Regex;
 use std::path::Path;
 use std::process;
-use regex::Regex;
 
 const ALLOWED_TYPES: &[&str] = &[
-    "feat", "fix", "docs", "style", "refactor", "test", "chore",
-    "perf", "ci", "build", "revert",
+    "feat", "fix", "docs", "style", "refactor", "test", "chore", "perf", "ci", "build", "revert",
 ];
 
 /// Validate conventional commit format
@@ -37,9 +36,9 @@ fn validate_commit(message: &str) -> Result<(String, Option<String>, String), St
     let trimmed = message.trim();
 
     // Pattern: type(optional scope): description
-    let pattern = r"^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?: .+";
-    let regex = Regex::new(pattern)
-        .map_err(|e| format!("Regex error: {}", e))?;
+    let pattern =
+        r"^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\([^)]+\))?: .+";
+    let regex = Regex::new(pattern).map_err(|e| format!("Regex error: {}", e))?;
 
     if !regex.is_match(trimmed) {
         return Err(format!(
@@ -95,11 +94,10 @@ fn main() {
     }
 
     let message = if args.len() == 3 && args[1] == "--file" {
-        std::fs::read_to_string(&args[2])
-            .unwrap_or_else(|e| {
-                eprintln!("Failed to read file {}: {}", args[2], e);
-                process::exit(1);
-            })
+        std::fs::read_to_string(&args[2]).unwrap_or_else(|e| {
+            eprintln!("Failed to read file {}: {}", args[2], e);
+            process::exit(1);
+        })
     } else {
         args[1..].join(" ")
     };
@@ -160,7 +158,8 @@ mod tests {
 
     #[test]
     fn test_multiline() {
-        let result = validate_commit("feat(tenant): add namespace isolation\n\nDetailed description");
+        let result =
+            validate_commit("feat(tenant): add namespace isolation\n\nDetailed description");
         assert!(result.is_ok());
     }
 }
