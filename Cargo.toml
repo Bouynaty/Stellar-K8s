@@ -211,15 +211,4 @@ path = "src/bin/stellar-fork-detector.rs"
 required-features = ["rest-api", "metrics"]
 
 [workspace]
-members = ["wasm-plugins"]
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
-panic = "abort"
-
-[profile.release.package.stellar-wasm-cache]
-opt-level = "z"
-strip = true
