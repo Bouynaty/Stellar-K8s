@@ -50,3 +50,75 @@ select, .tool-button { min-height: 38px; border: 1px solid #344350; border-radiu
 .node-status.cell-unknown { background: #6b7684; color: white; }
 @media (max-width: 900px) { .app-shell { padding: 22px 18px 32px; }.topbar { align-items: flex-start; flex-direction: column; }.toolbar { width: 100%; align-items: stretch; }.select-wrap { flex: 1; }.workspace { grid-template-columns: 1fr; }.inspector { min-height: 260px; }.empty-inspector { padding-top: 30px; }.scene-host { height: 58vh; min-height: 360px; }.matrix-host { height: 58vh; min-height: 360px; } }
 @media (max-width: 560px) { .metric-strip { grid-template-columns: repeat(2, 1fr); }.metric { padding: 16px 8px 16px 0; margin-right: 8px; }.metric strong { font-size: 21px; }.panel-heading { align-items: flex-start; flex-direction: column; justify-content: center; }.toolbar { flex-direction: column; }.scene-host { min-height: 320px; } }
+
+/* ── View tab controls ─────────────────────────────────────────────────── */
+.view-tabs { display: flex; gap: 4px; }
+.tool-button--active { background: #1a3028; border-color: #39d98a; color: #39d98a; }
+
+/* ── Heatmap section wrapper ───────────────────────────────────────────── */
+.heatmap-section { margin-top: 18px; }
+
+/* ── HeatmapGrid root ──────────────────────────────────────────────────── */
+.heatmap-root { border: 1px solid #273340; background: #101923; border-radius: 8px; padding: 24px; }
+
+/* ── Heatmap header ────────────────────────────────────────────────────── */
+.hm-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid #273340; }
+.hm-title { margin: 6px 0 4px; font-size: clamp(18px, 3vw, 28px); font-weight: 600; line-height: 1.1; }
+.hm-subtitle { margin: 0; color: #91a0ad; font-size: 13px; }
+.hm-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.hm-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #91a0ad; }
+
+/* ── Summary strip ─────────────────────────────────────────────────────── */
+.hm-summary-strip { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid #273340; margin-bottom: 16px; }
+.hm-tile { display: flex; flex-direction: column; gap: 4px; padding: 16px 20px 14px 0; border-right: 1px solid #273340; margin-right: 20px; min-width: 80px; }
+.hm-tile:last-child { border: 0; }
+.hm-tile--muted strong { color: #7f92a3; }
+.hm-tile-label { color: #91a0ad; font-size: 11px; }
+.hm-tile strong { font: 500 22px 'DM Mono', monospace; }
+
+/* ── Legend ────────────────────────────────────────────────────────────── */
+.hm-legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 0 14px; font-size: 11px; color: #aebbc6; text-transform: capitalize; }
+.hm-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.hm-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.hm-swatch--missing { background: #1e3a4a; opacity: 0.35; border: 1px dashed #56677b; }
+
+/* ── SVG grid wrapper ──────────────────────────────────────────────────── */
+.hm-grid-wrap { margin-top: 4px; overflow-x: hidden; }
+.hm-svg { display: block; overflow: visible; }
+.hm-empty { padding: 48px 0; color: #7f92a3; font-size: 13px; text-align: center; }
+
+/* ── Tooltip ───────────────────────────────────────────────────────────── */
+.heatmap-tooltip {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  max-width: 260px;
+  background: #0d1820;
+  border: 1px solid #344350;
+  border-radius: 6px;
+  padding: 12px 14px;
+  pointer-events: none;
+  box-shadow: 0 4px 20px #00000066;
+  font-size: 12px;
+}
+.ht-header { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #273340; border-left: 3px solid transparent; padding-left: 8px; }
+.ht-id { display: block; color: #e8edf2; font: 500 13px 'DM Mono', monospace; overflow-wrap: anywhere; }
+.ht-badge { display: inline-block; margin-top: 5px; padding: 2px 6px; border-radius: 3px; font: 500 10px 'DM Mono', monospace; text-transform: uppercase; }
+.ht-badge--missing { background: #344350; color: #91a0ad; }
+.ht-metrics { margin: 0; }
+.ht-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid #1c2b38; }
+.ht-row:last-child { border: 0; }
+.ht-row dt { color: #7f92a3; }
+.ht-row dd { margin: 0; font: 12px 'DM Mono', monospace; text-align: right; }
+
+/* ── Responsive adjustments ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hm-header { flex-direction: column; }
+  .hm-controls { align-items: flex-start; }
+  .hm-summary-strip { gap: 0; }
+  .hm-tile { padding: 12px 14px 10px 0; min-width: 70px; }
+}
+@media (max-width: 560px) {
+  .heatmap-root { padding: 14px 12px; }
+  .view-tabs { flex-direction: row; }
+}
