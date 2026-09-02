@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.1.0 (2026-09-02) [minor]
+
+• Merge pull request #193 from Deevhyne1023/security/issue-80-backend-automated-mtls-certificate-generation
+✨ feat: automated mTLS certificate generation and hot-reload engine
+• Merge branch 'main' into security/issue-80-backend-automated-mtls-certificate-generation
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+• security: ## [Backend] Automated mTLS Certificate Generation & Hot-Rel (#80)
+
+
 ## Chart v2.0.0 (2026-09-02) [major]
 
 
