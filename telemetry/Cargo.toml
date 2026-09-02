@@ -1,0 +1,9 @@
+[package]
+name = "telemetry"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prometheus = "0.13"
+lazy_static = "1.4"
+anyhow = "1.0"
