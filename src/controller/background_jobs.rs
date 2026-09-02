@@ -1,3 +1,15 @@
+// Copyright 2024 Stellar-K8s Contributors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 //! Background job tracking and monitoring dashboard.
 //!
 //! Provides an in-memory registry of background jobs (reconcile loops, archive
@@ -78,8 +90,7 @@ pub enum JobKind {
     CrossClusterCheck,
     /// Webhook delivery retry.
     WebhookDelivery,
-    /// Leader election lease acquisition and renewal.
-    LeaderElection,
+
     /// Any other job not covered above.
     Other(String),
 }
@@ -308,7 +319,7 @@ impl JobRegistry {
                         JobKind::BlueGreenRollout => "blue_green_rollout",
                         JobKind::CrossClusterCheck => "cross_cluster_check",
                         JobKind::WebhookDelivery => "webhook_delivery",
-                        JobKind::LeaderElection => "leader_election",
+
                         JobKind::Other(s) => s.as_str(),
                     };
                     kind_str == k
