@@ -24,6 +24,7 @@ function streamUrl(source) {
 function App() {
   const [view, setView] = useState(initialView);
   const [source, setSource] = useState(initialSource);
+  const [view, setView] = useState('topology');
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
   const [selected, setSelected] = useState(null);
@@ -107,10 +108,6 @@ function App() {
           <p>{view === 'heatmap' ? 'Worker node CPU &amp; Memory heatmap.' : 'Multi-cluster quorum health.'}</p>
         </div>
 
-        </div>
-      </header>
-
-      {view === 'topology' ? (
         <>
           <section className="metric-strip" aria-label="Network summary">
             <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
@@ -136,6 +133,7 @@ function App() {
                 <Legend color="red" label="Falling behind" />
               </div>
             </div>
+
 
     </main>
   );
