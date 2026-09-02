@@ -3,6 +3,143 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.3.0 (2026-09-02) [minor]
+
+• Merge pull request #173 from temisan0x/feat/issue-52-alert-rule-builder
+• Feat/issue 52 alert rule builder
+• Merge branch 'main' into feat/issue-52-alert-rule-builder
+• Merge pull request #172 from Davizemons/feat/frontend-comparison-dashboard
+✨ feat(frontend): add multi-cluster comparison dashboard
+• Merge branch 'main' into feat/frontend-comparison-dashboard
+• Merge pull request #171 from jbeloved700/feat/ttl-bumper-contract
+✨ feat(contracts): add Soroban TTL auto-bump maintenance contract
+• Merge branch 'main' into feat/ttl-bumper-contract
+• Merge pull request #168 from Salome-Agu/feat/escrow-vault-contract
+✨ feat(escrow-vault): add proof-verified non-custodial escrow & collateral vault contract
+• Merge pull request #175 from sudo-robi/feature/flamegraph-dr-dashboard
+• Implement flamegraph and DR Command Center dashboard
+• Merge branch 'main' into feature/flamegraph-dr-dashboard
+• Merge pull request #176 from Techman-devv/feat/staking-vault-contract
+✨ feat(contracts): add Decentralized Staking & Yield Distribution Engine (#73)
+• Merge pull request #178 from mubby4/issue-9-topology-visualizer
+• Build WebGL topology visualizer
+• Merge pull request #179 from buki70/feat/visual-topology-configurator
+✨ feat(frontend): add visual drag-and-drop topology configurator
+• Merge branch 'main' into feat/visual-topology-configurator
+• Merge branch 'main' into feat/frontend-comparison-dashboard
+• Merge branch 'upstream/main' into feat/staking-vault-contract
+• Merge remote-tracking branch 'agnesnaomiolm/main' into feat/issue-52-alert-rule-builder
+• # Conflicts:
+• #	Cargo.toml
+• Merge remote-tracking branch 'upstream/main' into feat/staking-vault-contract
+• # Conflicts:
+• #	Cargo.toml
+✨ feat(frontend): add visual drag-and-drop topology configurator
+• - Add frontend/configurator module (React 18 + TypeScript + Vite)
+• - topology_builder/types.ts: AZ, WorkerNode, PlacedStellarNode, TopologyState,
+•   ValidationResult, DragPayload type definitions
+• - topology_builder/topology_store.ts: React context + useReducer store with 12
+•   action types; createInitialState() seeds 3-zone us-east layout
+• - topology_builder/quorum_validator.ts: validateTopology() with 4 errors
+•   (INSUFFICIENT_ZONES, ZONE_MISSING_VALIDATOR, QUORUM_BELOW_THRESHOLD,
+•   SINGLE_ZONE_VALIDATORS) and 4 warnings (UNEVEN_DISTRIBUTION,
+•   NO_HISTORY_ARCHIVE, MISSING_QUORUM_SET, SEED_SECRET_MISSING)
+• - WorkerNode.tsx: draggable worker node tile with HTML5 native DnD
+• - AvailabilityZone.tsx: drop-zone container with drag-over glow and
+•   per-zone validation messages
+• - StellarNodePlacer.tsx: node-type palette with inline config form
+• - TopologyBuilder.tsx: main orchestrator with live validation badge and
+•   manifest modal with clipboard copy
+• - frontend/utils/manifest_builder.ts: generates valid stellar.org/v1alpha1
+•   StellarNode YAML + PodDisruptionBudget using pure template literals
+• - 43 tests passing (21 quorum_validator + 22 manifest_validation)
+• - TypeScript strict mode with zero errors
+• Add topology visualizer workspace
+✨ feat(contracts): add Decentralized Staking & Yield Distribution Engine (#73)
+• Implements the Synthetix/Uniswap StakingRewards accumulator model for
+• Soroban smart contracts as described in issue #73.
+• ## Key modules
+• - contracts/staking-vault/src/lib.rs — contract entry-points:
+•   initialize, deposit, withdraw, claim_reward, compound,
+•   emergency_withdraw, set_paused, and view functions.
+• - contracts/staking-vault/src/reward.rs — pure reward math:
+•   compute_reward_per_token, compute_earned, compute_new_reward_rate.
+• ## Algorithm
+• Reward tracking uses the standard per-token accumulator:
+•   reward_per_token += (Δt × rate × PRECISION) / total_staked
+•   user_earned      += stake × (rpt_now - rpt_paid) / PRECISION
+• REWARD_PRECISION = 1e18 eliminates precision loss for small stake
+• weights or short block durations, satisfying the zero-rounding-drift
+• requirement in the issue.
+• ## Features
+• - Continuous reward accrual with REWARD_PRECISION = 1e18
+• - Deposit / Withdraw with automatic reward checkpoint on every call
+• - Claim rewards at any time
+• - Compound rewards back into stake (same-token pools)
+• - Emergency Withdraw — bypasses reward math when contract is paused,
+•   guaranteeing capital recovery
+• - Admin pause / unpause
+• ## Tests (13/13 pass)
+• - Proportional reward distribution across multiple stakers
+• - Reward caps at period_finish (no accrual after deadline)
+• - Balance solvency invariant: no staker earns more than total emitted
+• - Zero-stake earns zero
+• - Stored rewards accumulate correctly across checkpoints
+• - Rounding no-drift: 100 incremental checkpoints == single computation
+• - New reward rate rollover when period is still active
+• Closes #73
+• Implement flamegraph and DR Command Center dashboard
+📝 ci: validate exported PrometheusRule YAML with promtool (#52)
+• Adds a dedicated workflow that runs on changes under frontend/builder/:
+• - npm test (29 unit tests: PromQL generator + YAML exporter)
+• - npm run build (verifies React/JSX correctness)
+• - Generates 5 complex sample alert conditions via the real
+•   yamlExporter.js code path (multi-comparison AND/OR, increase()
+•   on counters, various severities)
+• - Validates all 5 against promtool check rules
+• Satisfies the ticket's validation requirement without needing
+• promtool installed locally.
+✨ feat(alerts): fix PromQL preview wrap, default threshold, and hardened Prometheus test error handling
+• - promql-preview now wraps long expressions instead of horizontal-scrolling
+• - Default comparison threshold changed from 0 to 3, matching the real
+•   fork-detector-alerts.yaml convention, so first-time users see a
+•   realistic example
+• - Test against Prometheus button now checks response content-type
+•   before parsing JSON, producing a clear 'could not reach Prometheus'
+•   message instead of a raw parse exception when no instance is running
+✨ feat(frontend): add multi-cluster comparison dashboard
+🐛 fix: remove invalid panic/lto keys from package-level profile override
+• Cargo rejects panic and lto in [profile.release.package.*] overrides —
+• only opt-level, codegen-units, debug, debug-assertions, overflow-checks,
+• and strip are valid there. This was blocking cargo build entirely.
+• Unrelated to #52; found while setting up the alert rule builder.
+✨ feat(contracts): add Soroban TTL auto-bump maintenance contract
+• Implements the ttl-bumper Soroban contract for automated keeper-bot TTL
+• maintenance of Stellar contract storage entries.
+• Key modules:
+• - contracts/ttl-bumper/src/lib.rs  – main contract (initialize, register,
+•   deregister, bump_batch, bounty deposit/withdraw, view helpers)
+• - contracts/ttl-bumper/src/registry.rs – persistent registry of
+•   (contract_id, threshold, extension, owner) entries; DataKey enum,
+•   RegistryEntry struct, and all CRUD helpers
+• - contracts/ttl-bumper/src/test.rs – 32 integration tests covering the
+•   full keeper workflow, key-aging simulation, bounty exhaustion safety,
+•   registry capacity limits, and auth guards
+• Contract features:
+• - Registry tracks up to 256 contract keys requiring periodic TTL bumping
+• - bump_batch() extends up to 50 entries in a single transaction
+• - Keeper bots receive XLM bounties only for keys actually bumped
+• - Bounty pool cannot be exhausted below zero; bumps succeed even when
+•   the pool is empty (fail-open for TTL extension, fail-safe for bounties)
+• - Admin-only bounty pool management (deposit, withdraw, set_bounty)
+• - Per-entry auth: only the registered owner or admin can deregister
+• Workspace: added contracts/ttl-bumper as a workspace member in Cargo.toml.
+• All 32 tests pass; cargo build succeeds.
+✨ feat(escrow-vault): add proof-verified non-custodial escrow & collateral vault contract
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+
+
 ## Chart v2.2.0 (2026-09-02) [minor]
 
 • Merge pull request #183 from kalebosas2-dev/feat/issue-7-contract-develop-zero-knowledge-merkle-proof
