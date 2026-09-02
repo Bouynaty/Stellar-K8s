@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
 
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
-import { buildQuorumMatrix, emptyMatrix, matrixStats } from '../matrix/quorumMatrixModel.js';
+
 import './styles.css';
 
 const EMPTY_GRAPH = materialize(createStreamState());

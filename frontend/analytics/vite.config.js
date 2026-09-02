@@ -41,4 +41,9 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollOptions: {
+      external: ['d3'],
+    },
+  },
 });
