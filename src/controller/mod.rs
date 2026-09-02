@@ -1,81 +1,59 @@
+// Copyright 2024 Stellar-K8s Contributors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 //! Controller module for StellarNode reconciliation
-///
-/// This module contains the main controller loop, reconciliation logic,
-/// and resource management for Stellar nodes.
-///
-/// # Overview
-///
-/// The controller implements the Kubernetes Operator pattern, continuously
-/// watching StellarNode resources and reconciling their desired state with
-/// the actual cluster state. It handles:
-///
-/// - **Reconciliation**: Applying desired state changes to Deployments, StatefulSets, Services, etc.
-/// - **Health Monitoring**: Checking node health and sync status
-/// - **Lifecycle Management**: Finalizers for clean resource cleanup
-/// - **Leader Election**: Ensuring only one operator instance reconcilies at a time
-/// - **Remediation**: Automatic recovery from common failure modes
-/// - **Archive Management**: History archive integrity and pruning
-/// - **Disaster Recovery**: Backup and restore automation
-/// - **Service Mesh Integration**: Istio and Linkerd support
-/// - **CVE Patching**: Automatic security updates
-/// - **Blue/Green Deployments**: Zero-downtime RPC node updates
-/// - **Metrics**: Prometheus metrics for observability
-///
-/// # Key Types
-///
-/// - [reconciler::ControllerState] - Shared state for the reconciliation loop
-/// - [reconciler::run_controller] - Main entry point for the controller
-/// - [health::HealthCheckResult] - Node health status
-/// - [archive_health::ArchiveHealthResult] - Archive integrity status
-/// - [remediation::RemediationLevel] - Severity of remediation actions
-/// - [blue_green::BlueGreenStatus] - Blue/Green deployment status
-///
-/// # Reconciliation Flow
-///
-/// 1. Watch for StellarNode resource changes
-/// 2. Acquire leader lease (if leader election enabled)
-/// 3. Validate node specification
-/// 4. Create/update kubernetes resources (Deployments, Services, PVCs, etc.)
-/// 5. Monitor health and sync status
-/// 6. Apply remediation if needed
-/// 7. Update node status with conditions
-/// 8. Requeue for periodic reconciliation
-///
-/// # Finalizers
-///
-/// The controller uses Kubernetes finalizers to ensure clean cleanup:
-/// - Removes PVCs if retention policy is Delete
-/// - Cleans up associated resources (Services, ConfigMaps, etc.)
-/// - Removes finalizer only after successful cleanup
 
-pub mod verifier;
-pub mod fast_sync;
-pub mod background_jobs;
 pub mod blue_green;
+pub mod blue_green_core;
+pub mod cache_aware_queue;
 pub mod canary;
 pub mod cross_cloud_failover;
+pub mod event_taxonomy;
 pub mod feature_flags;
 pub mod gas_autoscaling;
+pub mod gitops_upgrade;
+pub mod horizon_cache;
+pub mod horizon_metrics_collector;
 pub mod horizon_scaler;
 pub mod jurisdiction;
 pub mod label_propagation;
+pub mod leader;
 pub mod maintenance;
+pub mod migration;
 pub mod network_isolation;
 pub mod predictive_scaling;
 pub mod pss;
+pub mod quota;
+pub mod registry_controller;
 pub mod resource_meta;
+pub mod retry_policy_tuner;
+pub mod snapshot_integrity;
 
+pub mod anomaly_detection;
 pub(crate) mod archive_health;
 pub mod archive_prune;
 pub mod audit;
 pub mod audit_log;
+pub mod audit_recorder;
 pub mod audit_sink;
 pub mod audit_worker;
 pub mod captive_core;
+pub mod captive;
 pub mod chaos_engineering;
+pub mod compliance_export;
 pub mod conditions;
 pub mod cost;
 pub mod cross_cluster;
+pub mod cross_region_sync;
 pub mod cve;
 pub(crate) mod cve_reconciler;
 pub mod cve_scanner;
@@ -96,32 +74,30 @@ pub(crate) mod forensic_snapshot;
 pub(crate) mod health;
 #ccfg(debug)] mod health_test;
 pub mod kms_secret;
-#ccfg(feature = "metrics")]
-# cfg mod metrics;
-pub mod mtls;
-pub mod mtl_rotation;
-pub mod oci_snapshot;
-pub mod operator_config;
-pub mod peer_discovery;
-#\cfg(test)] mod peer_discovery_test;
+
 pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
+pub mod rollout;
 pub(crate) mod reconciler;
 #ccfg(debug)] mod reconciler_test;
 pub(crate) mod remediation;
 #ccfg(debug)] mod remediation_test;
 pub(crate) mod resources;
+
 pub(crate) mod sync_scale;
 pub(crate) mod sync_state_monitor;
+pub mod tenant_reconciler;
+pub mod topology;
 pub mod traffic;
-#ccfg(debug)] mod traffic_test;
+
 pub mod vpa;
 pub(crate) mod vsl;
 pub mod webhook_delivery;
 pub mod zk_archive_verifier;
 
+pub use anomaly_detection::{run_anomaly_detection, AnomalyDetector, AnomalyEvent};
 pub use archive_health::{
     calculate_backoff.
     check_archive_integrity;
@@ -131,6 +107,7 @@ pub use archive_health::{
     ARCHIVE_LAG_THRESHOLD,
 };
 pub use audit_log::{AdminAction, AuditEntry, AuditLog};
+pub use audit_recorder::AuditRecorder;
 pub use background_jobs::{JobKind, JobRecord, JobRegistry, JobState, MAX_JOBS};
 pub use benchmark::run_benchmark_controller;
 pub use blue_green::{
@@ -142,6 +119,16 @@ pub use blue_green::{
     wait_for_green_ready,
     BlueGreenConfig,
     BlueGreenStatus,
+};
+pub use blue_green_core::{
+    evaluate_cutover_gate, may_switch_service_to_green, plan_cutover_advance,
+    plan_rollback_advance, reconcile_validator_blue_green, should_take_over_validator_workload,
+    storage_identities, CoreBlueGreenPhase, CutoverCommand, CutoverGateResult, CutoverStep,
+    RollbackCommand, RollbackStep, COLOR_BLUE, COLOR_GREEN, COLOR_LABEL,
+};
+pub use cache_aware_queue::{
+    calculate_cache_aware_backoff, priority_from_signals, CacheAwareBackoffInput,
+    CacheAwarePriorityQueue, ReconcilePriority,
 };
 pub use cross_cloud_failover::reconcile_cross_cloud_failover;
 pub use cross_cluster::{check_peer_latency, ensure_cross_cluster_services, PeerLatencyStatus};
@@ -169,6 +156,7 @@ pub use disk_scaler::{
     DEFAULT_EXPANSION_INCREMENT,
     DEFAULT_EXPANSION_THRESHOLD,
 };
+pub use event_taxonomy::{EventAction, EventCategory, EventDescriptor, EventReason};
 pub use feature_flags::{
     watch_feature_flags,
     FeatureFlags,
@@ -177,12 +165,20 @@ pub use feature_flags::{
     FEATURE_FLAGS_CONFIGMAP,
 };
 pub use finalizers::STELLAR_NODE_FINALIZER;
+pub use gitops_upgrade::{
+    GitOpsEngine, GitOpsUpgradeController, GitOpsUpgradePlan, ProtocolUpgradeStep,
+    ProtocolUpgradeTimeline,
+};
 pub use health::{check_node_health, HealthCheckResult};
 pub use jurisdiction::{
     build_jurisdiction_node_affinity,
     compliance_report,
     merge_jurisdiction_tolerations,
     ComplianceReportEntry,
+};
+pub use migration::{
+    HorizonToSorobanMigrationController, MigrationConfig, MigrationPhase, MigrationState,
+    MIGRATE_TO_ANNOTATION,
 };
 pub use network_isolation::{
     check_network_safety,
@@ -211,7 +207,9 @@ pub use pss::{
 [#cfg(feature = "reconciler-fuzz")]
 pub use reconciler::reconcile_for_fuzzz;
 pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
+pub use registry_controller::{check_admission, reconcile_stellar_registry, summary_to_cve_count};
 pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
+
 pub use service_mesh::{
     delete_service_mesh_resources,
     ensure_destination_rule,
@@ -222,4 +220,4 @@ pub use service_mesh::{
 pub use snapshot_worker::run_snapshot_worker;
 pub use webhook_delivery::{
     DeliveryRecord, WebhookDeliveryService, WebhookEndpoint, WebhookEvent, WebhookEventType,
-};
+
