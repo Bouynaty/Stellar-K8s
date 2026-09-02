@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
 import ComparisonDashboard from './metrics/comparison/ComparisonDashboard.jsx';
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
+import { buildQuorumMatrix, emptyMatrix, matrixStats } from '../matrix/quorumMatrixModel.js';
 import './styles.css';
 
 const EMPTY_GRAPH = materialize(createStreamState());
@@ -25,12 +26,17 @@ function App() {
   const [selected, setSelected] = useState(null);
   const [paused, setPaused] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [view, setView] = useState('graph');
+  const [matrix, setMatrix] = useState(emptyMatrix());
+  const [hoverCell, setHoverCell] = useState(null);
   const streamStateRef = useRef(createStreamState());
   const renderFrameRef = useRef(null);
 
   useEffect(() => {
     streamStateRef.current = createStreamState();
     setGraph(EMPTY_GRAPH);
+    setMatrix(emptyMatrix());
+    setHoverCell(null);
     setSelected(null);
     setConnection('connecting');
     let socket;
@@ -40,7 +46,9 @@ function App() {
       renderFrameRef.current = requestAnimationFrame(() => {
         renderFrameRef.current = null;
         if (disposed) return;
-        setGraph(materialize(streamStateRef.current));
+        const nextGraph = materialize(streamStateRef.current);
+        setGraph(nextGraph);
+        setMatrix(buildQuorumMatrix(nextGraph));
         setLastUpdate(new Date());
       });
     };
@@ -80,6 +88,8 @@ function App() {
       falling: values.filter((value) => value === 'falling-behind').length,
     };
   }, [graph.nodes]);
+
+  const matrixSummary = useMemo(() => (matrix.size ? matrixStats(matrix) : null), [matrix]);
 
   const selectNode = useCallback((node) => setSelected(node), []);
   const sourceLabel = source === 'mock' ? 'Mock Kafka stream' : source === 'kafka' ? 'Kafka WebSocket bridge' : 'Operator WebSocket';
@@ -189,6 +199,54 @@ function NodeInspector({ node }) {
 
 function Detail({ label, value }) {
   return <div className="detail-row"><dt>{label}</dt><dd>{value}</dd></div>;
+}
+
+function CellInspector({ cell, matrix, summary }) {
+  if (!cell) {
+    return (
+      <div className="empty-inspector">
+        <div className="empty-icon">%</div>
+        <h2>Hover a matrix cell</h2>
+        <p>Validator trust metrics will appear here.</p>
+        {summary && (
+          <dl className="detail-list">
+            <Detail label="Validators" value={matrix.size.toLocaleString()} />
+            <Detail label="Interconnect cells" value={summary.cells.toLocaleString()} />
+            <Detail label="Avg trust" value={summary.avgTrust.toFixed(3)} />
+            <Detail label="Avg latency" value={`${summary.avgLatencyMs.toFixed(2)} ms`} />
+          </dl>
+        )}
+      </div>
+    );
+  }
+  const source = matrix.nodes[cell.sourceIndex];
+  const target = matrix.nodes[cell.targetIndex];
+  return (
+    <>
+      <div className="node-heading">
+        <span className={`node-status cell-${cell.agreement}`}>{cell.agreement}</span>
+        <h2>{source?.name} → {target?.name}</h2>
+        <code>{source?.publicKey}</code>
+        <code>{target?.publicKey}</code>
+      </div>
+      <dl className="detail-list">
+        <Detail label="Row validator" value={`${source?.name} (${source?.cluster})`} />
+        <Detail label="Column validator" value={`${target?.name} (${target?.cluster})`} />
+        <Detail label="Trust weight" value={cell.trust.toFixed(3)} />
+        <Detail label="Latency delta" value={`${cell.latencyMs.toFixed(2)} ms`} />
+        <Detail label="Row phase" value={source?.phase} />
+        <Detail label="Column phase" value={target?.phase} />
+        <Detail label="Row TPS" value={source?.tps ? source.tps.toFixed(1) : 'No sample'} />
+        <Detail label="Column TPS" value={target?.tps ? target.tps.toFixed(1) : 'No sample'} />
+      </dl>
+      <div className="inspector-note">
+        {cell.agreement === 'agreeing' ? 'Both validators report externalize.'
+          : cell.agreement === 'diverged' ? 'At least one validator is stalled.'
+            : cell.agreement === 'lagging' ? 'One side is behind the other.'
+              : cell.agreement === 'confirming' ? 'Both sides are confirming ballots.' : 'Phase not reported.'}
+      </div>
+    </>
+  );
 }
 
 createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>);
