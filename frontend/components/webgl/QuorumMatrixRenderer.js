@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cellColor } from '../../analytics/matrix/quorumMatrixModel.js';
+import { cellShade } from '../../analytics/matrix/quorumMatrixModel.js';
 
 export const MAX_INSTANCED_CELLS = 65535;
 
@@ -90,21 +90,28 @@ export class QuorumMatrixRenderer {
     this.camera.updateProjectionMatrix();
   }
 
+  // Uploads instance buffers and redraws only when the matrix or highlight
+  // changes, so an idle canvas costs nothing on the UI thread or GPU.
   render(matrix) {
+    const highlightKey = this.highlight ? `${this.highlight.sourceIndex}:${this.highlight.targetIndex}` : '';
+    const cacheKey = `${matrix.cells.length}:${matrix.size}:${highlightKey}`;
+    if (this.renderedKey === cacheKey) {
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+    this.renderedKey = cacheKey;
     this.size = matrix.size;
     const colorAttr = this.geometry.getAttribute('cellColor');
     const opacityAttr = this.geometry.getAttribute('cellOpacity');
     const instanceMatrix = this.geometry.getAttribute('instanceMatrix');
     const stride = this.cellSize + this.gap;
     const count = Math.min(matrix.cells.length, MAX_INSTANCED_CELLS);
-    const color = [0, 0, 0];
+    const half = (this.size - 1) / 2;
 
     for (let index = 0; index < count; index += 1) {
       const cell = matrix.cells[index];
-      const column = cell.targetIndex;
-      const row = cell.sourceIndex;
-      const x = (column - (this.size - 1) / 2) * stride;
-      const y = ((this.size - 1) / 2 - row) * stride;
+      const x = (cell.targetIndex - half) * stride;
+      const y = (half - cell.sourceIndex) * stride;
 
       const offset = index * 16;
       instanceMatrix.array.fill(0, offset, offset + 16);
@@ -115,11 +122,11 @@ export class QuorumMatrixRenderer {
       instanceMatrix.array[offset + 13] = y;
       instanceMatrix.array[offset + 15] = 1;
 
-      cellColor(cell, color);
       const isHighlighted = !this.highlight
         || (cell.sourceIndex === this.highlight.sourceIndex && cell.targetIndex === this.highlight.targetIndex);
-      colorAttr.array.set(color, index * 3);
-      opacityAttr.array[index] = isHighlighted ? 0.95 : 0.25;
+      const shade = cellShade(cell);
+      colorAttr.array.set(isHighlighted ? shade.color.map((c) => Math.min(1, c * 1.35)) : shade.color, index * 3);
+      opacityAttr.array[index] = isHighlighted ? 1 : shade.opacity;
     }
 
     instanceMatrix.needsUpdate = true;

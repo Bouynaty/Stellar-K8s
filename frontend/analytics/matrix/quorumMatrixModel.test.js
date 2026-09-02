@@ -1,10 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  SHADE_LATENCY_CEILING_MS,
+  SHADE_LATENCY_FLOOR_MS,
   agreementForPair,
   buildQuorumMatrix,
+  cellAt,
   cellForPosition,
   cellColor,
+  cellShade,
   emptyMatrix,
   matrixStats,
   trustWeight,
@@ -77,6 +81,37 @@ test('cellForPosition resolves matrix coordinates and rejects out of range', () 
   assert.equal(cellForPosition(matrix, 0, 0), null);
   assert.equal(cellForPosition(matrix, -1, 0), null);
   assert.equal(cellForPosition(matrix, 5, 5), null);
+});
+
+test('cellAt matches cellForPosition and caches lookups per matrix', () => {
+  const matrix = buildQuorumMatrix({
+    nodes: [{ id: 'A' }, { id: 'B' }],
+    edges: [{ source: 'A', target: 'B' }],
+  });
+  assert.equal(cellAt(matrix, 0, 1), cellForPosition(matrix, 0, 1));
+  assert.equal(cellAt(matrix, 0, 1), matrix.cells[0]);
+  assert.equal(cellAt(matrix, 1, 0), null);
+  assert.equal(cellAt(matrix, -1, -1), null);
+  assert.equal(cellAt(null, 0, 0), null);
+});
+
+test('cellShade dims by trust weight and latency delta', () => {
+  const healthy = { agreement: 'agreeing', trust: 1, latencyMs: 0 };
+  const weak = { agreement: 'agreeing', trust: 0, latencyMs: SHADE_LATENCY_CEILING_MS };
+  const healthyShade = cellShade(healthy);
+  const weakShade = cellShade(weak);
+  assert.deepEqual(healthyShade.color, cellColor(healthy));
+  assert.equal(healthyShade.opacity, 0.95);
+  assert.ok(weakShade.color[0] < healthyShade.color[0]);
+  assert.ok(weakShade.opacity >= 0.4 && weakShade.opacity < healthyShade.opacity);
+  assert.deepEqual(cellShade(null), cellShade({ agreement: 'unknown', trust: 0, latencyMs: 0 }));
+});
+
+test('cellShade clamps latency past the ceiling', () => {
+  const atCeiling = cellShade({ agreement: 'agreeing', trust: 0.5, latencyMs: SHADE_LATENCY_CEILING_MS });
+  const farBeyond = cellShade({ agreement: 'agreeing', trust: 0.5, latencyMs: SHADE_LATENCY_CEILING_MS * 10 });
+  assert.equal(atCeiling.opacity, farBeyond.opacity);
+  assert.ok(atCeiling.opacity >= 0.4);
 });
 
 test('cellColor maps agreement states to RGB triples', () => {

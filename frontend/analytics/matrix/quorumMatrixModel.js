@@ -147,9 +147,49 @@ export function matrixStats(matrix) {
   };
 }
 
+// Lookup maps are cached per matrix instance so hover picking stays O(1) even
+// for 10,000+ cell matrices; stale entries are released with the matrix.
+const lookupCache = new WeakMap();
+
+function lookupFor(matrix) {
+  let lookup = lookupCache.get(matrix);
+  if (!lookup) {
+    lookup = new Map();
+    for (const cell of matrix.cells) lookup.set(cell.sourceIndex * matrix.size + cell.targetIndex, cell);
+    lookupCache.set(matrix, lookup);
+  }
+  return lookup;
+}
+
+export function cellAt(matrix, sourceIndex, targetIndex) {
+  if (!matrix || sourceIndex < 0 || targetIndex < 0 || sourceIndex >= matrix.size || targetIndex >= matrix.size) return null;
+  return lookupFor(matrix).get(sourceIndex * matrix.size + targetIndex) ?? null;
+}
+
 export function cellForPosition(matrix, sourceIndex, targetIndex) {
-  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex >= matrix.size || targetIndex >= matrix.size) return null;
-  return matrix.cells.find((cell) => cell.sourceIndex === sourceIndex && cell.targetIndex === targetIndex) ?? null;
+  return cellAt(matrix, sourceIndex, targetIndex);
+}
+
+// Latency deltas above the floor start dimming a cell; at the ceiling the cell
+// reaches its minimum opacity. Trust weights scale brightness linearly so a
+// low-trust link reads dimmer at the same agreement status.
+export const SHADE_LATENCY_FLOOR_MS = 4;
+export const SHADE_LATENCY_CEILING_MS = 16;
+const SHADE_MAX_OPACITY = 0.95;
+const SHADE_MIN_OPACITY = 0.4;
+const SHADE_MIN_BRIGHTNESS = 0.55;
+
+export function cellShade(cell) {
+  const base = cellColor(cell);
+  const trust = clamp01(asNumber(cell?.trust, 0));
+  const brightness = SHADE_MIN_BRIGHTNESS + (1 - SHADE_MIN_BRIGHTNESS) * trust;
+  const latency = Math.max(0, asNumber(cell?.latencyMs, 0));
+  const span = SHADE_LATENCY_CEILING_MS - SHADE_LATENCY_FLOOR_MS;
+  const latencyPenalty = clamp01((latency - SHADE_LATENCY_FLOOR_MS) / span);
+  return {
+    color: base.map((channel) => Math.round(channel * brightness * 1000) / 1000),
+    opacity: SHADE_MAX_OPACITY - (SHADE_MAX_OPACITY - SHADE_MIN_OPACITY) * latencyPenalty,
+  };
 }
 
 export function emptyMatrix() {
