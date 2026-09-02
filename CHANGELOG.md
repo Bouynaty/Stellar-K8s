@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.4.0 (2026-09-02) [minor]
+
+• Merge pull request #185 from nancybexter90-ctrl/fix/issue-15-backend-dynamic-kafka-partitioning-for-scp
+✨ feat: dynamic Kafka partitioning for SCP analytics engine
+• Merge branch 'main' into fix/issue-15-backend-dynamic-kafka-partitioning-for-scp
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+🐛 fix: ## [Backend] Dynamic Kafka Partitioning for SCP Analytics En (#15)
+
+
 ## Chart v2.3.0 (2026-09-02) [minor]
 
 • Merge pull request #173 from temisan0x/feat/issue-52-alert-rule-builder
