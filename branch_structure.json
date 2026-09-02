@@ -1,0 +1,18 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "fix/issue-85-backend-horizon-database-migration-health-gate",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "fix/issue-85-backend-horizon-database-migration-health-gate": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "fix/issue-85-backend-horizon-database-migration-health-gate",
+    "origin"
+  ]
+}

@@ -1,3 +1,15 @@
+// Copyright 2024 Stellar-K8s Contributors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 //! Read-only replica pool management.
 //!
 //! Manages the full lifecycle of read replica resources:
@@ -28,6 +40,7 @@ use kube::{
 use std::collections::BTreeMap;
 use tracing::{info, instrument, warn};
 
+use super::resources::{merge_service_annotations, merge_service_metadata_labels};
 use crate::crd::{ReadReplicaConfig, StellarNode};
 use crate::error::Result;
 
@@ -223,19 +236,24 @@ async fn ensure_read_service(client: &Client, node: &StellarNode) -> Result<()> 
 }
 
 fn build_read_service(node: &StellarNode) -> Service {
-    let labels = read_pool_labels(node);
+    let mut labels = read_pool_labels(node);
+    merge_service_metadata_labels(&mut labels, node);
     let name = service_name(node);
+
+    let mut annotations =
+        BTreeMap::from([("stellar.org/read-pool".to_string(), "true".to_string())]);
+    merge_service_annotations(&mut annotations, node);
 
     Service {
         metadata: ObjectMeta {
             name: Some(name),
             namespace: node.namespace(),
             labels: Some(labels.clone()),
-            // Annotation so operators know this is a read-pool endpoint
-            annotations: Some(BTreeMap::from([(
-                "stellar.org/read-pool".to_string(),
-                "true".to_string(),
-            )])),
+            annotations: if annotations.is_empty() {
+                None
+            } else {
+                Some(annotations)
+            },
             owner_references: Some(vec![super::resources::owner_reference(node)]),
             ..Default::default()
         },
