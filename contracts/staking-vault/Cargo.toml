@@ -16,4 +16,4 @@ soroban-sdk = { version = "27.0.6", features = ["alloc"] }
 soroban-sdk = { version = "27.0.6", features = ["testutils", "alloc"] }
 proptest = "1.5"
 
-
+[workspace]
