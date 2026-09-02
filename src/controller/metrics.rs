@@ -86,12 +86,7 @@ pub static HORIZON_QUEUE_LENGTH: Lazy<Family<NodeLabels, Gauge<i64, AtomicI64>>>
 pub static ACTIVE_CONNECTIONS: Lazy<Family<NodeLabels, Gauge<i64, AtomicI64>>> =
     Lazy::new(Family::default);
 
-/// Gauge tracking the ratio (0.0-1.0) of Horizon API requests that returned a 4xx/5xx status
-pub static HORIZON_REQUEST_ERROR_RATIO: Lazy<Family<NodeLabels, Gauge<f64, AtomicU64>>> =
-    Lazy::new(Family::default);
 
-/// Gauge tracking average Horizon database query duration in seconds
-pub static HORIZON_DB_QUERY_DURATION_SECONDS: Lazy<Family<NodeLabels, Gauge<f64, AtomicU64>>> =
     Lazy::new(Family::default);
 
 /// Gauge tracking archive integrity status (1 = healthy, 0 = corrupted)
@@ -416,14 +411,7 @@ pub static REGISTRY: Lazy<Registry> = Lazy::new(|| {
         ACTIVE_CONNECTIONS.clone(),
     );
     registry.register(
-        "stellar_horizon_request_error_ratio",
-        "Ratio (0.0-1.0) of Horizon API requests that returned a 4xx/5xx status",
-        HORIZON_REQUEST_ERROR_RATIO.clone(),
-    );
-    registry.register(
-        "stellar_horizon_db_query_duration_seconds",
-        "Average Horizon database query duration in seconds",
-        HORIZON_DB_QUERY_DURATION_SECONDS.clone(),
+
     );
     registry.register(
         "stellar_archive_ledger_lag",

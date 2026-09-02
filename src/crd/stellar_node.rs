@@ -24,15 +24,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::types::{
-    AuditConfig, AutoscalingConfig, CertManagerConfig, Condition, CoreSyncState,
-    CrossClusterConfig, DisasterRecoveryConfig, DisasterRecoveryStatus, ExternalDatabaseConfig,
-    ForensicSnapshotConfig, GasAutoscalingConfig, GlobalDiscoveryConfig, HistoryMode,
-    HorizonConfig, IngressConfig, LabelPropagationConfig, LoadBalancerConfig, LogShipperConfig,
-    ManagedDatabaseConfig, NetworkPolicyConfig, NodeType, OciSnapshotConfig, PlacementConfig,
-    PodAntiAffinityStrength, PolicyConfig, ProbeConfig, RbacConfig, ResourceRequirements,
-    RestoreFromSnapshotConfig, RetentionPolicy, RolloutStrategy, SnapshotScheduleConfig,
-    SorobanConfig, StellarNetwork, StorageConfig, SyncStateScalingConfig, ValidatorConfig,
-    VpaConfig,
+
 };
 
 /// Structured validation error for `StellarNodeSpec`
@@ -1021,6 +1013,9 @@ impl StellarNodeSpec {
                     if let Some(ref gas) = autoscaling.gas_autoscaling {
                         validate_gas_autoscaling(gas, &mut errors);
                     }
+                    if let Some(ref queue) = autoscaling.queue_autoscaling {
+                        validate_queue_autoscaling(queue, &mut errors);
+                    }
                 }
                 if let Some(ingress) = &self.ingress {
                     validate_ingress(ingress, &mut errors);
@@ -1135,6 +1130,7 @@ fn validate_gas_autoscaling(gas: &GasAutoscalingConfig, errors: &mut Vec<SpecVal
         ));
     }
 }
+
 
 fn validate_ingress(ingress: &IngressConfig, errors: &mut Vec<SpecValidationError>) {
     if ingress.hosts.is_empty() {

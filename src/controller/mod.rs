@@ -61,6 +61,7 @@
 //! - Cleans up associated resources (Services, ConfigMaps, etc.)
 //! - Removes finalizer only after successful cleanup
 
+pub mod autoscaler;
 pub mod benchmark;
 pub mod blue_green;
 pub mod blue_green_core;
@@ -76,6 +77,7 @@ pub mod horizon_metrics_collector;
 pub mod horizon_scaler;
 pub mod jurisdiction;
 pub mod label_propagation;
+pub mod leader;
 pub mod maintenance;
 pub mod migration;
 pub mod network_isolation;
@@ -97,6 +99,7 @@ pub mod audit_sink;
 pub mod audit_worker;
 pub mod background_jobs;
 pub mod captive_core;
+pub mod captive;
 pub mod chaos_engineering;
 pub mod compliance_export;
 pub mod conditions;
@@ -138,6 +141,7 @@ pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
+pub mod rollout;
 pub(crate) mod reconciler;
 #[cfg(test)]
 mod reconciler_test;
@@ -243,7 +247,7 @@ pub use reconciler::reconcile_for_fuzz;
 pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
 pub use registry_controller::{check_admission, reconcile_stellar_registry, summary_to_cve_count};
 pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
-pub use retry_policy_tuner::{ErrorClass, RetryPolicy, RetryPolicyTuner};
+
 pub use service_mesh::{
     delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
     ensure_request_authentication, ensure_virtual_service,
