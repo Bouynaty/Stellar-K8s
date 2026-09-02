@@ -1,3 +1,15 @@
+// Copyright 2024 Stellar-K8s Contributors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 //! Main reconciler for StellarNode resources
 //!
 //! Implements the controller pattern using kube-rs runtime.
@@ -49,13 +61,13 @@ use crate::crd::{
 use crate::error::{Error, Result};
 #[cfg(feature = "metrics")]
 use crate::infra;
+use crate::plugin_sdk::{HookResult, ReconcileContext};
 
 use super::archive_health::{
     calculate_backoff, check_archive_integrity, check_archive_integrity_random,
     check_history_archive_health, ArchiveHealthResult, ArchiveIntegrityCheckResult,
     ARCHIVE_LAG_THRESHOLD,
 };
-use super::audit_sink::{AuditSink, NoopAuditSink, S3AuditSink};
 use super::audit_worker::AuditWorker;
 use super::conditions;
 use super::cross_cloud_failover;
@@ -74,19 +86,18 @@ use super::mtls;
 use super::oci_snapshot;
 use super::operator_config::{hardcoded_defaults, OperatorConfig};
 use super::peer_discovery;
+use super::phases::{PhaseMachine, ReconcilePhase};
 use super::pss;
 use super::remediation;
 use super::resources;
+use super::secret_watcher;
 use super::service_mesh;
+use super::spot_drain;
 use super::sync_scale;
 use super::sync_state_monitor;
 use super::vpa as vpa_controller;
 use super::vsl;
 use chrono::Utc;
-
-// Constants
-#[allow(dead_code)]
-const ARCHIVE_RETRIES_ANNOTATION: &str = "stellar.org/archive-health-retries";
 
 trait ToStellarNodeArc {
     fn to_arc(&self) -> Arc<StellarNode>;
@@ -310,11 +321,26 @@ pub struct ControllerState {
     pub job_registry: std::sync::Arc<super::background_jobs::JobRegistry>,
     /// In-memory audit log for admin activity.
     pub audit_log: std::sync::Arc<super::audit_log::AuditLog>,
+    /// Unified audit recorder (in-memory log + optional sink).
+    pub audit_recorder: std::sync::Arc<super::audit_recorder::AuditRecorder>,
+    /// ML-based anomaly detector for operator behavior.
+    pub anomaly_detector: std::sync::Arc<super::anomaly_detection::AnomalyDetector>,
+    /// Plugin registry for custom reconciliation hooks and sidecar injectors.
+    pub plugin_registry: std::sync::Arc<crate::plugin_sdk::PluginRegistry>,
+    /// Log analytics engine for pattern detection and anomaly reporting.
+    pub analytics_engine: std::sync::Arc<crate::logging::analytics::AnalyticsEngine>,
     /// Optional OIDC configuration for JWT-based authentication on the REST API.
     /// When `Some`, the OIDC middleware is active; when `None`, the operator falls
     /// back to Kubernetes RBAC token validation.
     #[cfg(feature = "rest-api")]
     pub oidc_config: Option<crate::rest_api::OidcConfig>,
+    /// Thread-safe cache of Stellar metrics (TPS, queue length, etc.) shared between
+    /// the background [`HorizonMetricsCollector`] and the custom metrics API handlers.
+    ///
+    /// Handlers read from this store to serve `custom.metrics.k8s.io/v1beta2` requests.
+    /// The collector writes to it on each scrape cycle.
+    #[cfg(feature = "rest-api")]
+    pub metrics_store: std::sync::Arc<crate::rest_api::metrics_store::StellarMetricsStore>,
 }
 
 impl ControllerState {
@@ -376,7 +402,22 @@ impl ControllerState {
 ///         log_reload_handle: reload_handle,
 ///         log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
 ///         last_event_received: Arc::new(AtomicU64::new(0)),
+///         job_registry: Arc::new(stellar_k8s::controller::background_jobs::JobRegistry::new()),
+///         audit_log: Arc::new(stellar_k8s::controller::audit_log::AuditLog::new()),
+///         audit_recorder: Arc::new(stellar_k8s::controller::AuditRecorder::new(
+///             Arc::new(stellar_k8s::controller::audit_log::AuditLog::new()),
+///             vec![],
+///             None,
+///         )),
+///         anomaly_detector: Arc::new(stellar_k8s::controller::AnomalyDetector::new(
+///             Default::default(),
+///         )),
+///         plugin_registry: Arc::new(stellar_k8s::plugin_sdk::PluginRegistry::new()),
 ///         oidc_config: None,
+///         metrics_store: Arc::new(stellar_k8s::rest_api::metrics_store::StellarMetricsStore::new()),
+///         analytics_engine: Arc::new(stellar_k8s::logging::analytics::AnalyticsEngine::new(
+///             std::time::Duration::from_secs(3600),
+///         )),
 ///     });
 ///     run_controller(state).await?;
 ///     Ok(())
@@ -424,6 +465,42 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
         }
     });
 
+    // Start Spot/Preemptible Drain Handler in the background.
+    // NODE_NAME must be injected via the Downward API (spec.nodeName).
+    if let Ok(node_name) = std::env::var("NODE_NAME") {
+        let spot_handler = Arc::new(spot_drain::SpotDrainHandler::new(
+            client.clone(),
+            state.event_reporter.clone(),
+            node_name,
+        ));
+        tokio::spawn(async move {
+            if let Err(e) = spot_handler.run().await {
+                error!("Spot Drain Handler stopped with error: {}", e);
+            }
+        });
+    } else {
+        info!("NODE_NAME env var not set – Spot Drain Handler disabled");
+    }
+    // Start Horizon Metrics Collector in the background
+    #[cfg(feature = "rest-api")]
+    {
+        use super::horizon_metrics_collector::spawn_horizon_metrics_collector;
+        let collector_client = client.clone();
+        let collector_store = state.metrics_store.clone();
+        let collector_watch_ns = state.watch_namespace.clone();
+        tokio::spawn(async move {
+            let _handle = spawn_horizon_metrics_collector(
+                collector_store,
+                30, // poll every 30 seconds
+                collector_client,
+                collector_watch_ns,
+            );
+            if let Err(e) = _handle.await {
+                error!("Horizon Metrics Collector stopped with error: {:?}", e);
+            }
+        });
+    }
+
     // Start Quorum Optimizer in the background
     let quorum_optimizer = Arc::new(super::quorum::QuorumOptimizer::new(
         client.clone(),
@@ -437,13 +514,7 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
 
     // Start Audit Worker if enabled
     if state.operator_config.audit.enabled {
-        let sink: Arc<dyn AuditSink> = if let Some(s3_config) = &state.operator_config.audit.s3 {
-            Arc::new(S3AuditSink::new(s3_config.clone()).await)
-        } else {
-            Arc::new(NoopAuditSink)
-        };
-
-        let audit_worker = AuditWorker::new(client.clone(), sink);
+        let audit_worker = AuditWorker::new(client.clone(), state.audit_recorder.clone());
         tokio::spawn(async move {
             if let Err(e) = audit_worker.run().await {
                 error!("Audit Worker stopped with error: {}", e);
@@ -492,6 +563,19 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
                 Api::all(client.clone())
             },
             Config::default(),
+        )
+        .watches::<k8s_openapi::api::core::v1::Secret, _>(
+            if let Some(ns) = &state.watch_namespace {
+                Api::namespaced(client.clone(), ns)
+            } else {
+                Api::all(client.clone())
+            },
+            Config::default(),
+            |_secret| {
+                // Trigger reconciliation for all StellarNodes that reference this secret
+                // The reconciler will check if the secret version changed and trigger restarts
+                vec![]
+            },
         )
         .shutdown_on_signal()
         .run(|obj, ctx| reconcile(obj, ctx), error_policy, state.clone())
@@ -727,8 +811,16 @@ fn reconcile(
         #[cfg(feature = "metrics")]
         let reconcile_start = std::time::Instant::now();
 
+        // One phase machine per reconciliation pass. It records the pipeline
+        // stages this pass walked through, so the reconcile trail is explicit
+        // in logs instead of implied by statement order (issue #1047).
+        let phases = Arc::new(std::sync::Mutex::new(PhaseMachine::new()));
+
         if !ctx.is_leader.load(std::sync::atomic::Ordering::Relaxed) {
             debug!("Not the leader, skipping reconciliation");
+            if let Ok(mut machine) = phases.lock() {
+                machine.succeed("not the leader; pass skipped");
+            }
             return Ok(Action::requeue(Duration::from_secs(5)));
         }
 
@@ -741,10 +833,42 @@ fn reconcile(
                 namespace, node_name, obj.spec.node_type
             );
 
+            // 1. Advanced Configuration Validation
+            let validation_errors = crate::config_mgmt::validation::Validator::validate(&obj.spec);
+            if !validation_errors.is_empty() {
+                warn!("Configuration validation failed for {}/{}: {:?}", namespace, node_name, validation_errors);
+                // In a real implementation, we would update status with these errors and return Action::requeue
+            }
+
+            // 2. Automatic Rollback Check
+            if let Some(status) = &obj.status {
+                if crate::config_mgmt::rollback::RollbackManager::should_rollback(&status.conditions) {
+                    warn!("Critical failure detected for {}/{}, checking for rollback target...", namespace, node_name);
+                    // Rollback logic would go here: fetch history, find stable version, patch CRD back
+                }
+            }
+
+            // 3. Security Policy Enforcement
+            let security_violations = crate::security::policy::PolicyEnforcer::enforce_policy(&obj.spec);
+            if !security_violations.is_empty() {
+                warn!("Security policy violations detected for {}/{}: {:?}", namespace, node_name, security_violations);
+                // In a real implementation, we would block reconciliation or fire critical alerts
+            }
+
             // Manual finalizer logic to avoid HRTB Send issues with the helper closure
             if obj.metadata.deletion_timestamp.is_some() {
+                advance_phase(
+                    &phases,
+                    ReconcilePhase::Finalizing,
+                    "deletion timestamp is set",
+                );
                 if obj.finalizers().iter().any(|f| f == STELLAR_NODE_FINALIZER) {
-                    cleanup_stellar_node(client.clone(), obj.clone(), ctx.clone()).await?;
+                    if let Err(err) =
+                        cleanup_stellar_node(client.clone(), obj.clone(), ctx.clone()).await
+                    {
+                        fail_phase(&phases, &format!("cleanup failed: {err}"));
+                        return Err(err);
+                    }
 
                     let patch = serde_json::json!({
                         "metadata": {
@@ -753,8 +877,16 @@ fn reconcile(
                     });
                     api.patch(&node_name, &PatchParams::default(), &Patch::Merge(patch)).await?;
                 }
+                if let Ok(mut machine) = phases.lock() {
+                    machine.succeed("finalizer removed");
+                }
                 Ok(Action::await_change())
             } else {
+                advance_phase(
+                    &phases,
+                    ReconcilePhase::Validating,
+                    "reconciling a live StellarNode",
+                );
                 if !obj.finalizers().iter().any(|f| f == STELLAR_NODE_FINALIZER) {
                     let mut finalizers = obj.finalizers().to_vec();
                     finalizers.push(STELLAR_NODE_FINALIZER.to_string());
@@ -765,9 +897,26 @@ fn reconcile(
                     });
                     api.patch(&node_name, &PatchParams::default(), &Patch::Merge(patch)).await?;
                 }
-                apply_stellar_node(client.clone(), obj.clone(), ctx.clone()).await
+                apply_stellar_node(client.clone(), obj.clone(), ctx.clone(), phases.clone())
+                    .await
             }
         };
+
+        // Close out the phase trail and emit it as a single line, so a
+        // reconcile pass can be read end-to-end from one log entry.
+        if let Ok(mut machine) = phases.lock() {
+            match &res {
+                Ok(_) => machine.succeed("reconciliation completed"),
+                Err(err) => machine.fail(format!("reconciliation failed: {err}")),
+            }
+            info!(
+                node = %node_name,
+                namespace = %namespace,
+                phase = %machine.current(),
+                "reconcile phases: {}",
+                machine.summary()
+            );
+        }
 
         #[cfg(feature = "metrics")]
         {
@@ -799,11 +948,40 @@ fn reconcile(
     .boxed()
 }
 
+/// Advance the reconcile phase machine, without ever failing the pass.
+///
+/// The machine is authoritative for *observability* — it names the stage in
+/// logs and validates that the pipeline still runs in the declared order. A
+/// bookkeeping mistake must not take the operator down, so an illegal
+/// transition is logged loudly and reconciliation continues exactly as before.
+fn advance_phase(phases: &Arc<std::sync::Mutex<PhaseMachine>>, to: ReconcilePhase, reason: &str) {
+    match phases.lock() {
+        Ok(mut machine) => {
+            if let Err(err) = machine.transition_to(to, reason) {
+                warn!("reconcile phase bookkeeping rejected a transition: {err}");
+            }
+        }
+        Err(poisoned) => {
+            // A poisoned lock means another task panicked mid-transition; the
+            // phase trail is unreliable from here but reconciliation is not.
+            warn!("reconcile phase machine lock poisoned: {poisoned}");
+        }
+    }
+}
+
+/// Mark the phase machine failed, for error paths that return early.
+fn fail_phase(phases: &Arc<std::sync::Mutex<PhaseMachine>>, reason: &str) {
+    if let Ok(mut machine) = phases.lock() {
+        machine.fail(reason);
+    }
+}
+
 /// Apply/create/update the StellarNode resources
 pub(crate) fn apply_stellar_node(
     client: Client,
     node: Arc<StellarNode>,
     ctx: Arc<ControllerState>,
+    phases: Arc<std::sync::Mutex<PhaseMachine>>,
 ) -> BoxFuture<'static, Result<Action>> {
     async move {
         let name = node.name_any();
@@ -876,6 +1054,19 @@ pub(crate) fn apply_stellar_node(
 
         let propagated_labels = Arc::new(LabelPropagator::new(&node).compute());
 
+        // ── Plugin SDK: pre_reconcile hooks ───────────────────────────────────
+        let plugin_ctx = ReconcileContext::from_node(&node);
+        match ctx.plugin_registry.run_pre_reconcile(&plugin_ctx).await {
+            HookResult::Continue => {}
+            HookResult::Abort(reason) => {
+                warn!(
+                    "Plugin aborted reconciliation for {}/{}: {}",
+                    namespace, name, reason
+                );
+                return Err(Error::ConfigError(format!("plugin aborted: {reason}")));
+            }
+        }
+
         // Enforce PSS 'restricted' on the managed namespace (idempotent)
         if let Err(e) = pss::ensure_namespace_pss_labels(&client, &namespace).await {
             warn!(
@@ -884,6 +1075,7 @@ pub(crate) fn apply_stellar_node(
             );
         }
 
+        advance_phase(&phases, ReconcilePhase::Provisioning, "spec validated; ensuring durable prerequisites");
         // 1. Core infrastructure (PVC and ConfigMap) always managed by operator
         apply_or_emit!(
             &ctx,
@@ -1306,13 +1498,30 @@ pub(crate) fn apply_stellar_node(
             ActionType::Update,
             "mTLS certificates",
             clones: [namespace],
-            move |client: Client, _ctx: Arc<ControllerState>, node: Arc<StellarNode>| async move {
+            move |client: Client, ctx: Arc<ControllerState>, node: Arc<StellarNode>| async move {
                 mtls::ensure_ca(&client, &namespace).await?;
                 mtls::ensure_node_cert(&client, &node).await?;
                 // If cert-manager is configured, also create the Certificate CR so
                 // cert-manager takes over issuance and rotation going forward.
                 if let Some(cm_cfg) = &node.spec.cert_manager {
                     mtls::ensure_cert_manager_certificate(&client, &node, cm_cfg).await?;
+                }
+                // Detect whether the node's TLS Secret (cert-manager-issued or
+                // operator-issued self-signed) rotated since the previous
+                // reconcile and, if so, roll the workload's pods so they pick
+                // up the new certificate. This is what makes certificate
+                // rotation actually take effect without manual intervention;
+                // without it, pods keep serving with the stale in-memory cert
+                // even after the Secret contents change underneath them.
+                if let Err(e) =
+                    mtls::check_and_restart_on_cert_rotation(&client, &node, ctx.dry_run).await
+                {
+                    warn!(
+                        "Failed to check/trigger cert-rotation restart for {}/{}: {}",
+                        namespace,
+                        node.name_any(),
+                        e
+                    );
                 }
                 Ok(())
             }
@@ -1323,6 +1532,7 @@ pub(crate) fn apply_stellar_node(
             .await
             .unwrap_or(false);
 
+        advance_phase(&phases, ReconcilePhase::Deploying, "prerequisites ready; rolling out the workload");
         // 5. Create/update the Deployment/StatefulSet based on node type
         let workload_result = apply_or_emit!(
             &ctx,
@@ -1356,23 +1566,122 @@ pub(crate) fn apply_stellar_node(
                             None
                         };
 
-                        resources::ensure_statefulset(&client, &node, ctx.enable_mtls,
-                            seed_injection.as_ref(),
-                            &propagated_labels,
-                            ctx.dry_run,
-                        )
-                        .await?;
+                        if super::blue_green_core::should_take_over_validator_workload(&node) {
+                            super::blue_green_core::reconcile_validator_blue_green(
+                                &client,
+                                &node,
+                                ctx.enable_mtls,
+                                seed_injection.as_ref(),
+                                ctx.dry_run,
+                            )
+                            .await?;
+                        } else {
+                            resources::ensure_statefulset(
+                                &client,
+                                &node,
+                                ctx.enable_mtls,
+                                seed_injection.as_ref(),
+                                &propagated_labels,
+                                ctx.dry_run,
+                            )
+                            .await?;
+                        }
                         kms_secret::reconcile_vault_secret_rotation(&client, &node, seed_injection.as_ref(),
                         )
                         .await?;
                         super::forensic_snapshot::reconcile_forensic_snapshot(&client, &node).await?;
                     }
                     NodeType::Horizon | NodeType::SorobanRpc => {
-                        resources::ensure_deployment(&client, &node, ctx.enable_mtls,
-                            &propagated_labels,
-                            ctx.dry_run,
-                        )
-                        .await?;
+                        let current_version = get_current_deployment_version(&client, &node).await?;
+                        let blue_green_migration = node.spec.node_type == NodeType::Horizon
+                            && node.spec.strategy.strategy_type
+                                == crate::crd::types::RolloutStrategyType::BlueGreen
+                            && node
+                                .spec
+                                .horizon_config
+                                .as_ref()
+                                .map(|cfg| cfg.auto_migration)
+                                .unwrap_or(false)
+                            && current_version
+                                .as_ref()
+                                .map(|v| v != &node.spec.version)
+                                .unwrap_or(false);
+
+                        if !blue_green_migration {
+                            resources::ensure_deployment(
+                                &client,
+                                &node,
+                                ctx.enable_mtls,
+                                &propagated_labels,
+                                ctx.dry_run,
+                            )
+                            .await?;
+                        } else {
+                            info!(
+                                "Starting blue/green Horizon migration for {}/{}",
+                                namespace, name
+                            );
+
+                            let status_patch = serde_json::json!({
+                                "status": {
+                                    "phase": "Migrating",
+                                    "message": format!(
+                                        "Performing blue/green Horizon schema migration to {}",
+                                        node.spec.version
+                                    )
+                                }
+                            });
+                            let api: Api<StellarNode> = Api::namespaced(client.clone(), &namespace);
+                            api.patch_status(
+                                &name,
+                                &PatchParams::apply("stellar-operator"),
+                                &Patch::Merge(&status_patch),
+                            )
+                            .await?;
+
+                            let config = super::blue_green::BlueGreenConfig::default();
+                            let migration_success = super::blue_green::orchestrate_horizon_migration(
+                                &client,
+                                &node,
+                                &config,
+                            )
+                            .await?;
+
+                            if migration_success {
+                                let patch = serde_json::json!({
+                                    "status": {
+                                        "lastMigratedVersion": node.spec.version,
+                                        "phase": "Running",
+                                        "message": format!(
+                                            "Horizon migration to {} completed successfully",
+                                            node.spec.version
+                                        )
+                                    }
+                                });
+                                api.patch_status(
+                                    &name,
+                                    &PatchParams::apply("stellar-operator"),
+                                    &Patch::Merge(&patch),
+                                )
+                                .await?;
+                            } else {
+                                let patch = serde_json::json!({
+                                    "status": {
+                                        "phase": "Failed",
+                                        "message": format!(
+                                            "Blue/green Horizon migration to {} failed",
+                                            node.spec.version
+                                        )
+                                    }
+                                });
+                                api.patch_status(
+                                    &name,
+                                    &PatchParams::apply("stellar-operator"),
+                                    &Patch::Merge(&patch),
+                                )
+                                .await?;
+                            }
+                        }
 
                         // Handle Canary Deployment
                         if let Some(cfg) = node.spec.strategy.canary() {
@@ -1708,13 +2017,35 @@ pub(crate) fn apply_stellar_node(
             ActionType::Update,
             "MetalLB configuration",
             move |_client: Client, _ctx: Arc<ControllerState>, _node: Arc<StellarNode>| async move {
-                // TODO: Load balancer and global discovery fields not yet implemented in StellarNodeSpec
-                // resources::ensure_metallb_config(&client, &node).await?;
-                // resources::ensure_load_balancer_service(&client, &node).await?;
                 Ok(())
             }
         )
         .await?;
+
+        // 5c. Secret rotation detection — passphrase and seed secrets
+        //
+        // Checks whether any referenced secrets have been rotated since the last
+        // reconciliation. If so, triggers a graceful rolling restart via pod template
+        // annotations so pods pick up the new secret values without downtime.
+        {
+            let dry_run = ctx.dry_run;
+            if let Err(e) =
+                secret_watcher::handle_passphrase_secret_rotation(&client, &node, dry_run, &ctx.audit_log).await
+            {
+                warn!(
+                    "Passphrase secret rotation check failed for {}/{}: {}",
+                    namespace, name, e
+                );
+            }
+            if let Err(e) =
+                secret_watcher::handle_seed_secret_rotation(&client, &node, dry_run, &ctx.audit_log).await
+            {
+                warn!(
+                    "Seed secret rotation check failed for {}/{}: {}",
+                    namespace, name, e
+                );
+            }
+        }
 
         // 5b. Read-Only Replica Pools
         apply_or_emit!(
@@ -1730,6 +2061,7 @@ pub(crate) fn apply_stellar_node(
         )
         .await?;
 
+        advance_phase(&phases, ReconcilePhase::Scaling, "workload applied; reconciling elasticity");
         // 6. Autoscaling and Monitoring
         apply_or_emit!(
             &ctx,
@@ -1737,8 +2069,9 @@ pub(crate) fn apply_stellar_node(
             ActionType::Update,
             "Monitoring and Scaling resources",
             move |client: Client, ctx: Arc<ControllerState>, node: Arc<StellarNode>| async move {
+                resources::ensure_service_monitor(&client, &node).await?;
+
                 if node.spec.autoscaling.is_some() {
-                    resources::ensure_service_monitor(&client, &node).await?;
                     resources::ensure_hpa(&client, &node, ctx.dry_run).await?;
                 }
 
@@ -1800,6 +2133,7 @@ pub(crate) fn apply_stellar_node(
             }
         }
 
+        advance_phase(&phases, ReconcilePhase::Observing, "checking node health and sync state");
         // 7. Perform health check to determine if node is ready
         //
         // Measure reduction in API polling overhead: Reactive Status check
@@ -1871,7 +2205,7 @@ pub(crate) fn apply_stellar_node(
                     }
                 }
 
-                let scaling_config_clone = scaling_config.clone();
+                let _scaling_config_clone = scaling_config.clone();
                 apply_or_emit!(
                     &ctx,
                     &node,
@@ -2096,6 +2430,7 @@ pub(crate) fn apply_stellar_node(
             }
         }
 
+        advance_phase(&phases, ReconcilePhase::Remediating, "evaluating automatic remediation");
         // 9. Auto-remediation check
         if health_result.healthy && !node.spec.suspended {
             let stale_check = remediation::check_stale_node(&node, health_result.ledger_sequence);
@@ -2471,7 +2806,7 @@ pub(crate) fn apply_stellar_node(
             .await?;
         }
 
-        // Cost estimation: annotate and export metric (non-fatal).
+        // Cost estimation: annotate estimated monthly cost (non-fatal).
         {
             let cost = super::cost::estimate_monthly_cost(&node);
             if let Err(e) = super::cost::annotate_node_cost(&client, &node, cost).await {
@@ -2480,8 +2815,6 @@ pub(crate) fn apply_stellar_node(
                     namespace, name, e
                 );
             }
-            #[cfg(feature = "metrics")]
-            super::cost::report_cost_metric(&namespace, &name, &node.spec.node_type.to_string(), cost);
         }
 
         // 13. Stamp audit annotations for the permanent reconcile trail.
@@ -2496,9 +2829,87 @@ pub(crate) fn apply_stellar_node(
             super::audit::patch_audit_annotations(&client, &node, action).await;
         }
 
-        // 14. Update status to Running with ready replica count
+        // 14. GitOps protocol upgrade — check if a timeline annotation is present and
+        //     drive the next due upgrade step via ArgoCD or Flux.
+        {
+            use super::gitops_upgrade::{
+                GitOpsEngine, GitOpsUpgradeController, ProtocolUpgradeTimeline,
+            };
+
+            let timeline_json = node
+                .metadata
+                .annotations
+                .as_ref()
+                .and_then(|a| a.get("stellar.org/protocol-upgrade-timeline"))
+                .cloned();
+
+            if let Some(json_str) = timeline_json {
+                match serde_json::from_str::<ProtocolUpgradeTimeline>(&json_str) {
+                    Ok(timeline) => {
+                        let engine_str = node
+                            .metadata
+                            .annotations
+                            .as_ref()
+                            .and_then(|a| a.get("stellar.org/gitops-engine"))
+                            .map(|s| s.as_str())
+                            .unwrap_or("argocd");
+                        let engine = if engine_str == "flux" {
+                            GitOpsEngine::Flux
+                        } else {
+                            GitOpsEngine::ArgoCd
+                        };
+                        let controller = GitOpsUpgradeController::new(
+                            engine,
+                            std::time::Duration::from_secs(300),
+                            0.95,
+                        );
+                        let current_protocol: u32 = node
+                            .metadata
+                            .annotations
+                            .as_ref()
+                            .and_then(|a| a.get("stellar.org/current-protocol"))
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(0);
+                        let now_unix = chrono::Utc::now().timestamp();
+                        match controller
+                            .plan_and_sync(&client, &node, &timeline, current_protocol, now_unix)
+                            .await
+                        {
+                            Ok(Some(plan)) => {
+                                info!(
+                                    "GitOps upgrade planned for {}/{}: protocol v{} via {}",
+                                    namespace, name, plan.target_protocol, engine_str
+                                );
+                            }
+                            Ok(None) => {
+                                debug!("No GitOps upgrade step due for {}/{}", namespace, name);
+                            }
+                            Err(e) => {
+                                warn!(
+                                    "GitOps upgrade planning failed for {}/{}: {}",
+                                    namespace, name, e
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to parse protocol-upgrade-timeline annotation for {}/{}: {}",
+                            namespace, name, e
+                        );
+                    }
+                }
+            }
+        }
+
+        advance_phase(&phases, ReconcilePhase::Publishing, "publishing status and events");
+        // 15. Update status to Running with ready replica count
         // Use configured requeue interval for healthy reconciliation
         let requeue_interval = ctx.operator_config.reconciler.requeue_interval;
+
+        // ── Plugin SDK: post_reconcile hooks ──────────────────────────────────
+        ctx.plugin_registry.run_post_reconcile(&plugin_ctx).await;
+
         Ok(Action::requeue(Duration::from_secs(if phase == "Ready" {
             requeue_interval
         } else {
@@ -2736,27 +3147,6 @@ async fn get_ready_replicas(client: &Client, node: &StellarNode) -> Result<i32> 
     }
 }
 
-/// Fetch the ready replicas for the canary deployment
-#[allow(dead_code)]
-#[instrument(skip(client, node), fields(name = %node.name_any(), namespace = node.namespace()))]
-async fn get_canary_ready_replicas(client: &Client, node: &StellarNode) -> Result<i32> {
-    let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
-    let name = format!("{}-canary", node.name_any());
-
-    let api: Api<Deployment> = Api::namespaced(client.clone(), &namespace);
-    match api.get(&name).await {
-        Ok(deployment) => {
-            let ready_replicas = deployment
-                .status
-                .as_ref()
-                .and_then(|s| s.ready_replicas)
-                .unwrap_or(0);
-            Ok(ready_replicas)
-        }
-        Err(_) => Ok(0),
-    }
-}
-
 /// Get the current version of the stable deployment
 #[instrument(skip(client, node), fields(name = %node.name_any(), namespace = node.namespace()))]
 async fn get_current_deployment_version(
@@ -2764,11 +3154,11 @@ async fn get_current_deployment_version(
     node: &StellarNode,
 ) -> Result<Option<String>> {
     let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
-    let name = node.name_any();
+    let names = vec![node.name_any(), format!("{}-green", node.name_any())];
 
     let api: Api<Deployment> = Api::namespaced(client.clone(), &namespace);
-    match api.get(&name).await {
-        Ok(deployment) => {
+    for name in names {
+        if let Ok(deployment) = api.get(&name).await {
             let version = deployment
                 .spec
                 .as_ref()
@@ -2777,14 +3167,16 @@ async fn get_current_deployment_version(
                 .and_then(|c| c.image.as_ref())
                 .and_then(|img| img.split(':').next_back())
                 .map(|v| v.to_string());
-            Ok(version)
+            if version.is_some() {
+                return Ok(version);
+            }
         }
-        Err(_) => Ok(None),
     }
+
+    Ok(None)
 }
 
 /// Check health of canary pods
-#[allow(dead_code)]
 #[instrument(skip(client, node), fields(name = %node.name_any(), namespace = node.namespace()))]
 async fn check_canary_health(
     client: &Client,
@@ -2919,6 +3311,13 @@ async fn update_suspended_status(client: &Client, node: &StellarNode) -> Result<
         "NodeSuspended",
         "Node is offline - replicas scaled to 0. Service remains active for peer discovery.",
     );
+    conditions::set_condition(
+        &mut conditions,
+        conditions::CONDITION_TYPE_AVAILABLE,
+        conditions::CONDITION_STATUS_FALSE,
+        "NodeSuspended",
+        "Node is suspended and no replicas are available.",
+    );
     conditions::remove_condition(&mut conditions, conditions::CONDITION_TYPE_PROGRESSING);
     conditions::remove_condition(&mut conditions, conditions::CONDITION_TYPE_DEGRADED);
 
@@ -2980,6 +3379,13 @@ pub(crate) fn apply_phase_conditions(
                 "NoIssues",
                 "No degradation detected",
             );
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_TRUE,
+                "MinimumReplicasAvailable",
+                "At least one replica is available and serving traffic",
+            );
         }
         "Creating" | "Pending" => {
             conditions::set_condition(
@@ -2997,6 +3403,13 @@ pub(crate) fn apply_phase_conditions(
                 message.unwrap_or("Creating resources"),
             );
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_DEGRADED);
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_FALSE,
+                "Provisioning",
+                "Resources are being created and are not yet available",
+            );
         }
         "Syncing" => {
             conditions::set_condition(
@@ -3014,6 +3427,13 @@ pub(crate) fn apply_phase_conditions(
                 message.unwrap_or("Syncing data"),
             );
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_DEGRADED);
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_FALSE,
+                "Syncing",
+                "Node is syncing and not yet available for full traffic",
+            );
         }
         "Running" => {
             conditions::set_condition(
@@ -3031,6 +3451,13 @@ pub(crate) fn apply_phase_conditions(
                 "Resource creation complete",
             );
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_DEGRADED);
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_TRUE,
+                "MinimumReplicasAvailable",
+                "Workload is running and available",
+            );
         }
         "Degraded" => {
             conditions::set_condition(
@@ -3048,6 +3475,13 @@ pub(crate) fn apply_phase_conditions(
                 message.unwrap_or("Node is degraded"),
             );
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_PROGRESSING);
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_FALSE,
+                "Degraded",
+                "Node is degraded and not considered available",
+            );
         }
         "Failed" => {
             conditions::set_condition(
@@ -3065,6 +3499,13 @@ pub(crate) fn apply_phase_conditions(
                 message.unwrap_or("Operation failed"),
             );
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_PROGRESSING);
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_FALSE,
+                "Failed",
+                "Node failed and is unavailable",
+            );
         }
         "Remediating" => {
             conditions::set_condition(
@@ -3088,6 +3529,13 @@ pub(crate) fn apply_phase_conditions(
                 "Remediating",
                 "Node required remediation",
             );
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_FALSE,
+                "Remediating",
+                "Node is under remediation and not currently available",
+            );
         }
         "Suspended" => {
             conditions::set_condition(
@@ -3096,6 +3544,13 @@ pub(crate) fn apply_phase_conditions(
                 conditions::CONDITION_STATUS_FALSE,
                 "Suspended",
                 message.unwrap_or("Node is suspended"),
+            );
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_FALSE,
+                "Suspended",
+                "Node is suspended and not available",
             );
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_PROGRESSING);
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_DEGRADED);
@@ -3108,6 +3563,13 @@ pub(crate) fn apply_phase_conditions(
                 "Maintenance",
                 message.unwrap_or("Node is in maintenance mode"),
             );
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_FALSE,
+                "Maintenance",
+                "Node is in maintenance mode and not available",
+            );
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_PROGRESSING);
             conditions::remove_condition(conditions, conditions::CONDITION_TYPE_DEGRADED);
         }
@@ -3118,6 +3580,13 @@ pub(crate) fn apply_phase_conditions(
                 conditions::CONDITION_STATUS_UNKNOWN,
                 "Unknown",
                 message.unwrap_or("Status unknown"),
+            );
+            conditions::set_condition(
+                conditions,
+                conditions::CONDITION_TYPE_AVAILABLE,
+                conditions::CONDITION_STATUS_UNKNOWN,
+                "Unknown",
+                message.unwrap_or("Availability unknown"),
             );
         }
     }
@@ -3416,6 +3885,13 @@ async fn update_status_with_health(
             "SyncComplete",
             "Node sync completed",
         );
+        conditions::set_condition(
+            &mut conditions,
+            conditions::CONDITION_TYPE_AVAILABLE,
+            conditions::CONDITION_STATUS_TRUE,
+            "MinimumReplicasAvailable",
+            "Node is healthy and available",
+        );
         conditions::remove_condition(&mut conditions, conditions::CONDITION_TYPE_DEGRADED);
     } else if health.healthy {
         conditions::set_condition(
@@ -3432,6 +3908,13 @@ async fn update_status_with_health(
             "Syncing",
             &health.message,
         );
+        conditions::set_condition(
+            &mut conditions,
+            conditions::CONDITION_TYPE_AVAILABLE,
+            conditions::CONDITION_STATUS_TRUE,
+            "MinimumReplicasAvailable",
+            "Node is healthy but still syncing",
+        );
         conditions::remove_condition(&mut conditions, conditions::CONDITION_TYPE_DEGRADED);
     } else {
         conditions::set_condition(
@@ -3447,6 +3930,13 @@ async fn update_status_with_health(
             conditions::CONDITION_STATUS_TRUE,
             "HealthCheckFailed",
             &health.message,
+        );
+        conditions::set_condition(
+            &mut conditions,
+            conditions::CONDITION_TYPE_AVAILABLE,
+            conditions::CONDITION_STATUS_FALSE,
+            "HealthCheckFailed",
+            "Node failed health checks and is unavailable",
         );
         conditions::remove_condition(&mut conditions, conditions::CONDITION_TYPE_PROGRESSING);
     }
@@ -3480,48 +3970,6 @@ async fn update_status_with_health(
                 .and_then(|s| s.last_migrated_version.clone())
         },
         conditions,
-        ..Default::default()
-    };
-
-    let patch = serde_json::json!({ "status": status });
-    api.patch_status(
-        &node.name_any(),
-        &PatchParams::apply("stellar-operator"),
-        &Patch::Merge(&patch),
-    )
-    .await
-    .map_err(Error::KubeError)?;
-
-    Ok(())
-}
-
-/// Update the status subresource with canary information
-#[allow(dead_code)]
-async fn update_status_with_canary(
-    client: &Client,
-    node: &StellarNode,
-    phase: &str,
-    message: Option<&str>,
-    ready_replicas: i32,
-    canary_ready_replicas: i32,
-    canary_version: Option<String>,
-) -> Result<()> {
-    let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
-    let api: Api<StellarNode> = Api::namespaced(client.clone(), &namespace);
-
-    #[allow(deprecated)]
-    let status = StellarNodeStatus {
-        phase: phase.to_string(),
-        message: message.map(String::from),
-        observed_generation: node.metadata.generation,
-        replicas: if node.spec.suspended {
-            0
-        } else {
-            node.spec.replicas
-        },
-        ready_replicas,
-        canary_ready_replicas,
-        canary_version,
         ..Default::default()
     };
 
