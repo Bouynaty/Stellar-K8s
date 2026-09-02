@@ -3,6 +3,134 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.2.0 (2026-09-02) [minor]
+
+• Merge pull request #183 from kalebosas2-dev/feat/issue-7-contract-develop-zero-knowledge-merkle-proof
+🐛 fix: add ZK Merkle proof verifier for fast-sync ingestion
+• Merge branch 'main' into feat/issue-7-contract-develop-zero-knowledge-merkle-proof
+• Merge pull request #180 from Victorjonah-prog/feature/resource-saturation-heatmap
+✨ feat(frontend): real-time resource saturation heatmap for worker nodes
+• Merge branch 'main' into feature/resource-saturation-heatmap
+• Merge pull request #182 from Timmmytunner/fix/issue-88-frontend-soroban-smart-contract-flamegraph-gas
+✨ feat: add Soroban flamegraph gas profiler interface
+• Merge pull request #181 from Vivian-04/feature/79-promql-metrics-exporter
+✨ feat(telemetry): add PromQL metrics exporter for Soroban gas profiling
+• Merge branch 'main' into feature/79-promql-metrics-exporter
+• Merge pull request #184 from LohdGordon/fix/issue-98-documentation-multi-cluster-high-availability
+📝 docs: add multi-cluster HA architecture and active-passive blueprint
+• Merge branch 'main' into fix/issue-98-documentation-multi-cluster-high-availability
+• Merge pull request #186 from BIGSMKE12/feat/issue-66-contract-decentralized-identity-did-credential
+🐛 fix: add W3C DID VC verifier sub-contract for Soroban
+• Merge branch 'main' into feat/issue-66-contract-decentralized-identity-did-credential
+• Merge pull request #192 from isaac4real-art/feat/issue-26-contract-on-chain-dynamic-gas-price-oracle-sub
+🐛 fix: add on-chain dynamic gas price oracle sub-contract for Soroban
+• Merge pull request #196 from Naajih09/Documentation]-Storage-Corruption-Recovery-&-Database-Repair-Playbook
+📝 docs: add storage corruption recovery & database repair playbook
+• Merge branch 'main' into Documentation]-Storage-Corruption-Recovery-&-Database-Repair-Playbook
+• Merge pull request #189 from Nwapu-TrustJah/security/issue-99-documentation-kubernetes-rbac-security
+🐛 fix: add RBAC hardening manual and least-privilege policies
+• Merge pull request #194 from Fayvor22/Quorum
+✨ feat: Develop on-chain quorum set validation engine in wasm
+• Merge branch 'main' into Quorum
+• Merge branch 'main' into Quorum
+• Merge branch 'main' into Quorum
+• Create repair-pod.yaml, database repair playbook
+📝 docs: add storage corruption recovery & database repair playbook
+• Create storage-repair.md
+✨ feat: ## [Contract] On-Chain Dynamic Gas Price Oracle Sub-Contract (#26)
+✨ feat: ## [Contract] On-Chain Dynamic Gas Price Oracle Sub-Contract (#26)
+✨ feat: ## [Contract] On-Chain Dynamic Gas Price Oracle Sub-Contract (#26)
+• security: ## [Documentation] Kubernetes RBAC Security Hardening & Leas (#99)
+• security: ## [Documentation] Kubernetes RBAC Security Hardening & Leas (#99)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+✨ feat: ## [Contract] Decentralized Identity (DID) Credential Verifi (#66)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+🐛 fix: ## [Documentation] Multi-Cluster High Availability Architect (#98)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+✨ feat: ## [Contract] Develop Zero-Knowledge Merkle Proof Verifier f (#7)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+🐛 fix: ## [Frontend] Soroban Smart Contract Flamegraph Gas Profiler (#88)
+✨ feat(frontend): real-time resource saturation heatmap for worker nodes
+• Implements issue #10 - React/D3 heatmap component visualising CPU and
+• Memory saturation across up to 100 Kubernetes worker nodes.
+• New files:
+• - frontend/analytics/src/heatmapModel.js
+•   Pure data model: parses Prometheus API responses, merges cpu/memory
+•   samples per node, tombstones disappeared nodes, classifies into five
+•   saturation bands (idle/moderate/elevated/high/critical).
+• - frontend/analytics/src/heatmapModel.test.js
+•   31 unit tests (23 new for heatmap model, all passing).
+• - frontend/analytics/src/components/heatmap/HeatmapGrid.jsx
+•   Main component. D3 manages SVG DOM directly (enter/update/exit) to
+•   avoid VDOM diffing overhead on 100-node 5-second ticks. CSS transitions
+•   animate color changes between polls without blocking the JS thread.
+•   ResizeObserver recalculates column count on container resize.
+•   Accessible: role=grid, role=gridcell, aria-label, keyboard focus/tooltip.
+• - frontend/analytics/src/components/heatmap/HeatmapTooltip.jsx
+•   Portal-based tooltip with CPU%, Memory%, saturation band, zone, and
+•   offline badge. Keyboard-accessible (Enter/Space on focused cell).
+• - frontend/analytics/src/components/heatmap/usePrometheusPoller.js
+•   Polling hook: fetches stellar_operator_resource_usage at 5 s intervals,
+•   surfaces status (idle/polling/error/offline) and lastPollAt timestamp.
+• - frontend/analytics/scripts/mock-prometheus.mjs
+•   Mock Prometheus HTTP server simulating 100 worker nodes across three
+•   availability zones with a rolling CPU spike wave (configurable window
+•   and interval). Responds to GET /api/v1/query in Prometheus vector format.
+• Modified files:
+• - frontend/analytics/src/main.jsx
+•   Adds Topology / Heatmap tab switcher in the app shell toolbar.
+•   HeatmapGrid rendered on the Heatmap tab, WS connection only opened
+•   when the Topology tab is active.
+• - frontend/analytics/src/styles.css
+•   Heatmap-specific styles: grid wrap, summary strip, legend swatches,
+•   portal tooltip, view-tab active state, responsive breakpoints.
+• - frontend/analytics/package.json
+•   Adds d3@7.9.0 dependency and mock:prometheus npm script.
+• - frontend/analytics/vite.config.js
+•   Adds /api/prometheus proxy pointing at mock server (localhost:9091).
+• Closes #10
+✨ feat(telemetry): add PromQL metrics exporter for Soroban gas profiling
+• - New stellar-telemetry crate with async log parser and Prometheus exporter
+• - Zero-copy JSON parser using string slicing for minimal heap allocations
+• - Histograms for soroban_contract_cpu_instructions and soroban_contract_memory_bytes
+• - /metrics HTTP endpoint with labeled histogram and counter vectors
+• - Async streaming parser via parse_log_stream() with StreamStats
+• - Criterion benchmarks for parser throughput validation
+• - Unit tests for parser correctness and exporter text format
+• Fixes #79
+• Delete telemetry/BENCHMARKS.md
+• Update gas_exporter.rs
+• Update parser.rs
+• Create Cargo.toml
+• Create BENCHMARKS.md
+• Update Cargo.toml
+• Create lib.rs
+• Create gas_exporter.rs
+✨ feat: implement zero-copy log parser
+
+
 ## Chart v2.1.0 (2026-09-02) [minor]
 
 • Merge pull request #193 from Deevhyne1023/security/issue-80-backend-automated-mtls-certificate-generation

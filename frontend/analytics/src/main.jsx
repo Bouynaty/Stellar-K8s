@@ -1,9 +1,9 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
-import ComparisonDashboard from './metrics/comparison/ComparisonDashboard.jsx';
+
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
-import { buildQuorumMatrix, emptyMatrix, matrixStats } from '../matrix/quorumMatrixModel.js';
+
 import './styles.css';
 
 const EMPTY_GRAPH = materialize(createStreamState());
@@ -12,6 +12,9 @@ const sourceFromQuery = query.get('source');
 const bridgeUrl = query.get('ws') || 'localhost:8787';
 const initialSource = sourceFromQuery === 'mock' || sourceFromQuery === 'kafka' ? sourceFromQuery : 'live';
 
+// Tab driven by ?view= query param so links are shareable.
+const initialView = query.get('view') === 'heatmap' ? 'heatmap' : 'topology';
+
 function streamUrl(source) {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
   if (source === 'mock' || source === 'kafka') return `${protocol}://${bridgeUrl}`;
@@ -19,6 +22,7 @@ function streamUrl(source) {
 }
 
 function App() {
+  const [view, setView] = useState(initialView);
   const [source, setSource] = useState(initialSource);
   const [view, setView] = useState('topology');
   const [graph, setGraph] = useState(EMPTY_GRAPH);
@@ -33,6 +37,7 @@ function App() {
   const renderFrameRef = useRef(null);
 
   useEffect(() => {
+    if (view !== 'topology') return; // don't open WS if not on topology view
     streamStateRef.current = createStreamState();
     setGraph(EMPTY_GRAPH);
     setMatrix(emptyMatrix());
@@ -78,7 +83,7 @@ function App() {
         renderFrameRef.current = null;
       }
     };
-  }, [source]);
+  }, [source, view]);
 
   const counts = useMemo(() => {
     const values = graph.nodes.map(statusForNode);
@@ -99,39 +104,10 @@ function App() {
       <header className="topbar">
         <div className="brand-block">
           <span className="eyebrow">STELLAR / OBSERVABILITY</span>
-          <h1>Network topology</h1>
-          <p>Multi-cluster quorum health.</p>
+          <h1>{view === 'heatmap' ? 'Resource Saturation' : 'Network Topology'}</h1>
+          <p>{view === 'heatmap' ? 'Worker node CPU &amp; Memory heatmap.' : 'Multi-cluster quorum health.'}</p>
         </div>
-        <div className="toolbar" role="toolbar" aria-label="Topology controls">
-          <div className="view-switcher" aria-label="Application views">
-            <button className={view === 'topology' ? 'tool-button tool-button--active' : 'tool-button'} type="button" onClick={() => setView('topology')}>
-              Topology
-            </button>
-            <button className={view === 'comparison' ? 'tool-button tool-button--active' : 'tool-button'} type="button" onClick={() => setView('comparison')}>
-              Comparison
-            </button>
-          </div>
-          {view === 'topology' ? (
-            <>
-              <label className="select-wrap">
-                <span>Data source</span>
-                <select value={source} onChange={(event) => setSource(event.target.value)}>
-                  <option value="live">Live operator stream</option>
-                  <option value="kafka">Kafka WebSocket bridge</option>
-                  <option value="mock">Mock Kafka stream</option>
-                </select>
-              </label>
-              <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
-                {paused ? 'Resume motion' : 'Pause motion'}
-              </button>
-            </>
-          ) : null}
-        </div>
-      </header>
 
-      {view === 'comparison' ? (
-        <ComparisonDashboard />
-      ) : (
         <>
           <section className="metric-strip" aria-label="Network summary">
             <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
@@ -158,13 +134,7 @@ function App() {
               </div>
             </div>
 
-            <aside className="inspector" aria-live="polite">
-              <span className="eyebrow">NODE INSPECTOR</span>
-              {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
-            </aside>
-          </section>
-        </>
-      )}
+
     </main>
   );
 }
